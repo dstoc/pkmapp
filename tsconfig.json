@@ -1,0 +1,24 @@
+{
+  "extends": "./node_modules/gts/tsconfig-google.json",
+  "compilerOptions": {
+    "lib": [
+      "es2022",
+      "dom"
+    ],
+    "esModuleInterop": true,
+    "target": "es2020",
+    "module": "es2022",
+    "moduleResolution": "node",
+    "allowJs": true,
+    "experimentalDecorators": true,
+    "outDir": "build",
+    "plugins": [{
+        "name": "ts-lit-plugin",
+        "strict": true
+    }]
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*.ts"
+  ]
+}

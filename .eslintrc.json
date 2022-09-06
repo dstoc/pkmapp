@@ -1,0 +1,6 @@
+{
+  "extends": "./node_modules/gts/",
+  "rules": {
+    "node/no-unsupported-features/node-builtins": "off"
+  }
+}

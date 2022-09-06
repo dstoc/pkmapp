@@ -1,0 +1,23 @@
+{
+  "scripts": {
+    "dev": "npx concurrently -n tsc,wds \"tsc --watch --preserveWatchOutput\" \"npx web-dev-server --watch\"",
+    "lint": "npx gts lint",
+    "clean": "npx gts clean",
+    "compile": "npx tsc",
+    "fix": "npx gts fix"
+  },
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/node": "^14.11.2",
+    "@types/wicg-file-system-access": "^2020.9.5",
+    "@web/dev-server": "^0.1.33",
+    "emscripten-sdk-npm": "github:devappd/emscripten-sdk-npm",
+    "gts": "^3.1.0",
+    "lit": "^2.3.0",
+    "tree-sitter-cli": "^0.20.6",
+    "tree-sitter-markdown": "github:MDeiml/tree-sitter-markdown",
+    "ts-lit-plugin": "^1.2.1",
+    "typescript": "^4.7.4",
+    "web-tree-sitter": "^0.20.5"
+  }
+}
