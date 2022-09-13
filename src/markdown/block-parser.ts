@@ -16,7 +16,7 @@ import Parser from '../deps/tree-sitter.js';
 import type {MarkdownNode, ParagraphNode} from './node.js';
 
 await Parser.init();
-const blocks = await Parser.Language.load('/tree-sitter-markdown.wasm');
+const blocks = await Parser.Language.load('tree-sitter-markdown.wasm');
 const parser = new Parser();
 parser.setLanguage(blocks);
 

@@ -26,7 +26,7 @@ import {ViewModelNode} from './view-model.js';
 import Parser from '../deps/tree-sitter.js';
 
 await Parser.init();
-const blocks = await Parser.Language.load('/tree-sitter-markdown_inline.wasm');
+const blocks = await Parser.Language.load('tree-sitter-markdown_inline.wasm');
 const parser = new Parser();
 parser.setLanguage(blocks);
 
