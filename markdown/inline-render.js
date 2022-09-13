@@ -21,7 +21,7 @@ var MarkdownInline_1;
 import { html, LitElement, customElement, property, repeat, css, } from '../deps/lit.js';
 import Parser from '../deps/tree-sitter.js';
 await Parser.init();
-const blocks = await Parser.Language.load('/tree-sitter-markdown_inline.wasm');
+const blocks = await Parser.Language.load('tree-sitter-markdown_inline.wasm');
 const parser = new Parser();
 parser.setLanguage(blocks);
 let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement {

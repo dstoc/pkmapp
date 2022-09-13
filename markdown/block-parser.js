@@ -13,7 +13,7 @@
 // limitations under the License.
 import Parser from '../deps/tree-sitter.js';
 await Parser.init();
-const blocks = await Parser.Language.load('/tree-sitter-markdown.wasm');
+const blocks = await Parser.Language.load('tree-sitter-markdown.wasm');
 const parser = new Parser();
 parser.setLanguage(blocks);
 export function parseBlocks(markdown) {
