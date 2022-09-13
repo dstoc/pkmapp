@@ -14,10 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/bin/sh
-npx emsdk-checkout
-npx emsdk install 2.0.24
-npx emsdk activate 2.0.24
-source node_modules/emscripten-sdk-npm/emsdk/emsdk_env.sh
-npx tree-sitter-cli build-wasm node_modules/tree-sitter-markdown/tree-sitter-markdown
-npx tree-sitter-cli build-wasm node_modules/tree-sitter-markdown/tree-sitter-markdown-inline
+[ -d node_modules/emscripten-sdk-npm/emsdk ] || npx emsdk-checkout || exit 1
+npx emsdk install 2.0.24 || exit 1
+npx emsdk activate 2.0.24 || exit 1
+source node_modules/emscripten-sdk-npm/emsdk/emsdk_env.sh || exit 1
+(
+  cd build/
+  npx tree-sitter-cli build-wasm ../node_modules/tree-sitter-markdown/tree-sitter-markdown || exit 1
+  npx tree-sitter-cli build-wasm ../node_modules/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
+)
