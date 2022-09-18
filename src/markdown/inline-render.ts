@@ -178,9 +178,39 @@ export class MarkdownInline extends LitElement {
       setTimeout(() => {
         if (this.hostContext?.focusNode !== this.node) return;
         if (!this.isConnected) return;
-        this.focus();
+        const selection = (this.getRootNode()! as Document).getSelection()!;
+        const range = document.createRange();
+        range.setStart(this, 0);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        let focusOffset = this.hostContext?.focusOffset;
+        if (focusOffset !== undefined) {
+          if (focusOffset < 0) {
+            let index = NaN;
+            let last = NaN;
+            do {
+              last = index;
+              selection.modify('move', 'forward', 'line');
+              ({
+                start: {index},
+              } = MarkdownInline.getSelectionRange(selection));
+            } while (index !== last);
+            selection.modify('move', 'backward', 'lineboundary');
+            focusOffset = -focusOffset;
+          }
+          if (focusOffset === Infinity) {
+            selection.modify('move', 'forward', 'lineboundary');
+          } else {
+            // TODO: Check for overrun first line, but note that this conflicts
+            // with the edit/setFocus case.
+            for (let i = 0; i < focusOffset; i++) {
+              selection.modify('move', 'forward', 'character');
+            }
+          }
+        }
         this.active = true;
         this.hostContext!.focusNode = undefined;
+        this.hostContext!.focusOffset = undefined;
       });
     }
   }
@@ -217,27 +247,41 @@ export class MarkdownInline extends LitElement {
     );
     return {start, end};
   }
-  moveCaretUp(): boolean {
+  /**
+   * Moves the caret up one line. Returns true if it does, otherwise returns the
+   * index of the caret position on the first line.
+   */
+  moveCaretUp(): true | number {
     const selection = (this.getRootNode()! as Document).getSelection()!;
     const initialRange = selection.getRangeAt(0);
+    const {start: offsetStart} = MarkdownInline.getSelectionRange(selection);
     selection.modify('move', 'backward', 'lineboundary');
     const {start: lineStart} = MarkdownInline.getSelectionRange(selection);
     selection.removeAllRanges();
     selection.addRange(initialRange);
     selection.modify('move', 'backward', 'line');
     const {start: result} = MarkdownInline.getSelectionRange(selection);
-    return result.index < lineStart.index;
+    return (
+      result.index < lineStart.index || offsetStart.index - lineStart.index
+    );
   }
-  moveCaretDown(): boolean {
+  /**
+   * Moves the caret down one line. Returns true if it does, otherwise returns
+   * the index of the caret position on the first line.
+   */
+  moveCaretDown(): true | number {
     const selection = (this.getRootNode()! as Document).getSelection()!;
     const initialRange = selection.getRangeAt(0);
+    const {start: offsetStart} = MarkdownInline.getSelectionRange(selection);
+    selection.modify('move', 'backward', 'lineboundary');
+    const {start: lineStart} = MarkdownInline.getSelectionRange(selection);
     selection.modify('move', 'forward', 'lineboundary');
     const {start: lineEnd} = MarkdownInline.getSelectionRange(selection);
     selection.removeAllRanges();
     selection.addRange(initialRange);
     selection.modify('move', 'forward', 'line');
     const {start: result} = MarkdownInline.getSelectionRange(selection);
-    return result.index > lineEnd.index;
+    return result.index > lineEnd.index || offsetStart.index - lineStart.index;
   }
   edit(
     {startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit,
@@ -260,17 +304,9 @@ export class MarkdownInline extends LitElement {
     this.node.viewModel.tree.observe.notify();
     this.tree = this.tree!.edit(result);
     this.requestUpdate();
-    if (setFocus) {
-      setTimeout(() => {
-        const selection = (this.getRootNode()! as Document).getSelection()!;
-        const range = document.createRange();
-        range.setStart(this, 0);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        for (let i = 0; i < newEndIndex; i++) {
-          selection.modify('move', 'forward', 'character');
-        }
-      }, 0);
+    if (setFocus && this.hostContext) {
+      this.hostContext.focusNode = this.node;
+      this.hostContext.focusOffset = newEndIndex;
     }
   }
   onKeyDown(e: KeyboardEvent) {
