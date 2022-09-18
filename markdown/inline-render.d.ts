@@ -56,8 +56,16 @@ export declare class MarkdownInline extends LitElement {
         start: InlineInputPoint;
         end: InlineInputPoint;
     };
-    moveCaretUp(): boolean;
-    moveCaretDown(): boolean;
+    /**
+     * Moves the caret up one line. Returns true if it does, otherwise returns the
+     * index of the caret position on the first line.
+     */
+    moveCaretUp(): true | number;
+    /**
+     * Moves the caret down one line. Returns true if it does, otherwise returns
+     * the index of the caret position on the first line.
+     */
+    moveCaretDown(): true | number;
     edit({ startIndex, newEndIndex, oldEndIndex, newText }: InlineEdit, setFocus: boolean): void;
     onKeyDown(e: KeyboardEvent): void;
     onBeforeInput(e: InputEvent): void;

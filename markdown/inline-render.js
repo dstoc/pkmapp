@@ -132,9 +132,47 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
                     return;
                 if (!this.isConnected)
                     return;
-                this.focus();
+                const selection = this.getRootNode().getSelection();
+                const range = document.createRange();
+                range.setStart(this, 0);
+                selection.removeAllRanges();
+                selection.addRange(range);
                 this.active = true;
+            });
+            setTimeout(() => {
+                if (this.hostContext?.focusNode !== this.node)
+                    return;
+                if (!this.isConnected)
+                    return;
+                const selection = this.getRootNode().getSelection();
+                let focusOffset = this.hostContext?.focusOffset;
+                if (focusOffset !== undefined) {
+                    if (focusOffset < 0) {
+                        let index = NaN;
+                        let last = NaN;
+                        do {
+                            last = index;
+                            selection.modify('move', 'forward', 'line');
+                            ({
+                                start: { index },
+                            } = MarkdownInline_1.getSelectionRange(selection));
+                        } while (index !== last);
+                        selection.modify('move', 'backward', 'lineboundary');
+                        focusOffset = -focusOffset;
+                    }
+                    if (focusOffset === Infinity) {
+                        selection.modify('move', 'forward', 'lineboundary');
+                    }
+                    else {
+                        // TODO: Check for overrun first line, but note that this conflicts
+                        // with the edit/setFocus case.
+                        for (let i = 0; i < focusOffset; i++) {
+                            selection.modify('move', 'forward', 'character');
+                        }
+                    }
+                }
                 this.hostContext.focusNode = undefined;
+                this.hostContext.focusOffset = undefined;
             });
         }
     }
@@ -166,27 +204,39 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         const end = MarkdownInline_1.nodeOffsetToInputPoint(selection.focusNode, selection.focusOffset);
         return { start, end };
     }
+    /**
+     * Moves the caret up one line. Returns true if it does, otherwise returns the
+     * index of the caret position on the first line.
+     */
     moveCaretUp() {
         const selection = this.getRootNode().getSelection();
         const initialRange = selection.getRangeAt(0);
+        const { start: offsetStart } = MarkdownInline_1.getSelectionRange(selection);
         selection.modify('move', 'backward', 'lineboundary');
         const { start: lineStart } = MarkdownInline_1.getSelectionRange(selection);
         selection.removeAllRanges();
         selection.addRange(initialRange);
         selection.modify('move', 'backward', 'line');
         const { start: result } = MarkdownInline_1.getSelectionRange(selection);
-        return result.index < lineStart.index;
+        return (result.index < lineStart.index || offsetStart.index - lineStart.index);
     }
+    /**
+     * Moves the caret down one line. Returns true if it does, otherwise returns
+     * the index of the caret position on the first line.
+     */
     moveCaretDown() {
         const selection = this.getRootNode().getSelection();
         const initialRange = selection.getRangeAt(0);
+        const { start: offsetStart } = MarkdownInline_1.getSelectionRange(selection);
+        selection.modify('move', 'backward', 'lineboundary');
+        const { start: lineStart } = MarkdownInline_1.getSelectionRange(selection);
         selection.modify('move', 'forward', 'lineboundary');
         const { start: lineEnd } = MarkdownInline_1.getSelectionRange(selection);
         selection.removeAllRanges();
         selection.addRange(initialRange);
         selection.modify('move', 'forward', 'line');
         const { start: result } = MarkdownInline_1.getSelectionRange(selection);
-        return result.index > lineEnd.index;
+        return result.index > lineEnd.index || offsetStart.index - lineStart.index;
     }
     edit({ startIndex, newEndIndex, oldEndIndex, newText }, setFocus) {
         if (!this.node)
@@ -206,17 +256,9 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         this.node.viewModel.tree.observe.notify();
         this.tree = this.tree.edit(result);
         this.requestUpdate();
-        if (setFocus) {
-            setTimeout(() => {
-                const selection = this.getRootNode().getSelection();
-                const range = document.createRange();
-                range.setStart(this, 0);
-                selection.removeAllRanges();
-                selection.addRange(range);
-                for (let i = 0; i < newEndIndex; i++) {
-                    selection.modify('move', 'forward', 'character');
-                }
-            }, 0);
+        if (setFocus && this.hostContext) {
+            this.hostContext.focusNode = this.node;
+            this.hostContext.focusOffset = newEndIndex;
         }
     }
     onKeyDown(e) {

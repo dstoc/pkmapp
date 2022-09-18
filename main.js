@@ -93,10 +93,12 @@ let TestHost = class TestHost extends LitElement {
     onInlineKeyDown({ detail: { inline, node, keyboardEvent }, }) {
         if (keyboardEvent.key === 'ArrowUp') {
             keyboardEvent.preventDefault();
-            if (!inline.moveCaretUp()) {
+            const result = inline.moveCaretUp();
+            if (result !== true) {
                 for (const prev of reverseDfs(node)) {
                     if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
                         this.hostContext.focusNode = prev;
+                        this.hostContext.focusOffset = -result;
                         prev.viewModel.observe.notify();
                         break;
                     }
@@ -106,10 +108,12 @@ let TestHost = class TestHost extends LitElement {
         }
         if (keyboardEvent.key === 'ArrowDown') {
             keyboardEvent.preventDefault();
-            if (!inline.moveCaretDown()) {
+            const result = inline.moveCaretDown();
+            if (result !== true) {
                 for (const next of dfs(node)) {
                     if (['paragraph', 'code-block', 'heading'].includes(next.type)) {
                         this.hostContext.focusNode = next;
+                        this.hostContext.focusOffset = result;
                         next.viewModel.observe.notify();
                         break;
                     }
@@ -225,6 +229,7 @@ let TestHost = class TestHost extends LitElement {
                     for (const prev of reverseDfs(node)) {
                         if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
                             this.hostContext.focusNode = prev;
+                            this.hostContext.focusOffset = -Infinity;
                             prev.viewModel.observe.notify();
                             break;
                         }
