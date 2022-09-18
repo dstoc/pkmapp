@@ -161,6 +161,33 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
             index,
         };
     }
+    static getSelectionRange(selection) {
+        const start = MarkdownInline_1.nodeOffsetToInputPoint(selection.anchorNode, selection.anchorOffset);
+        const end = MarkdownInline_1.nodeOffsetToInputPoint(selection.focusNode, selection.focusOffset);
+        return { start, end };
+    }
+    moveCaretUp() {
+        const selection = this.getRootNode().getSelection();
+        const initialRange = selection.getRangeAt(0);
+        selection.modify('move', 'backward', 'lineboundary');
+        const { start: lineStart } = MarkdownInline_1.getSelectionRange(selection);
+        selection.removeAllRanges();
+        selection.addRange(initialRange);
+        selection.modify('move', 'backward', 'line');
+        const { start: result } = MarkdownInline_1.getSelectionRange(selection);
+        return result.index < lineStart.index;
+    }
+    moveCaretDown() {
+        const selection = this.getRootNode().getSelection();
+        const initialRange = selection.getRangeAt(0);
+        selection.modify('move', 'forward', 'lineboundary');
+        const { start: lineEnd } = MarkdownInline_1.getSelectionRange(selection);
+        selection.removeAllRanges();
+        selection.addRange(initialRange);
+        selection.modify('move', 'forward', 'line');
+        const { start: result } = MarkdownInline_1.getSelectionRange(selection);
+        return result.index > lineEnd.index;
+    }
     edit({ startIndex, newEndIndex, oldEndIndex, newText }, setFocus) {
         if (!this.node)
             throw new Error('no node');
@@ -209,8 +236,7 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
             return;
         e.preventDefault();
         const selection = this.getRootNode().getSelection();
-        const inputStart = MarkdownInline_1.nodeOffsetToInputPoint(selection.anchorNode, selection.anchorOffset);
-        const inputEnd = MarkdownInline_1.nodeOffsetToInputPoint(selection.focusNode, selection.focusOffset);
+        const { start: inputStart, end: inputEnd } = MarkdownInline_1.getSelectionRange(selection);
         const inlineInput = {
             inline: this,
             node: this.node,

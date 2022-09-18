@@ -15,6 +15,6 @@ export declare class TestHost extends LitElement {
     load(): Promise<void>;
     save(): Promise<void>;
     onInlineLinkClick({ detail: { type, destination }, }: CustomEvent<InlineLinkClick>): void;
-    onInlineKeyDown({ detail: { node, keyboardEvent } }: CustomEvent<InlineKeyDown>): void;
+    onInlineKeyDown({ detail: { inline, node, keyboardEvent }, }: CustomEvent<InlineKeyDown>): void;
     onInlineInput({ detail: { inline, inputEvent, inputStart, inputEnd }, }: CustomEvent<InlineInput>): void;
 }

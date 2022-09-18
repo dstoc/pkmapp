@@ -52,6 +52,12 @@ export declare class MarkdownInline extends LitElement {
     updated(): void;
     protected createRenderRoot(): this;
     static nodeOffsetToInputPoint(node: Node, offset: number): InlineInputPoint;
+    static getSelectionRange(selection: Selection): {
+        start: InlineInputPoint;
+        end: InlineInputPoint;
+    };
+    moveCaretUp(): boolean;
+    moveCaretDown(): boolean;
     edit({ startIndex, newEndIndex, oldEndIndex, newText }: InlineEdit, setFocus: boolean): void;
     onKeyDown(e: KeyboardEvent): void;
     onBeforeInput(e: InputEvent): void;
@@ -78,6 +84,9 @@ declare class NodeIds {
     migrate(oldNode: Parser.SyntaxNode | undefined, newNode: Parser.SyntaxNode): number;
 }
 declare global {
+    interface Selection {
+        modify(alter: 'move' | 'extend', direction: 'forward' | 'backward', granularity: 'character' | 'lineboundary' | 'line'): void;
+    }
     interface HTMLElementTagNameMap {
         'md-inline': MarkdownInline;
         'md-span': MarkdownSpan;
