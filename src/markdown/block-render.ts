@@ -139,3 +139,10 @@ export class MarkdownRenderer extends LitElement {
     return html`<md-block .node=${this.block}></md-block>`;
   }
 }
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'md-block': MarkdownBlock;
+    'md-block-render': MarkdownRenderer;
+  }
+}

@@ -499,3 +499,10 @@ function isFormatting(node: Parser.SyntaxNode) {
     'setext_h1_underline',
   ].includes(node.type);
 }
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'md-inline': MarkdownInline;
+    'md-span': MarkdownSpan;
+  }
+}
