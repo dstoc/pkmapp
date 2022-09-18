@@ -183,6 +183,12 @@ export class MarkdownInline extends LitElement {
         range.setStart(this, 0);
         selection.removeAllRanges();
         selection.addRange(range);
+        this.active = true;
+      });
+      setTimeout(() => {
+        if (this.hostContext?.focusNode !== this.node) return;
+        if (!this.isConnected) return;
+        const selection = (this.getRootNode()! as Document).getSelection()!;
         let focusOffset = this.hostContext?.focusOffset;
         if (focusOffset !== undefined) {
           if (focusOffset < 0) {
@@ -208,7 +214,6 @@ export class MarkdownInline extends LitElement {
             }
           }
         }
-        this.active = true;
         this.hostContext!.focusNode = undefined;
         this.hostContext!.focusOffset = undefined;
       });
