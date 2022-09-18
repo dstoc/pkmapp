@@ -2,6 +2,7 @@ import { TemplateResult, LitElement } from '../deps/lit.js';
 import { InlineNode } from './node.js';
 import { ViewModelNode } from './view-model.js';
 import Parser from '../deps/tree-sitter.js';
+import { HostContext } from './host-context.js';
 export interface InlineInputPoint {
     span?: MarkdownSpan;
     index: number;
@@ -39,6 +40,7 @@ declare global {
 export declare class MarkdownInline extends LitElement {
     static get styles(): import("@lit/reactive-element/css-tag.js").CSSResult[];
     constructor();
+    hostContext: HostContext | undefined;
     node: (InlineNode & ViewModelNode) | undefined;
     contenteditable: boolean;
     active: boolean;

@@ -20,6 +20,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var MarkdownInline_1;
 import { html, LitElement, customElement, property, repeat, css, } from '../deps/lit.js';
 import Parser from '../deps/tree-sitter.js';
+import { contextProvided } from '../deps/lit-labs-context.js';
+import { hostContext } from './host-context.js';
 await Parser.init();
 const blocks = await Parser.Language.load('tree-sitter-markdown_inline.wasm');
 const parser = new Parser();
@@ -124,10 +126,16 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         }
     }
     updated() {
-        if (this.node?.viewModel.autofocus) {
-            this.focus();
-            this.active = true;
-            this.node.viewModel.autofocus = false;
+        if (this.hostContext?.focusNode === this.node) {
+            setTimeout(() => {
+                if (this.hostContext?.focusNode !== this.node)
+                    return;
+                if (!this.isConnected)
+                    return;
+                this.focus();
+                this.active = true;
+                this.hostContext.focusNode = undefined;
+            });
         }
     }
     createRenderRoot() {
@@ -224,6 +232,10 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         node?.viewModel.observe.remove(this.observer);
     }
 };
+__decorate([
+    contextProvided({ context: hostContext, subscribe: true }),
+    property({ attribute: false })
+], MarkdownInline.prototype, "hostContext", void 0);
 __decorate([
     property({ type: Object, reflect: false })
 ], MarkdownInline.prototype, "node", void 0);

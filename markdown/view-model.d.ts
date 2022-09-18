@@ -17,7 +17,6 @@ declare class ViewModel {
     lastChild?: ViewModelNode;
     nextSibling?: ViewModelNode;
     previousSibling?: ViewModelNode;
-    autofocus: boolean;
     readonly observe: Observe<ViewModelNode>;
     remove(): void;
     insertBefore(parent: ViewModelNode, nextSibling?: ViewModelNode): void;

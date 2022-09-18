@@ -33,7 +33,6 @@ class ViewModel {
         this.self = self;
         this.tree = tree;
         this.parent = parent;
-        this.autofocus = false;
         this.observe = new Observe(this.self);
         this.initialize(parent, childIndex);
     }
