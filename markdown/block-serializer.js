@@ -66,7 +66,8 @@ function serialize(node, indents, result) {
     else if (node.type === 'heading') {
         indent();
         result.push(node.marker);
-        result.push(node.content);
+        result.push(' ');
+        result.push(node.content.trimStart());
         result.push('\n');
     }
     else if (node.type === 'code-block') {

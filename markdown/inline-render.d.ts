@@ -75,4 +75,10 @@ declare class NodeIds {
     get(node: Parser.SyntaxNode): number;
     migrate(oldNode: Parser.SyntaxNode | undefined, newNode: Parser.SyntaxNode): number;
 }
+declare global {
+    interface HTMLElementTagNameMap {
+        'md-inline': MarkdownInline;
+        'md-span': MarkdownSpan;
+    }
+}
 export {};

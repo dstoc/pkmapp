@@ -17,3 +17,9 @@ export declare class MarkdownRenderer extends LitElement {
     block: ViewModelNode;
     render(): import("lit-html").TemplateResult<1>;
 }
+declare global {
+    interface HTMLElementTagNameMap {
+        'md-block': MarkdownBlock;
+        'md-block-render': MarkdownRenderer;
+    }
+}

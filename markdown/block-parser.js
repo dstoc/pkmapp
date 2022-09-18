@@ -93,7 +93,7 @@ function convertNode(node) {
         case 'atx_heading': {
             const children = node.namedChildren;
             const marker = children[0].text;
-            const content = children[1]?.text ?? '';
+            const content = children[1]?.text.trimStart() ?? '';
             return {
                 type: 'heading',
                 marker,
