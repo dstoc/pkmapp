@@ -56,7 +56,6 @@ class ViewModel {
   lastChild?: ViewModelNode;
   nextSibling?: ViewModelNode;
   previousSibling?: ViewModelNode;
-  autofocus = false;
   readonly observe = new Observe(this.self);
   remove() {
     if (this.parent?.viewModel.firstChild === this.self) {

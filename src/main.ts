@@ -30,6 +30,8 @@ import './markdown/block-render.js';
 import {MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 import {parseBlocks} from './markdown/block-parser.js';
 import {serializeToString} from './markdown/block-serializer.js';
+import {contextProvider} from './deps/lit-labs-context.js';
+import {hostContext, HostContext} from './markdown/host-context.js';
 
 function debounce(f: () => void) {
   let scheduled = false;
@@ -47,6 +49,9 @@ export class TestHost extends LitElement {
   @query('input') fileInput!: HTMLInputElement;
   @property({type: Object, reflect: false}) tree: MarkdownTree | undefined;
   directory?: FileSystemDirectoryHandle;
+  @contextProvider({context: hostContext})
+  @property({reflect: false})
+  hostContext: HostContext = {};
   override render() {
     return html`
     <input type=text></input>
@@ -100,7 +105,7 @@ export class TestHost extends LitElement {
   }
   onInlineKeyDown({detail: {node, keyboardEvent}}: CustomEvent<InlineKeyDown>) {
     if (keyboardEvent.key === 'Tab') {
-      node.viewModel.autofocus = true;
+      this.hostContext.focusNode = node;
       node.viewModel.observe.notify();
       if (keyboardEvent.shiftKey) {
         // TODO: Find the right context.
@@ -215,7 +220,7 @@ export class TestHost extends LitElement {
           let node: ViewModelNode | undefined = inline.node;
           for (const prev of reverseDfs(node!)) {
             if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
-              prev.viewModel.autofocus = true;
+              this.hostContext.focusNode = prev;
               prev.viewModel.observe.notify();
               break;
             }
@@ -234,11 +239,19 @@ export class TestHost extends LitElement {
       }
       newEndIndex = startIndex + newText.length;
     } else if (inputEvent.inputType === 'insertParagraph') {
-      if (insertParagraphInList(inline.node!, inputStart.index === 0)) return;
-      if (insertParagraphInSection(inline.node!)) return;
+      if (
+        insertParagraphInList(
+          inline.node!,
+          inputStart.index === 0,
+          this.hostContext
+        )
+      ) {
+        return;
+      }
+      if (insertParagraphInSection(inline.node!, this.hostContext)) return;
       return;
     } else if (inputEvent.inputType === 'insertLineBreak') {
-      if (insertSiblingParagraph(inline.node!)) return;
+      if (insertSiblingParagraph(inline.node!, this.hostContext)) return;
       return;
     } else {
       console.log('unsupported inputType:', inputEvent.inputType);
@@ -298,12 +311,12 @@ function moveParagraphBackwards(node: ViewModelNode): boolean {
   return false;
 }
 
-function insertSiblingParagraph(node: ViewModelNode): boolean {
+function insertSiblingParagraph(node: ViewModelNode, context: HostContext): boolean {
   const newParagraph = node.viewModel.tree.import({
     type: 'paragraph',
     content: '',
   });
-  newParagraph.viewModel.autofocus = true;
+  context.focusNode = newParagraph;
   newParagraph.viewModel.insertBefore(
     node.viewModel.parent!,
     node.viewModel.nextSibling
@@ -311,7 +324,11 @@ function insertSiblingParagraph(node: ViewModelNode): boolean {
   return true;
 }
 
-function insertParagraphInList(node: ViewModelNode, atStart: boolean): boolean {
+function insertParagraphInList(
+  node: ViewModelNode,
+  atStart: boolean,
+  context: HostContext
+): boolean {
   const {ancestor, path} = findAncestor(node, 'list');
   if (!ancestor) return false;
   let targetList;
@@ -348,18 +365,21 @@ function insertParagraphInList(node: ViewModelNode, atStart: boolean): boolean {
   });
   newParagraph.viewModel.insertBefore(newListItem);
   if (atStart) swapNodes(node, newParagraph);
-  newParagraph.viewModel.autofocus = true;
+  context.focusNode = newParagraph;
   return true;
 }
 
-function insertParagraphInSection(node: ViewModelNode): boolean {
+function insertParagraphInSection(
+  node: ViewModelNode,
+  context: HostContext
+): boolean {
   const {ancestor: section, path} = findAncestor(node, 'section');
   if (!section) return false;
   const newParagraph = node.viewModel.tree.import({
     type: 'paragraph',
     content: '',
   });
-  newParagraph.viewModel.autofocus = true;
+  context.focusNode = newParagraph;
   newParagraph.viewModel.insertBefore(section, path[0].viewModel.nextSibling);
   return true;
 }

@@ -24,6 +24,8 @@ import {
 import {InlineNode} from './node.js';
 import {ViewModelNode} from './view-model.js';
 import Parser from '../deps/tree-sitter.js';
+import {contextProvided} from '../deps/lit-labs-context.js';
+import {HostContext, hostContext} from './host-context.js';
 
 await Parser.init();
 const blocks = await Parser.Language.load('tree-sitter-markdown_inline.wasm');
@@ -140,6 +142,9 @@ export class MarkdownInline extends LitElement {
       this.hasFocus = false;
     });
   }
+  @contextProvided({context: hostContext, subscribe: true})
+  @property({attribute: false})
+  hostContext: HostContext | undefined;
   @property({type: Object, reflect: false}) node:
     | (InlineNode & ViewModelNode)
     | undefined;
@@ -169,10 +174,14 @@ export class MarkdownInline extends LitElement {
     }
   }
   override updated() {
-    if (this.node?.viewModel.autofocus) {
-      this.focus();
-      this.active = true;
-      this.node.viewModel.autofocus = false;
+    if (this.hostContext?.focusNode === this.node) {
+      setTimeout(() => {
+        if (this.hostContext?.focusNode !== this.node) return;
+        if (!this.isConnected) return;
+        this.focus();
+        this.active = true;
+        this.hostContext!.focusNode = undefined;
+      });
     }
   }
   protected override createRenderRoot() {
