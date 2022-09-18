@@ -103,7 +103,35 @@ export class TestHost extends LitElement {
     this.fileInput.value = destination + '.md';
     this.load();
   }
-  onInlineKeyDown({detail: {node, keyboardEvent}}: CustomEvent<InlineKeyDown>) {
+  onInlineKeyDown({
+    detail: {inline, node, keyboardEvent},
+  }: CustomEvent<InlineKeyDown>) {
+    if (keyboardEvent.key === 'ArrowUp') {
+      keyboardEvent.preventDefault();
+      if (!inline.moveCaretUp()) {
+        for (const prev of reverseDfs(node!)) {
+          if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
+            this.hostContext.focusNode = prev;
+            prev.viewModel.observe.notify();
+            break;
+          }
+        }
+      }
+      return;
+    }
+    if (keyboardEvent.key === 'ArrowDown') {
+      keyboardEvent.preventDefault();
+      if (!inline.moveCaretDown()) {
+        for (const next of dfs(node!)) {
+          if (['paragraph', 'code-block', 'heading'].includes(next.type)) {
+            this.hostContext.focusNode = next;
+            next.viewModel.observe.notify();
+            break;
+          }
+        }
+      }
+      return;
+    }
     if (keyboardEvent.key === 'Tab') {
       this.hostContext.focusNode = node;
       node.viewModel.observe.notify();
@@ -283,6 +311,23 @@ function* reverseDfs(node: ViewModelNode) {
   do {
     while (next(node.viewModel.previousSibling)) {
       while (next(node.viewModel.lastChild));
+      yield node;
+    }
+    if (next(node.viewModel.parent)) {
+      yield node;
+      continue;
+    }
+    return;
+  } while (true);
+}
+
+function* dfs(node: ViewModelNode) {
+  function next(next?: ViewModelNode) {
+    return next && (node = next);
+  }
+  do {
+    while (next(node.viewModel.nextSibling)) {
+      while (next(node.viewModel.firstChild));
       yield node;
     }
     if (next(node.viewModel.parent)) {

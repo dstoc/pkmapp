@@ -206,6 +206,39 @@ export class MarkdownInline extends LitElement {
       index,
     };
   }
+  static getSelectionRange(selection: Selection) {
+    const start = MarkdownInline.nodeOffsetToInputPoint(
+      selection.anchorNode!,
+      selection.anchorOffset
+    );
+    const end = MarkdownInline.nodeOffsetToInputPoint(
+      selection.focusNode!,
+      selection.focusOffset
+    );
+    return {start, end};
+  }
+  moveCaretUp(): boolean {
+    const selection = (this.getRootNode()! as Document).getSelection()!;
+    const initialRange = selection.getRangeAt(0);
+    selection.modify('move', 'backward', 'lineboundary');
+    const {start: lineStart} = MarkdownInline.getSelectionRange(selection);
+    selection.removeAllRanges();
+    selection.addRange(initialRange);
+    selection.modify('move', 'backward', 'line');
+    const {start: result} = MarkdownInline.getSelectionRange(selection);
+    return result.index < lineStart.index;
+  }
+  moveCaretDown(): boolean {
+    const selection = (this.getRootNode()! as Document).getSelection()!;
+    const initialRange = selection.getRangeAt(0);
+    selection.modify('move', 'forward', 'lineboundary');
+    const {start: lineEnd} = MarkdownInline.getSelectionRange(selection);
+    selection.removeAllRanges();
+    selection.addRange(initialRange);
+    selection.modify('move', 'forward', 'line');
+    const {start: result} = MarkdownInline.getSelectionRange(selection);
+    return result.index > lineEnd.index;
+  }
   edit(
     {startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit,
     setFocus: boolean
@@ -235,7 +268,7 @@ export class MarkdownInline extends LitElement {
         selection.removeAllRanges();
         selection.addRange(range);
         for (let i = 0; i < newEndIndex; i++) {
-          (selection as any).modify('move', 'forward', 'character');
+          selection.modify('move', 'forward', 'character');
         }
       }, 0);
     }
@@ -260,15 +293,8 @@ export class MarkdownInline extends LitElement {
     const selection: Selection = (
       this.getRootNode()! as Document
     ).getSelection()!;
-    const inputStart = MarkdownInline.nodeOffsetToInputPoint(
-      selection.anchorNode!,
-      selection.anchorOffset
-    );
-    const inputEnd = MarkdownInline.nodeOffsetToInputPoint(
-      selection.focusNode!,
-      selection.focusOffset
-    );
-
+    const {start: inputStart, end: inputEnd} =
+      MarkdownInline.getSelectionRange(selection);
     const inlineInput: InlineInput = {
       inline: this,
       node: this.node!,
@@ -510,6 +536,13 @@ function isFormatting(node: Parser.SyntaxNode) {
 }
 
 declare global {
+  interface Selection {
+    modify(
+      alter: 'move' | 'extend',
+      direction: 'forward' | 'backward',
+      granularity: 'character' | 'lineboundary' | 'line'
+    ): void;
+  }
   interface HTMLElementTagNameMap {
     'md-inline': MarkdownInline;
     'md-span': MarkdownSpan;
