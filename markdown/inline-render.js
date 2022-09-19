@@ -18,9 +18,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 var MarkdownInline_1;
-import { html, LitElement, customElement, property, repeat, css, } from '../deps/lit.js';
-import Parser from '../deps/tree-sitter.js';
 import { contextProvided } from '../deps/lit-labs-context.js';
+import { css, customElement, html, LitElement, property, repeat, } from '../deps/lit.js';
+import Parser from '../deps/tree-sitter.js';
 import { hostContext } from './host-context.js';
 await Parser.init();
 const blocks = await Parser.Language.load('tree-sitter-markdown_inline.wasm');
@@ -111,6 +111,10 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         if (this.node !== this.lastNode) {
             this.tree = undefined;
         }
+        if (this.content !== this.node.content) {
+            this.tree = undefined;
+            this.content = this.node.content;
+        }
         this.lastNode = this.node;
         this.tree = parser.parse(this.node.content, this.tree);
         return html `<md-span
@@ -147,7 +151,7 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
                 const selection = this.getRootNode().getSelection();
                 let focusOffset = this.hostContext?.focusOffset;
                 if (focusOffset !== undefined) {
-                    if (focusOffset < 0) {
+                    if (focusOffset < 0 || Object.is(focusOffset, -0)) {
                         let index = NaN;
                         let last = NaN;
                         do {
@@ -253,6 +257,7 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
             newEndPosition: indexToPosition(this.node.content, newEndIndex),
         };
         this.node.content = apply(this.node.content, result);
+        this.content = this.node.content;
         this.node.viewModel.tree.observe.notify();
         this.tree = this.tree.edit(result);
         this.requestUpdate();
@@ -367,9 +372,11 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
         let index = node.startIndex;
         if (!this.active &&
             (node.type === 'inline_link' || node.type === 'shortcut_link')) {
-            const text = node.namedChildren.find(node => node.type === 'link_text')?.text ?? '';
+            const text = node.namedChildren.find(node => node.type === 'link_text')?.text ??
+                '';
             const destination = node.namedChildren.find(node => node.type === 'link_destination')
-                ?.text ?? text;
+                ?.text ??
+                text;
             return html `<a
         href="${destination}"
         target="_blank"
@@ -482,8 +489,7 @@ function indexToPosition(text, index) {
     return { row, column };
 }
 function apply(text, edit) {
-    return (text.substring(0, edit.startIndex) +
-        (edit.newText ?? '') +
+    return (text.substring(0, edit.startIndex) + (edit.newText ?? '') +
         text.substring(edit.oldEndIndex));
 }
 function isFormatting(node) {
@@ -500,4 +506,3 @@ function isFormatting(node) {
         'setext_h1_underline',
     ].includes(node.type);
 }
-//# sourceMappingURL=inline-render.js.map

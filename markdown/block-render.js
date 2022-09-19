@@ -17,7 +17,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { html, LitElement, customElement, property, css } from '../deps/lit.js';
+import { css, customElement, html, LitElement, property } from '../deps/lit.js';
 import { MarkdownInline } from './inline-render.js';
 let MarkdownBlock = class MarkdownBlock extends LitElement {
     constructor() {
@@ -53,8 +53,7 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
         if (!node)
             return;
         this.type = node.type;
-        if (node.type === 'paragraph' ||
-            node.type === 'code-block' ||
+        if (node.type === 'paragraph' || node.type === 'code-block' ||
             node.type === 'heading') {
             return html `<md-inline .node=${node}></md-inline>`;
         }
@@ -155,4 +154,3 @@ MarkdownRenderer = __decorate([
     customElement('md-block-render')
 ], MarkdownRenderer);
 export { MarkdownRenderer };
-//# sourceMappingURL=block-render.js.map

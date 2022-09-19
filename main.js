@@ -17,13 +17,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { html, render, LitElement, customElement, property, query, } from './deps/lit.js';
 import './markdown/block-render.js';
-import { MarkdownTree } from './markdown/view-model.js';
+import { contextProvider } from './deps/lit-labs-context.js';
+import { customElement, html, LitElement, property, query, render, } from './deps/lit.js';
 import { parseBlocks } from './markdown/block-parser.js';
 import { serializeToString } from './markdown/block-serializer.js';
-import { contextProvider } from './deps/lit-labs-context.js';
 import { hostContext } from './markdown/host-context.js';
+import { MarkdownTree } from './markdown/view-model.js';
 function debounce(f) {
     let scheduled = false;
     return async () => {
@@ -97,9 +97,7 @@ let TestHost = class TestHost extends LitElement {
             if (result !== true) {
                 for (const prev of reverseDfs(node)) {
                     if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
-                        this.hostContext.focusNode = prev;
-                        this.hostContext.focusOffset = -result;
-                        prev.viewModel.observe.notify();
+                        focusNode(this.hostContext, prev, -result);
                         break;
                     }
                 }
@@ -112,9 +110,7 @@ let TestHost = class TestHost extends LitElement {
             if (result !== true) {
                 for (const next of dfs(node)) {
                     if (['paragraph', 'code-block', 'heading'].includes(next.type)) {
-                        this.hostContext.focusNode = next;
-                        this.hostContext.focusOffset = result;
-                        next.viewModel.observe.notify();
+                        focusNode(this.hostContext, next, result);
                         break;
                     }
                 }
@@ -122,8 +118,7 @@ let TestHost = class TestHost extends LitElement {
             return;
         }
         if (keyboardEvent.key === 'Tab') {
-            this.hostContext.focusNode = node;
-            node.viewModel.observe.notify();
+            focusNode(this.hostContext, node);
             if (keyboardEvent.shiftKey) {
                 // TODO: Find the right context.
                 const context = node;
@@ -225,20 +220,39 @@ let TestHost = class TestHost extends LitElement {
             }
             else if (inputEvent.inputType === 'deleteContentBackward') {
                 if (inputStart.index === 0 && inputEnd.index === 0) {
-                    let node = inline.node;
-                    for (const prev of reverseDfs(node)) {
-                        if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
-                            this.hostContext.focusNode = prev;
-                            this.hostContext.focusOffset = -Infinity;
-                            prev.viewModel.observe.notify();
-                            break;
-                        }
+                    const node = inline.node;
+                    // Turn headings and code-blocks into paragraphs.
+                    if (node.type === 'heading' || node.type === 'code-block') {
+                        const paragraph = node.viewModel.tree.import({
+                            type: 'paragraph',
+                            content: node.content,
+                        });
+                        paragraph.viewModel.insertBefore(node.viewModel.parent, node);
+                        node.viewModel.remove();
+                        focusNode(this.hostContext, paragraph, 0);
+                        return;
                     }
-                    do {
-                        const toRemove = node;
-                        node = node?.viewModel.parent;
-                        toRemove?.viewModel.remove();
-                    } while (node && !node.children?.length);
+                    // Remove a surrounding block-quote.
+                    const { ancestor } = findAncestor(node, 'block-quote');
+                    if (ancestor) {
+                        // Unless there's an earlier opportunity to merge into a previous
+                        // content node.
+                        for (const prev of reverseDfs(node, ancestor)) {
+                            if (maybeMergeContentInto(node, prev, this.hostContext))
+                                return;
+                        }
+                        for (const child of [...ancestor.children]) {
+                            child.viewModel.insertBefore(ancestor.viewModel.parent, ancestor);
+                        }
+                        ancestor.viewModel.remove();
+                        focusNode(this.hostContext, node);
+                        return;
+                    }
+                    // Merge into a previous content node.
+                    for (const prev of reverseDfs(node)) {
+                        if (maybeMergeContentInto(node, prev, this.hostContext))
+                            return;
+                    }
                     return;
                 }
                 newText = '';
@@ -292,13 +306,47 @@ TestHost = __decorate([
     customElement('test-host')
 ], TestHost);
 export { TestHost };
+function maybeMergeContentInto(node, target, context) {
+    if (target.type === 'code-block' || target.type === 'paragraph' ||
+        target.type === 'heading') {
+        focusNode(context, target, target.content.length);
+        target.content += node.content;
+        let parent = node.viewModel.parent;
+        node.viewModel.remove();
+        cleanupNode(parent);
+        return true;
+    }
+    return false;
+}
+function cleanupNode(node) {
+    if (node.type === 'block-quote' || node.type === 'heading' ||
+        node.type === 'paragraph') {
+        return;
+    }
+    while (node?.children?.length === 0) {
+        const toRemove = node;
+        node = node.viewModel.parent;
+        toRemove.viewModel.remove();
+    }
+}
+function focusNode(context, node, offset) {
+    context.focusNode = node;
+    context.focusOffset = offset;
+    node.viewModel.observe.notify();
+}
 function swapNodes(node1, node2) {
     const node1Parent = node1.viewModel.parent;
     const node1NextSibling = node1.viewModel.nextSibling;
     node1.viewModel.insertBefore(node2.viewModel.parent, node2);
     node2.viewModel.insertBefore(node1Parent, node1NextSibling);
 }
-function* reverseDfs(node) {
+function* ancestors(node) {
+    while (node.viewModel.parent) {
+        yield node.viewModel.parent;
+        node = node.viewModel.parent;
+    }
+}
+function* reverseDfs(node, limit) {
     function next(next) {
         return next && (node = next);
     }
@@ -307,9 +355,13 @@ function* reverseDfs(node) {
             while (next(node.viewModel.lastChild))
                 ;
             yield node;
+            if (node === limit)
+                return;
         }
         if (next(node.viewModel.parent)) {
             yield node;
+            if (node === limit)
+                return;
             continue;
         }
         return;
@@ -335,16 +387,15 @@ function* dfs(node) {
 function findAncestor(node, type) {
     const path = [node];
     let ancestor = node;
-    do {
+    for (const ancestor of ancestors(node)) {
         path.unshift(ancestor);
-        ancestor = ancestor.viewModel.parent;
-        if (!ancestor)
-            return {};
-    } while (ancestor.type !== type);
-    return {
-        ancestor,
-        path,
-    };
+        if (ancestor.type === type)
+            return {
+                ancestor,
+                path,
+            };
+    }
+    return {};
 }
 function moveParagraphBackwards(node) {
     return false;
@@ -412,4 +463,3 @@ function insertParagraphInSection(node, context) {
     return true;
 }
 render(html `<test-host></test-host>`, document.body);
-//# sourceMappingURL=main.js.map

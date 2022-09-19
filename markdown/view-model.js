@@ -71,9 +71,9 @@ class ViewModel {
     insertBefore(parent, nextSibling) {
         if (this.parent)
             this.remove();
-        const previousSibling = nextSibling
-            ? nextSibling?.viewModel.previousSibling
-            : parent.viewModel.lastChild;
+        const previousSibling = nextSibling ?
+            nextSibling?.viewModel.previousSibling :
+            parent.viewModel.lastChild;
         this.parent = parent;
         this.previousSibling = previousSibling;
         this.nextSibling = nextSibling;
@@ -136,4 +136,3 @@ export class MarkdownTree {
         return result;
     }
 }
-//# sourceMappingURL=view-model.js.map

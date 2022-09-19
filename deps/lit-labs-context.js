@@ -12,4 +12,3 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 export * from 'https://unpkg.com/@lit-labs/context?module';
-//# sourceMappingURL=lit-labs-context.js.map

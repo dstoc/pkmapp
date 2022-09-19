@@ -14,4 +14,3 @@
 export * from 'https://unpkg.com/lit?module';
 export * from 'https://unpkg.com/lit/decorators?module';
 export * from 'https://unpkg.com/lit/directives/repeat?module';
-//# sourceMappingURL=lit.js.map
