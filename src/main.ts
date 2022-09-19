@@ -12,26 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {
-  html,
-  render,
-  LitElement,
-  customElement,
-  property,
-  query,
-} from './deps/lit.js';
-import {MarkdownRenderer} from './markdown/block-render.js';
-import {
-  InlineInput,
-  InlineKeyDown,
-  InlineLinkClick,
-} from './markdown/inline-render.js';
 import './markdown/block-render.js';
-import {MarkdownTree, ViewModelNode} from './markdown/view-model.js';
-import {parseBlocks} from './markdown/block-parser.js';
-import {serializeToString} from './markdown/block-serializer.js';
+
 import {contextProvider} from './deps/lit-labs-context.js';
+import {customElement, html, LitElement, property, query, render,} from './deps/lit.js';
+import {parseBlocks} from './markdown/block-parser.js';
+import {MarkdownRenderer} from './markdown/block-render.js';
+import {serializeToString} from './markdown/block-serializer.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
+import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
+import {MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 
 function debounce(f: () => void) {
   let scheduled = false;
@@ -47,7 +37,7 @@ function debounce(f: () => void) {
 export class TestHost extends LitElement {
   @query('md-block-render') blockRender!: MarkdownRenderer;
   @query('input') fileInput!: HTMLInputElement;
-  @property({type: Object, reflect: false}) tree: MarkdownTree | undefined;
+  @property({type: Object, reflect: false}) tree: MarkdownTree|undefined;
   directory?: FileSystemDirectoryHandle;
   @contextProvider({context: hostContext})
   @property({reflect: false})
@@ -148,26 +138,23 @@ export class TestHost extends LitElement {
         const targetListItemSibling = list.viewModel.parent!;
         if (targetListItemSibling?.type === 'list-item') {
           listItem.viewModel.insertBefore(
-            targetListItemSibling.viewModel.parent!,
-            targetListItemSibling.viewModel.nextSibling
-          );
+              targetListItemSibling.viewModel.parent!,
+              targetListItemSibling.viewModel.nextSibling);
         } else {
           context.viewModel.insertBefore(
-            list.viewModel.parent!,
-            list.viewModel.nextSibling
-          );
+              list.viewModel.parent!, list.viewModel.nextSibling);
           listItem.viewModel.remove();
         }
         // Siblings of the undended list-item move to sublist.
         if (nextSibling) {
-          let next: ViewModelNode | undefined = nextSibling;
+          let next: ViewModelNode|undefined = nextSibling;
           while (next) {
             if (listItem.viewModel.lastChild?.type !== 'list') {
               listItem.viewModel.tree
-                .import({
-                  type: 'list',
-                })
-                .viewModel.insertBefore(listItem);
+                  .import({
+                    type: 'list',
+                  })
+                  .viewModel.insertBefore(listItem);
             }
             const targetList = listItem.viewModel.lastChild!;
             const toMove: ViewModelNode = next;
@@ -180,9 +167,7 @@ export class TestHost extends LitElement {
         if (listItem.children?.length && !listItem.viewModel.parent) {
           // TODO: move more than the first child.
           listItem.viewModel.firstChild?.viewModel.insertBefore(
-            context.viewModel.parent!,
-            context.viewModel.nextSibling
-          );
+              context.viewModel.parent!, context.viewModel.nextSibling);
         }
         if (!list.children?.length) {
           list.viewModel.remove();
@@ -231,19 +216,15 @@ export class TestHost extends LitElement {
     let startIndex;
     let oldEndIndex;
     let newEndIndex: number;
-    if (
-      inputEvent.inputType === 'insertText' ||
-      inputEvent.inputType === 'insertReplacementText' ||
-      inputEvent.inputType === 'insertFromPaste' ||
-      inputEvent.inputType === 'deleteByCut' ||
-      inputEvent.inputType === 'deleteContentBackward'
-    ) {
+    if (inputEvent.inputType === 'insertText' ||
+        inputEvent.inputType === 'insertReplacementText' ||
+        inputEvent.inputType === 'insertFromPaste' ||
+        inputEvent.inputType === 'deleteByCut' ||
+        inputEvent.inputType === 'deleteContentBackward') {
       startIndex = inputStart.index;
       oldEndIndex = inputEnd.index;
-      if (
-        inputEvent.inputType === 'insertReplacementText' ||
-        inputEvent.inputType === 'insertFromPaste'
-      ) {
+      if (inputEvent.inputType === 'insertReplacementText' ||
+          inputEvent.inputType === 'insertFromPaste') {
         newText = inputEvent.dataTransfer!.getData('text');
       } else if (inputEvent.inputType === 'deleteByCut') {
         newText = '';
@@ -255,9 +236,8 @@ export class TestHost extends LitElement {
           while (parent && !removedParent) {
             // TODO: Heading needs a different treatment, need to transform it
             // into a paragraph.
-            if (
-              ['block-quote', 'code-block', 'heading'].includes(parent.type)
-            ) {
+            if (['block-quote', 'code-block', 'heading'].includes(
+                    parent.type)) {
               // TODO: Move other siblings too.
               node?.viewModel.insertBefore(parent.viewModel.parent!, parent);
               parent.viewModel.remove();
@@ -279,7 +259,7 @@ export class TestHost extends LitElement {
               }
             }
             // TODO: If the node has content, merge it with the previous inline.
-            let next: ViewModelNode | undefined = node;
+            let next: ViewModelNode|undefined = node;
             do {
               const toRemove = next;
               next = next?.viewModel.parent;
@@ -295,13 +275,8 @@ export class TestHost extends LitElement {
       }
       newEndIndex = startIndex + newText.length;
     } else if (inputEvent.inputType === 'insertParagraph') {
-      if (
-        insertParagraphInList(
-          inline.node!,
-          inputStart.index === 0,
-          this.hostContext
-        )
-      ) {
+      if (insertParagraphInList(
+              inline.node!, inputStart.index === 0, this.hostContext)) {
         return;
       }
       if (insertParagraphInSection(inline.node!, this.hostContext)) return;
@@ -338,7 +313,8 @@ function* reverseDfs(node: ViewModelNode) {
   }
   do {
     while (next(node.viewModel.previousSibling)) {
-      while (next(node.viewModel.lastChild));
+      while (next(node.viewModel.lastChild))
+        ;
       yield node;
     }
     if (next(node.viewModel.parent)) {
@@ -355,7 +331,8 @@ function* dfs(node: ViewModelNode) {
   }
   do {
     while (next(node.viewModel.nextSibling)) {
-      while (next(node.viewModel.firstChild));
+      while (next(node.viewModel.firstChild))
+        ;
       yield node;
     }
     if (next(node.viewModel.parent)) {
@@ -368,7 +345,7 @@ function* dfs(node: ViewModelNode) {
 
 function findAncestor(node: ViewModelNode, type: string) {
   const path = [node];
-  let ancestor: ViewModelNode | undefined = node;
+  let ancestor: ViewModelNode|undefined = node;
   do {
     path.unshift(ancestor);
     ancestor = ancestor.viewModel.parent;
@@ -384,24 +361,20 @@ function moveParagraphBackwards(node: ViewModelNode): boolean {
   return false;
 }
 
-function insertSiblingParagraph(node: ViewModelNode, context: HostContext): boolean {
+function insertSiblingParagraph(
+    node: ViewModelNode, context: HostContext): boolean {
   const newParagraph = node.viewModel.tree.import({
     type: 'paragraph',
     content: '',
   });
   context.focusNode = newParagraph;
   newParagraph.viewModel.insertBefore(
-    node.viewModel.parent!,
-    node.viewModel.nextSibling
-  );
+      node.viewModel.parent!, node.viewModel.nextSibling);
   return true;
 }
 
 function insertParagraphInList(
-  node: ViewModelNode,
-  atStart: boolean,
-  context: HostContext
-): boolean {
+    node: ViewModelNode, atStart: boolean, context: HostContext): boolean {
   const {ancestor, path} = findAncestor(node, 'list');
   if (!ancestor) return false;
   let targetList;
@@ -415,9 +388,7 @@ function insertParagraphInList(
         type: 'list',
       });
       targetList.viewModel.insertBefore(
-        node.viewModel.parent!,
-        node.viewModel.nextSibling
-      );
+          node.viewModel.parent!, node.viewModel.nextSibling);
       targetListItemNextSibling = undefined;
     }
   } else {
@@ -443,9 +414,7 @@ function insertParagraphInList(
 }
 
 function insertParagraphInSection(
-  node: ViewModelNode,
-  context: HostContext
-): boolean {
+    node: ViewModelNode, context: HostContext): boolean {
   const {ancestor: section, path} = findAncestor(node, 'section');
   if (!section) return false;
   const newParagraph = node.viewModel.tree.import({

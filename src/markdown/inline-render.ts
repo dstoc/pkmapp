@@ -12,20 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {
-  TemplateResult,
-  html,
-  LitElement,
-  customElement,
-  property,
-  repeat,
-  css,
-} from '../deps/lit.js';
+import {contextProvided} from '../deps/lit-labs-context.js';
+import {css, customElement, html, LitElement, property, repeat, TemplateResult,} from '../deps/lit.js';
+import Parser from '../deps/tree-sitter.js';
+
+import {HostContext, hostContext} from './host-context.js';
 import {InlineNode} from './node.js';
 import {ViewModelNode} from './view-model.js';
-import Parser from '../deps/tree-sitter.js';
-import {contextProvided} from '../deps/lit-labs-context.js';
-import {HostContext, hostContext} from './host-context.js';
 
 await Parser.init();
 const blocks = await Parser.Language.load('tree-sitter-markdown_inline.wasm');
@@ -144,10 +137,9 @@ export class MarkdownInline extends LitElement {
   }
   @contextProvided({context: hostContext, subscribe: true})
   @property({attribute: false})
-  hostContext: HostContext | undefined;
-  @property({type: Object, reflect: false}) node:
-    | (InlineNode & ViewModelNode)
-    | undefined;
+  hostContext: HostContext|undefined;
+  @property({type: Object, reflect: false})
+  node:|(InlineNode&ViewModelNode)|undefined;
   @property({type: Boolean, reflect: true}) contenteditable = true;
   @property({type: Boolean, reflect: true}) active = false;
   hasFocus = false;
@@ -243,20 +235,16 @@ export class MarkdownInline extends LitElement {
   }
   static getSelectionRange(selection: Selection) {
     const start = MarkdownInline.nodeOffsetToInputPoint(
-      selection.anchorNode!,
-      selection.anchorOffset
-    );
+        selection.anchorNode!, selection.anchorOffset);
     const end = MarkdownInline.nodeOffsetToInputPoint(
-      selection.focusNode!,
-      selection.focusOffset
-    );
+        selection.focusNode!, selection.focusOffset);
     return {start, end};
   }
   /**
    * Moves the caret up one line. Returns true if it does, otherwise returns the
    * index of the caret position on the first line.
    */
-  moveCaretUp(): true | number {
+  moveCaretUp(): true|number {
     const selection = (this.getRootNode()! as Document).getSelection()!;
     const initialRange = selection.getRangeAt(0);
     const {start: offsetStart} = MarkdownInline.getSelectionRange(selection);
@@ -267,14 +255,13 @@ export class MarkdownInline extends LitElement {
     selection.modify('move', 'backward', 'line');
     const {start: result} = MarkdownInline.getSelectionRange(selection);
     return (
-      result.index < lineStart.index || offsetStart.index - lineStart.index
-    );
+        result.index < lineStart.index || offsetStart.index - lineStart.index);
   }
   /**
    * Moves the caret down one line. Returns true if it does, otherwise returns
    * the index of the caret position on the first line.
    */
-  moveCaretDown(): true | number {
+  moveCaretDown(): true|number {
     const selection = (this.getRootNode()! as Document).getSelection()!;
     const initialRange = selection.getRangeAt(0);
     const {start: offsetStart} = MarkdownInline.getSelectionRange(selection);
@@ -289,9 +276,8 @@ export class MarkdownInline extends LitElement {
     return result.index > lineEnd.index || offsetStart.index - lineStart.index;
   }
   edit(
-    {startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit,
-    setFocus: boolean
-  ) {
+      {startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit,
+      setFocus: boolean) {
     if (!this.node) throw new Error('no node');
     const oldText = this.node.content.substring(startIndex, oldEndIndex);
     const result = {
@@ -320,22 +306,19 @@ export class MarkdownInline extends LitElement {
       node: this.node!,
       keyboardEvent: e,
     };
-    this.dispatchEvent(
-      new CustomEvent('inline-keydown', {
-        detail: inlineKeydown,
-        bubbles: true,
-        composed: true,
-      })
-    );
+    this.dispatchEvent(new CustomEvent('inline-keydown', {
+      detail: inlineKeydown,
+      bubbles: true,
+      composed: true,
+    }));
   }
   onBeforeInput(e: InputEvent) {
     if (!this.node) return;
     e.preventDefault();
-    const selection: Selection = (
-      this.getRootNode()! as Document
-    ).getSelection()!;
+    const selection: Selection =
+        (this.getRootNode()! as Document).getSelection()!;
     const {start: inputStart, end: inputEnd} =
-      MarkdownInline.getSelectionRange(selection);
+        MarkdownInline.getSelectionRange(selection);
     const inlineInput: InlineInput = {
       inline: this,
       node: this.node!,
@@ -345,13 +328,11 @@ export class MarkdownInline extends LitElement {
       content: this.node.content,
     };
 
-    this.dispatchEvent(
-      new CustomEvent('inline-input', {
-        detail: inlineInput,
-        bubbles: true,
-        composed: true,
-      })
-    );
+    this.dispatchEvent(new CustomEvent('inline-input', {
+      detail: inlineInput,
+      bubbles: true,
+      composed: true,
+    }));
   }
   private readonly observer = (node: ViewModelNode) => {
     if (node !== this.node) {
@@ -360,10 +341,10 @@ export class MarkdownInline extends LitElement {
     }
     this.requestUpdate();
   };
-  private addObserver(node: ViewModelNode | undefined) {
+  private addObserver(node: ViewModelNode|undefined) {
     node?.viewModel.observe.add(this.observer);
   }
-  private removeObserver(node: ViewModelNode | undefined) {
+  private removeObserver(node: ViewModelNode|undefined) {
     node?.viewModel.observe.remove(this.observer);
   }
 }
@@ -384,14 +365,11 @@ export class MarkdownSpan extends LitElement {
   override shouldUpdate(changed: Map<string, unknown>) {
     let result = false;
     if (changed.has('node')) {
-      const oldSyntaxNode = changed.get('node') as
-        | Parser.SyntaxNode
-        | undefined;
+      const oldSyntaxNode =
+          changed.get('node') as | Parser.SyntaxNode | undefined;
       const newSyntaxNode = this.node;
-      if (
-        newSyntaxNode &&
-        (!oldSyntaxNode || oldSyntaxNode.id !== newSyntaxNode.id)
-      ) {
+      if (newSyntaxNode &&
+          (!oldSyntaxNode || oldSyntaxNode.id !== newSyntaxNode.id)) {
         result = true;
         this.nodeIds?.migrate(oldSyntaxNode, newSyntaxNode);
       }
@@ -408,12 +386,11 @@ export class MarkdownSpan extends LitElement {
       type: this.node!.type,
       destination: anchor.getAttribute('href') ?? '',
     };
-    this.dispatchEvent(
-      new CustomEvent('inline-link-click', {
-        detail: inlineLinkClick,
-        bubbles: true,
-        composed: true,
-      }));
+    this.dispatchEvent(new CustomEvent('inline-link-click', {
+      detail: inlineLinkClick,
+      bubbles: true,
+      composed: true,
+    }));
   }
   render() {
     const node = this.node;
@@ -426,15 +403,15 @@ export class MarkdownSpan extends LitElement {
     this.formatting = isFormatting(node);
     let index = node.startIndex;
 
-    if (
-      !this.active &&
-      (node.type === 'inline_link' || node.type === 'shortcut_link')
-    ) {
+    if (!this.active &&
+        (node.type === 'inline_link' || node.type === 'shortcut_link')) {
       const text =
-        node.namedChildren.find(node => node.type === 'link_text')?.text ?? '';
+          node.namedChildren.find(node => node.type === 'link_text')?.text ??
+          '';
       const destination =
-        node.namedChildren.find(node => node.type === 'link_destination')
-          ?.text ?? text;
+          node.namedChildren.find(node => node.type === 'link_destination')
+              ?.text ??
+          text;
       return html`<a
         href="${destination}"
         target="_blank"
@@ -455,9 +432,7 @@ export class MarkdownSpan extends LitElement {
       if (child) {
         if (index < child.startIndex) {
           const text = node.text.substring(
-            index - node.startIndex,
-            child.startIndex - node.startIndex
-          );
+              index - node.startIndex, child.startIndex - node.startIndex);
           results.push({result: html`${text}`});
         }
         index = child.endIndex;
@@ -470,9 +445,7 @@ export class MarkdownSpan extends LitElement {
         });
       } else {
         const text = node.text.substring(
-          index - node.startIndex,
-          node.endIndex - node.startIndex
-        );
+            index - node.startIndex, node.endIndex - node.startIndex);
         results.push({result: html`${text}`});
         index = node.endIndex;
       }
@@ -495,7 +468,7 @@ class NodeIds {
   get(node: Parser.SyntaxNode) {
     return this.idMap.get(node.id)!;
   }
-  migrate(oldNode: Parser.SyntaxNode | undefined, newNode: Parser.SyntaxNode) {
+  migrate(oldNode: Parser.SyntaxNode|undefined, newNode: Parser.SyntaxNode) {
     const posMap = new Map<number, number>();
     function key(node: Parser.SyntaxNode) {
       return node.startIndex;
@@ -513,7 +486,7 @@ class NodeIds {
 
 function* childNodes(node?: Parser.SyntaxNode) {
   if (!node) return;
-  const next = (next: Parser.SyntaxNode | null) => {
+  const next = (next: Parser.SyntaxNode|null) => {
     if (next) node = next;
     return !!next;
   };
@@ -555,10 +528,8 @@ interface Edit {
 
 function apply(text: string, edit: Edit) {
   return (
-    text.substring(0, edit.startIndex) +
-    (edit.newText ?? '') +
-    text.substring(edit.oldEndIndex)
-  );
+      text.substring(0, edit.startIndex) + (edit.newText ?? '') +
+      text.substring(edit.oldEndIndex));
 }
 
 function isFormatting(node: Parser.SyntaxNode) {
@@ -579,10 +550,8 @@ function isFormatting(node: Parser.SyntaxNode) {
 declare global {
   interface Selection {
     modify(
-      alter: 'move' | 'extend',
-      direction: 'forward' | 'backward',
-      granularity: 'character' | 'lineboundary' | 'line'
-    ): void;
+        alter: 'move'|'extend', direction: 'forward'|'backward',
+        granularity: 'character'|'lineboundary'|'line'): void;
   }
   interface HTMLElementTagNameMap {
     'md-inline': MarkdownInline;

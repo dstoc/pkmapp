@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {html, LitElement, customElement, property, css} from '../deps/lit.js';
-import {ViewModelNode} from './view-model.js';
+import {css, customElement, html, LitElement, property} from '../deps/lit.js';
+
 import {MarkdownInline} from './inline-render.js';
+import {ViewModelNode} from './view-model.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement {
   @property({type: String, reflect: true}) type = '';
-  @property({type: Object, reflect: false}) node: ViewModelNode | undefined;
+  @property({type: Object, reflect: false}) node: ViewModelNode|undefined;
   override connectedCallback(): void {
     super.connectedCallback();
     this.addObserver(this.node);
@@ -41,16 +42,12 @@ export class MarkdownBlock extends LitElement {
     const node = this.node;
     if (!node) return;
     this.type = node.type;
-    if (
-      node.type === 'paragraph' ||
-      node.type === 'code-block' ||
-      node.type === 'heading'
-    ) {
+    if (node.type === 'paragraph' || node.type === 'code-block' ||
+        node.type === 'heading') {
       return html`<md-inline .node=${node}></md-inline>`;
     } else {
       return node.children?.map(
-        node => html`<md-block .node=${node}></md-block>`
-      );
+          node => html`<md-block .node=${node}></md-block>`);
     }
   }
   protected override createRenderRoot() {
@@ -63,10 +60,10 @@ export class MarkdownBlock extends LitElement {
     }
     this.requestUpdate();
   };
-  private addObserver(node: ViewModelNode | undefined) {
+  private addObserver(node: ViewModelNode|undefined) {
     node?.viewModel.observe.add(this.observer);
   }
-  private removeObserver(node: ViewModelNode | undefined) {
+  private removeObserver(node: ViewModelNode|undefined) {
     node?.viewModel.observe.remove(this.observer);
   }
 }

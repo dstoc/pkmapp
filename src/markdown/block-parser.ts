@@ -25,9 +25,8 @@ export function parseBlocks(markdown: string) {
   return convertNode(tree.rootNode);
 }
 
-function* convertNodes(
-  nodes: Parser.SyntaxNode[]
-): IterableIterator<MarkdownNode> {
+function*
+    convertNodes(nodes: Parser.SyntaxNode[]): IterableIterator<MarkdownNode> {
   for (const node of nodes) {
     const result = convertNode(node);
     if (result) yield result;
@@ -45,22 +44,19 @@ const emptySection: MarkdownNode = {
 };
 
 function ensureContent(
-  children: MarkdownNode[],
-  result: MarkdownNode[] = [emptyParagraph]
-): MarkdownNode[] {
+    children: MarkdownNode[],
+    result: MarkdownNode[] = [emptyParagraph]): MarkdownNode[] {
   if (children.length) return children;
   return result;
 }
 
-function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
+function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
   switch (node.type) {
     case 'document':
       return {
         type: 'document',
         children: ensureContent(
-          [...convertNodes(node.namedChildren)],
-          [emptySection]
-        ),
+            [...convertNodes(node.namedChildren)], [emptySection]),
       };
     case 'section':
       return {

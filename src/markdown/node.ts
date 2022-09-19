@@ -13,40 +13,36 @@
 // limitations under the License.
 
 export type MarkdownNode =
-  | ContainerNode
-  | ParagraphNode
-  | MarkedNode
-  | HeadingNode
-  | CodeBlockNode;
-export type InlineNode = ParagraphNode | CodeBlockNode | HeadingNode;
+    |ContainerNode|ParagraphNode|MarkedNode|HeadingNode|CodeBlockNode;
+export type InlineNode = ParagraphNode|CodeBlockNode|HeadingNode;
 
 // TODO: ID, Sequence Number (per tree?)
 interface Node {
   children?: MarkdownNode[];
 }
 
-export type ContainerNode = Node & {
-  type: 'document' | 'list' | 'section';
+export type ContainerNode = Node&{
+  type: 'document'|'list'|'section';
 };
 
-export type ParagraphNode = Node & {
+export type ParagraphNode = Node&{
   type: 'paragraph';
   content: string;
 };
 
-export type MarkedNode = Node & {
-  type: 'list-item' | 'block-quote';
+export type MarkedNode = Node&{
+  type: 'list-item'|'block-quote';
   marker: string;
 };
 
-export type HeadingNode = Node & {
+export type HeadingNode = Node&{
   type: 'heading';
   marker: string;
   content: string;
 };
 
-export type CodeBlockNode = Node & {
+export type CodeBlockNode = Node&{
   type: 'code-block';
-  info: string | null;
+  info: string|null;
   content: string;
 };

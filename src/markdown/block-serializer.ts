@@ -31,11 +31,8 @@ function* onceThenWhitespace(s: string) {
 type Indents = Generator<string, void, unknown>[];
 
 function serializeBlocks(
-  blocks: MarkdownNode[],
-  indents: Indents,
-  result: string[],
-  separator: (node: MarkdownNode) => string
-) {
+    blocks: MarkdownNode[], indents: Indents, result: string[],
+    separator: (node: MarkdownNode) => string) {
   let first = true;
   for (const block of blocks) {
     if (!first && separator.length) {

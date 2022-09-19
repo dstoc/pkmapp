@@ -13,12 +13,11 @@
 // limitations under the License.
 
 import {createContext} from '../deps/lit-labs-context.js';
+
 import {ViewModelNode} from './view-model.js';
 
 export type HostContext = {
   focusNode?: ViewModelNode;
   focusOffset?: number;
 };
-export const hostContext = createContext<HostContext | undefined>(
-  'hostContext'
-);
+export const hostContext = createContext<HostContext|undefined>('hostContext');

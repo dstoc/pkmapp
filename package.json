@@ -1,11 +1,9 @@
 {
   "scripts": {
     "dev": "npx concurrently -n tsc,wds \"tsc --watch --preserveWatchOutput\" \"npx web-dev-server --watch --root-dir build\"",
-    "lint": "npx gts lint",
-    "clean": "npx gts clean",
     "compile": "npx tsc",
-    "fix": "npx gts fix",
-    "build": "npm run compile && ./build-wasm.sh && cp index.html build/ && cp node_modules/web-tree-sitter/tree-sitter.js build/ && cp node_modules/web-tree-sitter/tree-sitter.wasm build/"
+    "build": "npm run compile && ./build-wasm.sh && cp index.html build/ && cp node_modules/web-tree-sitter/tree-sitter.js build/ && cp node_modules/web-tree-sitter/tree-sitter.wasm build/",
+    "precommit": "npx check-clang-format"
   },
   "license": "Apache-2.0",
   "devDependencies": {
@@ -13,8 +11,8 @@
     "@types/node": "^14.11.2",
     "@types/wicg-file-system-access": "^2020.9.5",
     "@web/dev-server": "^0.1.33",
+    "clang-format": "^1.8.0",
     "emscripten-sdk-npm": "github:devappd/emscripten-sdk-npm",
-    "gts": "^3.1.0",
     "lit": "^2.3.0",
     "tree-sitter-cli": "^0.20.6",
     "tree-sitter-markdown": "github:MDeiml/tree-sitter-markdown",

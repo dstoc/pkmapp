@@ -1,5 +1,5 @@
 {
-  "extends": "./node_modules/gts/",
+  "extends": "google",
   "rules": {
     "node/no-unsupported-features/node-builtins": "off"
   }

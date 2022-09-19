@@ -32,11 +32,8 @@ class Observe<T> {
 
 class ViewModel {
   constructor(
-    readonly self: ViewModelNode,
-    readonly tree: MarkdownTree,
-    public parent?: ViewModelNode,
-    childIndex?: number
-  ) {
+      readonly self: ViewModelNode, readonly tree: MarkdownTree,
+      public parent?: ViewModelNode, childIndex?: number) {
     this.initialize(parent, childIndex);
   }
   private initialize(parent?: ViewModelNode, childIndex?: number) {
@@ -79,9 +76,9 @@ class ViewModel {
 
   insertBefore(parent: ViewModelNode, nextSibling?: ViewModelNode) {
     if (this.parent) this.remove();
-    const previousSibling = nextSibling
-      ? nextSibling?.viewModel.previousSibling
-      : parent.viewModel.lastChild;
+    const previousSibling = nextSibling ?
+        nextSibling?.viewModel.previousSibling :
+        parent.viewModel.lastChild;
 
     this.parent = parent;
     this.previousSibling = previousSibling;
@@ -121,8 +118,7 @@ export class MarkdownTree {
   root: ViewModelNode;
   readonly observe = new Observe(this);
 
-  import(node: MarkdownNode) {
-    if ((node as MaybeViewModelNode).viewModel)
+  import(node: MarkdownNode) {if((node as MaybeViewModelNode).viewModel)
       throw new Error('node is already part of a tree');
     return this.addDom(node);
   }
@@ -135,9 +131,9 @@ export class MarkdownTree {
     const result = node as ViewModelNode;
     result.viewModel = new ViewModel(result, this, parent, childIndex);
     if (result.children) {
-      for (let i = 0; i < result.children.length; i++) {
-        this.addDom(result.children[i], result, i);
-      }
+    for (let i = 0; i < result.children.length; i++) {
+      this.addDom(result.children[i], result, i);
+    }
     }
     return result;
   }
@@ -156,7 +152,7 @@ export type MaybeViewModelNode = MarkdownNode & {
   children?: MarkdownNode[];
 };
 
-export type ViewModelNode = MarkdownNode & {
-  viewModel: ViewModel;
-  children?: ViewModelNode[];
-};
+      export type ViewModelNode = MarkdownNode&{
+        viewModel: ViewModel;
+        children?: ViewModelNode[];
+      };
