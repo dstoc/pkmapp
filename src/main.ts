@@ -249,20 +249,43 @@ export class TestHost extends LitElement {
         newText = '';
       } else if (inputEvent.inputType === 'deleteContentBackward') {
         if (inputStart.index === 0 && inputEnd.index === 0) {
-          let node: ViewModelNode | undefined = inline.node;
-          for (const prev of reverseDfs(node!)) {
-            if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
-              this.hostContext.focusNode = prev;
-              this.hostContext.focusOffset = -Infinity;
-              prev.viewModel.observe.notify();
-              break;
+          const node = inline.node;
+          let removedParent = false;
+          let parent = node?.viewModel.parent;
+          while (parent && !removedParent) {
+            // TODO: Heading needs a different treatment, need to transform it
+            // into a paragraph.
+            if (
+              ['block-quote', 'code-block', 'heading'].includes(parent.type)
+            ) {
+              // TODO: Move other siblings too.
+              node?.viewModel.insertBefore(parent.viewModel.parent!, parent);
+              parent.viewModel.remove();
+              removedParent = true;
+            } else {
+              parent = parent.viewModel.parent;
             }
           }
-          do {
-            const toRemove = node;
-            node = node?.viewModel.parent;
-            toRemove?.viewModel.remove();
-          } while (node && !node.children?.length);
+          if (removedParent) {
+            this.hostContext.focusNode = node;
+            this.hostContext.focusOffset = 0;
+          } else {
+            for (const prev of reverseDfs(node!)) {
+              if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
+                this.hostContext.focusNode = prev;
+                this.hostContext.focusOffset = -Infinity;
+                prev.viewModel.observe.notify();
+                break;
+              }
+            }
+            // TODO: If the node has content, merge it with the previous inline.
+            let next: ViewModelNode | undefined = node;
+            do {
+              const toRemove = next;
+              next = next?.viewModel.parent;
+              toRemove?.viewModel.remove();
+            } while (next && !next.children?.length);
+          }
           return;
         }
         newText = '';
