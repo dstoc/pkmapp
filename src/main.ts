@@ -21,6 +21,7 @@ import {MarkdownRenderer} from './markdown/block-render.js';
 import {serializeToString} from './markdown/block-serializer.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
+import {InlineNode} from './markdown/node.js';
 import {MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 
 function debounce(f: () => void) {
@@ -102,9 +103,7 @@ export class TestHost extends LitElement {
       if (result !== true) {
         for (const prev of reverseDfs(node!)) {
           if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
-            this.hostContext.focusNode = prev;
-            this.hostContext.focusOffset = -result;
-            prev.viewModel.observe.notify();
+            focusNode(this.hostContext, prev, -result);
             break;
           }
         }
@@ -117,9 +116,7 @@ export class TestHost extends LitElement {
       if (result !== true) {
         for (const next of dfs(node!)) {
           if (['paragraph', 'code-block', 'heading'].includes(next.type)) {
-            this.hostContext.focusNode = next;
-            this.hostContext.focusOffset = result;
-            next.viewModel.observe.notify();
+            focusNode(this.hostContext, next, result);
             break;
           }
         }
@@ -127,8 +124,7 @@ export class TestHost extends LitElement {
       return;
     }
     if (keyboardEvent.key === 'Tab') {
-      this.hostContext.focusNode = node;
-      node.viewModel.observe.notify();
+      focusNode(this.hostContext, node);
       if (keyboardEvent.shiftKey) {
         // TODO: Find the right context.
         const context = node;
@@ -231,40 +227,37 @@ export class TestHost extends LitElement {
       } else if (inputEvent.inputType === 'deleteContentBackward') {
         if (inputStart.index === 0 && inputEnd.index === 0) {
           const node = inline.node;
-          let removedParent = false;
-          let parent = node?.viewModel.parent;
-          while (parent && !removedParent) {
-            // TODO: Heading needs a different treatment, need to transform it
-            // into a paragraph.
-            if (['block-quote', 'code-block', 'heading'].includes(
-                    parent.type)) {
-              // TODO: Move other siblings too.
-              node?.viewModel.insertBefore(parent.viewModel.parent!, parent);
-              parent.viewModel.remove();
-              removedParent = true;
-            } else {
-              parent = parent.viewModel.parent;
-            }
+          // Turn headings and code-blocks into paragraphs.
+          if (node.type === 'heading' || node.type === 'code-block') {
+            const paragraph = node.viewModel.tree.import({
+              type: 'paragraph',
+              content: node.content,
+            });
+            paragraph.viewModel.insertBefore(node.viewModel.parent, node);
+            node.viewModel.remove();
+            focusNode(this.hostContext, paragraph, 0);
+            return;
           }
-          if (removedParent) {
-            this.hostContext.focusNode = node;
-            this.hostContext.focusOffset = 0;
-          } else {
-            for (const prev of reverseDfs(node!)) {
-              if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
-                this.hostContext.focusNode = prev;
-                this.hostContext.focusOffset = -Infinity;
-                prev.viewModel.observe.notify();
-                break;
-              }
+
+          // Remove a surrounding block-quote.
+          const {ancestor} = findAncestor(node, 'block-quote');
+          if (ancestor) {
+            // Unless there's an earlier opportunity to merge into a previous
+            // content node.
+            for (const prev of reverseDfs(node, ancestor)) {
+              if (maybeMergeContentInto(node, prev, this.hostContext)) return;
             }
-            // TODO: If the node has content, merge it with the previous inline.
-            let next: ViewModelNode|undefined = node;
-            do {
-              const toRemove = next;
-              next = next?.viewModel.parent;
-              toRemove?.viewModel.remove();
-            } while (next && !next.children?.length);
+            for (const child of [...ancestor.children]) {
+              child.viewModel.insertBefore(ancestor.viewModel.parent, ancestor);
+            }
+            ancestor.viewModel.remove();
+            focusNode(this.hostContext, node);
+            return;
+          }
+
+          // Merge into a previous content node.
+          for (const prev of reverseDfs(node)) {
+            if (maybeMergeContentInto(node, prev, this.hostContext)) return;
           }
           return;
         }
@@ -300,6 +293,39 @@ export class TestHost extends LitElement {
   }
 }
 
+function maybeMergeContentInto(
+    node: InlineNode&ViewModelNode, target: ViewModelNode,
+    context: HostContext): boolean {
+  if (target.type === 'code-block' || target.type === 'paragraph' ||
+      target.type === 'heading') {
+    focusNode(context, target, target.content.length);
+    target.content += node.content;
+    let parent = node.viewModel.parent;
+    node.viewModel.remove();
+    cleanupNode(parent);
+    return true;
+  }
+  return false;
+}
+
+function cleanupNode(node?: ViewModelNode) {
+  if (node.type === 'block-quote' || node.type === 'heading' ||
+      node.type === 'paragraph') {
+    return;
+  }
+  while (node?.children?.length === 0) {
+    const toRemove = node;
+    node = node.viewModel.parent;
+    toRemove.viewModel.remove();
+  }
+}
+
+function focusNode(context: HostContext, node: ViewModelNode, offset?: number) {
+  context.focusNode = node;
+  context.focusOffset = offset;
+  node.viewModel.observe.notify();
+}
+
 function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
   const node1Parent = node1.viewModel.parent!;
   const node1NextSibling = node1.viewModel.nextSibling;
@@ -307,7 +333,14 @@ function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
   node2.viewModel.insertBefore(node1Parent, node1NextSibling);
 }
 
-function* reverseDfs(node: ViewModelNode) {
+function* ancestors(node: ViewModelNode) {
+  while (node.viewModel.parent) {
+    yield node.viewModel.parent;
+    node = node.viewModel.parent;
+  }
+}
+
+function* reverseDfs(node: ViewModelNode, limit?: ViewModelNode) {
   function next(next?: ViewModelNode) {
     return next && (node = next);
   }
@@ -316,9 +349,11 @@ function* reverseDfs(node: ViewModelNode) {
       while (next(node.viewModel.lastChild))
         ;
       yield node;
+      if (node === limit) return;
     }
     if (next(node.viewModel.parent)) {
       yield node;
+      if (node === limit) return;
       continue;
     }
     return;
@@ -346,15 +381,15 @@ function* dfs(node: ViewModelNode) {
 function findAncestor(node: ViewModelNode, type: string) {
   const path = [node];
   let ancestor: ViewModelNode|undefined = node;
-  do {
+  for (const ancestor of ancestors(node)) {
     path.unshift(ancestor);
-    ancestor = ancestor.viewModel.parent;
-    if (!ancestor) return {};
-  } while (ancestor.type !== type);
-  return {
-    ancestor,
-    path,
-  };
+    if (ancestor.type === type)
+      return {
+        ancestor,
+        path,
+      };
+  }
+  return {};
 }
 
 function moveParagraphBackwards(node: ViewModelNode): boolean {

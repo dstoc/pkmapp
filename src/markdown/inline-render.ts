@@ -146,10 +146,16 @@ export class MarkdownInline extends LitElement {
 
   tree?: Parser.Tree;
   lastNode?: ViewModelNode;
+  // TODO: Replace with a sequence number.
+  content?: string;
   override render() {
     if (!this.node) return;
     if (this.node !== this.lastNode) {
       this.tree = undefined;
+    }
+    if (this.content !== this.node.content) {
+      this.tree = undefined;
+      this.content = this.node.content;
     }
     this.lastNode = this.node;
     this.tree = parser.parse(this.node.content, this.tree);
@@ -292,6 +298,7 @@ export class MarkdownInline extends LitElement {
     };
 
     this.node.content = apply(this.node.content, result);
+    this.content = this.node.content;
     this.node.viewModel.tree.observe.notify();
     this.tree = this.tree!.edit(result);
     this.requestUpdate();
