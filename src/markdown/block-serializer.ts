@@ -14,13 +14,13 @@
 
 import {MarkdownNode} from './node.js';
 
-function* always(s: string) {
+function* always(s: string): IndentGenerator {
   while (true) {
     yield s;
   }
 }
 
-function* onceThenWhitespace(s: string) {
+function* onceThenWhitespace(s: string): IndentGenerator {
   const ws = s.replace(/./, ' ');
   yield s;
   while (true) {
@@ -28,7 +28,8 @@ function* onceThenWhitespace(s: string) {
   }
 }
 
-type Indents = Generator<string, void, unknown>[];
+type IndentGenerator = Generator<string, string, unknown>;
+type Indents = Generator<string, string, unknown>[];
 
 function serializeBlocks(
     blocks: MarkdownNode[], indents: Indents, result: string[],
@@ -37,7 +38,7 @@ function serializeBlocks(
   for (const block of blocks) {
     if (!first && separator.length) {
       for (const indent of indents) {
-        result.push(indent.next().value!);
+        result.push(indent.next().value);
       }
       result.push(separator(block));
     }
@@ -49,7 +50,7 @@ function serializeBlocks(
 function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
   function indent() {
     for (const indent of indents) {
-      result.push(indent.next().value!);
+      result.push(indent.next().value);
     }
   }
 
