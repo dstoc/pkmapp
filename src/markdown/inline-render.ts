@@ -50,6 +50,7 @@ export interface InlineKeyDown {
   inline: MarkdownInline;
   node: ViewModelNode;
   keyboardEvent: KeyboardEvent;
+  inputEvent: InputEvent;
 }
 
 export interface InlineLinkClick {
@@ -306,6 +307,11 @@ export class MarkdownInline extends LitElement {
       this.hostContext.focusNode = this.node;
       this.hostContext.focusOffset = newEndIndex;
     }
+  }
+  getSelection() {
+    const selection: Selection =
+        (this.getRootNode()! as Document).getSelection()!;
+    return MarkdownInline.getSelectionRange(selection);
   }
   onKeyDown(e: KeyboardEvent) {
     const inlineKeydown = {
