@@ -118,85 +118,15 @@ let TestHost = class TestHost extends LitElement {
             return;
         }
         if (keyboardEvent.key === 'Tab') {
-            focusNode(this.hostContext, node);
+            keyboardEvent.preventDefault();
+            const { start } = inline.getSelection();
+            focusNode(this.hostContext, node, start.index);
             if (keyboardEvent.shiftKey) {
-                // TODO: Find the right context.
-                const context = node;
-                const listItem = context.viewModel.parent;
-                const nextSibling = listItem.viewModel.nextSibling;
-                const list = listItem.viewModel.parent;
-                const targetListItemSibling = list.viewModel.parent;
-                if (targetListItemSibling?.type === 'list-item') {
-                    listItem.viewModel.insertBefore(targetListItemSibling.viewModel.parent, targetListItemSibling.viewModel.nextSibling);
-                }
-                else {
-                    context.viewModel.insertBefore(list.viewModel.parent, list.viewModel.nextSibling);
-                    listItem.viewModel.remove();
-                }
-                // Siblings of the undended list-item move to sublist.
-                if (nextSibling) {
-                    let next = nextSibling;
-                    while (next) {
-                        if (listItem.viewModel.lastChild?.type !== 'list') {
-                            listItem.viewModel.tree
-                                .import({
-                                type: 'list',
-                            })
-                                .viewModel.insertBefore(listItem);
-                        }
-                        const targetList = listItem.viewModel.lastChild;
-                        const toMove = next;
-                        next = toMove.viewModel.nextSibling;
-                        toMove.viewModel.insertBefore(targetList);
-                    }
-                }
-                // The context might have been removed from the list item. Move any
-                // remaining siblings to the same level.
-                if (listItem.children?.length && !listItem.viewModel.parent) {
-                    // TODO: move more than the first child.
-                    listItem.viewModel.firstChild?.viewModel.insertBefore(context.viewModel.parent, context.viewModel.nextSibling);
-                }
-                if (!list.children?.length) {
-                    list.viewModel.remove();
-                }
+                unindent(node);
                 return;
             }
-            // TODO: Find the right context.
-            const context = node;
-            let listItem;
-            if (context.viewModel.parent.type === 'list-item') {
-                listItem = context.viewModel.parent;
-            }
-            else {
-                listItem = node.viewModel.tree.import({
-                    type: 'list-item',
-                    marker: '* ',
-                });
-                listItem.viewModel.insertBefore(node.viewModel.parent, node);
-                node.viewModel.insertBefore(listItem);
-            }
-            const listItemPreviousSibling = listItem.viewModel.previousSibling;
-            if (listItemPreviousSibling?.type === 'list-item') {
-                const lastChild = listItemPreviousSibling.viewModel.lastChild;
-                if (lastChild?.type === 'list') {
-                    listItem.viewModel.insertBefore(lastChild);
-                }
-                else {
-                    listItem.viewModel.insertBefore(listItemPreviousSibling);
-                }
-            }
-            else if (listItemPreviousSibling?.type === 'list') {
-                listItem.viewModel.insertBefore(listItemPreviousSibling);
-            }
-            // Ensure the list-item we may have created is in a list.
-            if (listItem.viewModel.parent.type !== 'list') {
-                const list = node.viewModel.tree.import({
-                    type: 'list',
-                });
-                list.viewModel.insertBefore(listItem.viewModel.parent, listItem);
-                listItem.viewModel.insertBefore(list);
-                // TODO: Merge this with any sibling lists.
-            }
+            indent(node);
+            return;
         }
     }
     onInlineInput({ detail: { inline, inputEvent, inputStart, inputEnd }, }) {
@@ -388,17 +318,110 @@ function findAncestor(node, type) {
     const path = [node];
     let ancestor = node;
     for (const ancestor of ancestors(node)) {
-        path.unshift(ancestor);
         if (ancestor.type === type)
             return {
                 ancestor,
                 path,
             };
+        path.unshift(ancestor);
     }
     return {};
 }
 function moveParagraphBackwards(node) {
     return false;
+}
+function unindent(node) {
+    const { ancestor: listItem, path } = findAncestor(node, 'list-item');
+    if (!path)
+        return;
+    const target = path[0];
+    const nextSibling = listItem.viewModel.nextSibling;
+    const list = listItem.viewModel.parent;
+    const targetListItemSibling = list.viewModel.parent;
+    if (targetListItemSibling?.type === 'list-item') {
+        listItem.viewModel.insertBefore(targetListItemSibling.viewModel.parent, targetListItemSibling.viewModel.nextSibling);
+    }
+    else {
+        target.viewModel.insertBefore(list.viewModel.parent, list.viewModel.nextSibling);
+        listItem.viewModel.remove();
+    }
+    // Siblings of the undended list-item move to sublist.
+    if (nextSibling) {
+        let next = nextSibling;
+        while (next) {
+            if (listItem.viewModel.lastChild?.type !== 'list') {
+                listItem.viewModel.tree
+                    .import({
+                    type: 'list',
+                })
+                    .viewModel.insertBefore(listItem);
+            }
+            const targetList = listItem.viewModel.lastChild;
+            const toMove = next;
+            next = toMove.viewModel.nextSibling;
+            toMove.viewModel.insertBefore(targetList);
+        }
+    }
+    // The target might have been removed from the list item. Move any
+    // remaining siblings to the same level.
+    if (listItem.children?.length && !listItem.viewModel.parent) {
+        // TODO: move more than the first child.
+        listItem.viewModel.firstChild?.viewModel.insertBefore(target.viewModel.parent, target.viewModel.nextSibling);
+    }
+    if (!list.children?.length) {
+        list.viewModel.remove();
+    }
+}
+function indent(node) {
+    let target = node;
+    for (const ancestor of ancestors(node)) {
+        if (ancestor.type === 'list-item') {
+            break;
+        }
+        // Don't indent a section at the top level, unless we are inside a heading.
+        if (ancestor.type === 'section' &&
+            ancestor.viewModel.parent.type == 'document') {
+            if (target.type === 'heading') {
+                target = ancestor;
+            }
+            break;
+        }
+        target = ancestor;
+    }
+    let listItem;
+    if (target.viewModel.parent.type === 'list-item') {
+        listItem = target.viewModel.parent;
+    }
+    else {
+        listItem = target.viewModel.tree.import({
+            type: 'list-item',
+            marker: '* ',
+        });
+        listItem.viewModel.insertBefore(target.viewModel.parent, target);
+        target.viewModel.insertBefore(listItem);
+    }
+    const listItemPreviousSibling = listItem.viewModel.previousSibling;
+    if (listItemPreviousSibling?.type === 'list-item') {
+        const lastChild = listItemPreviousSibling.viewModel.lastChild;
+        if (lastChild?.type === 'list') {
+            listItem.viewModel.insertBefore(lastChild);
+        }
+        else {
+            listItem.viewModel.insertBefore(listItemPreviousSibling);
+        }
+    }
+    else if (listItemPreviousSibling?.type === 'list') {
+        listItem.viewModel.insertBefore(listItemPreviousSibling);
+    }
+    // Ensure the list-item we may have created is in a list.
+    if (listItem.viewModel.parent.type !== 'list') {
+        const list = target.viewModel.tree.import({
+            type: 'list',
+        });
+        list.viewModel.insertBefore(listItem.viewModel.parent, listItem);
+        listItem.viewModel.insertBefore(list);
+        // TODO: Merge this with any sibling lists.
+    }
 }
 function insertSiblingParagraph(node, context) {
     const newParagraph = node.viewModel.tree.import({

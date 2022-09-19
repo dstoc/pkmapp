@@ -266,6 +266,10 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
             this.hostContext.focusOffset = newEndIndex;
         }
     }
+    getSelection() {
+        const selection = this.getRootNode().getSelection();
+        return MarkdownInline_1.getSelectionRange(selection);
+    }
     onKeyDown(e) {
         const inlineKeydown = {
             inline: this,
