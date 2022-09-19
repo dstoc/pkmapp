@@ -183,7 +183,7 @@ export class MarkdownInline extends LitElement {
         const selection = (this.getRootNode()! as Document).getSelection()!;
         let focusOffset = this.hostContext?.focusOffset;
         if (focusOffset !== undefined) {
-          if (focusOffset < 0) {
+          if (focusOffset < 0 || Object.is(focusOffset, -0)) {
             let index = NaN;
             let last = NaN;
             do {
