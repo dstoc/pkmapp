@@ -194,15 +194,15 @@ let TestHost = class TestHost extends LitElement {
             newEndIndex = startIndex + newText.length;
         }
         else if (inputEvent.inputType === 'insertParagraph') {
-            if (insertParagraphInList(inline.node, inputStart.index === 0, this.hostContext)) {
+            if (insertParagraphInList(inline.node, inputStart.index, this.hostContext)) {
                 return;
             }
-            if (insertParagraphInSection(inline.node, this.hostContext))
+            if (insertParagraphInSection(inline.node, inputStart.index, this.hostContext))
                 return;
             return;
         }
         else if (inputEvent.inputType === 'insertLineBreak') {
-            if (insertSiblingParagraph(inline.node, this.hostContext))
+            if (insertSiblingParagraph(inline.node, inputStart.index, this.hostContext))
                 return;
             return;
         }
@@ -423,16 +423,16 @@ function indent(node) {
         // TODO: Merge this with any sibling lists.
     }
 }
-function insertSiblingParagraph(node, context) {
+function insertSiblingParagraph(node, startIndex, context) {
     const newParagraph = node.viewModel.tree.import({
         type: 'paragraph',
         content: '',
     });
-    context.focusNode = newParagraph;
     newParagraph.viewModel.insertBefore(node.viewModel.parent, node.viewModel.nextSibling);
+    finishInsertParagraph(node, newParagraph, startIndex, context);
     return true;
 }
-function insertParagraphInList(node, atStart, context) {
+function insertParagraphInList(node, startIndex, context) {
     const { ancestor, path } = findAncestor(node, 'list');
     if (!ancestor)
         return false;
@@ -468,12 +468,10 @@ function insertParagraphInList(node, atStart, context) {
         content: '',
     });
     newParagraph.viewModel.insertBefore(newListItem);
-    if (atStart)
-        swapNodes(node, newParagraph);
-    context.focusNode = newParagraph;
+    finishInsertParagraph(node, newParagraph, startIndex, context);
     return true;
 }
-function insertParagraphInSection(node, context) {
+function insertParagraphInSection(node, startIndex, context) {
     const { ancestor: section, path } = findAncestor(node, 'section');
     if (!section)
         return false;
@@ -481,8 +479,19 @@ function insertParagraphInSection(node, context) {
         type: 'paragraph',
         content: '',
     });
-    context.focusNode = newParagraph;
     newParagraph.viewModel.insertBefore(section, path[0].viewModel.nextSibling);
+    finishInsertParagraph(node, newParagraph, startIndex, context);
     return true;
+}
+function finishInsertParagraph(node, newParagraph, startIndex, context) {
+    const atStart = startIndex === 0;
+    if (atStart) {
+        swapNodes(node, newParagraph);
+    }
+    else {
+        newParagraph.content = node.content.substring(startIndex);
+        node.content = node.content.substring(0, startIndex);
+    }
+    focusNode(context, newParagraph);
 }
 render(html `<test-host></test-host>`, document.body);

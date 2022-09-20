@@ -113,8 +113,9 @@ export class MarkdownTree {
         this.root = this.addDom(root);
     }
     import(node) {
-        if (node.viewModel)
+        if (node.viewModel) {
             throw new Error('node is already part of a tree');
+        }
         return this.addDom(node);
     }
     addDom(node, parent, childIndex) {
