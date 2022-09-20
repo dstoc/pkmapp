@@ -15,6 +15,7 @@
 export type MarkdownNode =
     |ContainerNode|ParagraphNode|MarkedNode|HeadingNode|CodeBlockNode;
 export type InlineNode = ParagraphNode|CodeBlockNode|HeadingNode;
+export type ParentNode = ContainerNode|MarkedNode;
 
 // TODO: ID, Sequence Number (per tree?)
 interface Node {

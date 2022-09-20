@@ -39,13 +39,20 @@ export class TestHost extends LitElement {
   @query('md-block-render') blockRender!: MarkdownRenderer;
   @query('input') fileInput!: HTMLInputElement;
   @property({type: Object, reflect: false}) tree: MarkdownTree|undefined;
-  directory?: FileSystemDirectoryHandle;
+  @property({reflect: false}) directory?: FileSystemDirectoryHandle;
   @contextProvider({context: hostContext})
   @property({reflect: false})
   hostContext: HostContext = {};
   override render() {
+    if (!this.directory) {
+      return html`
+        <button @click=${this.ensureDirectory}>
+          Open directory...
+        </button>
+      `;
+    }
     return html`
-    <input type=text></input>
+    <input type=text value="test.md"></input>
     <button @click=${this.load}>Load</button>
     <button @click=${this.save}>Save</button>
     <br>
@@ -101,39 +108,33 @@ export class TestHost extends LitElement {
       keyboardEvent.preventDefault();
       const result = inline.moveCaretUp();
       if (result !== true) {
-        for (const prev of reverseDfs(node!)) {
-          if (['paragraph', 'code-block', 'heading'].includes(prev.type)) {
-            focusNode(this.hostContext, prev, -result);
-            break;
-          }
-        }
+        const prev = findPreviousDfs(
+            node!,
+            ({type}) => ['paragraph', 'code-block', 'heading'].includes(type));
+        if (prev) focusNode(this.hostContext, prev, -result);
       }
-      return;
-    }
-    if (keyboardEvent.key === 'ArrowDown') {
+    } else if (keyboardEvent.key === 'ArrowDown') {
       keyboardEvent.preventDefault();
       const result = inline.moveCaretDown();
       if (result !== true) {
-        for (const next of dfs(node!)) {
-          if (['paragraph', 'code-block', 'heading'].includes(next.type)) {
-            focusNode(this.hostContext, next, result);
-            break;
-          }
-        }
+        const next = findNextDfs(
+            node!,
+            ({type}) => ['paragraph', 'code-block', 'heading'].includes(type));
+        if (next) focusNode(this.hostContext, next, -result);
       }
-      return;
-    }
-    if (keyboardEvent.key === 'Tab') {
+    } else if (keyboardEvent.key === 'Tab') {
       keyboardEvent.preventDefault();
       const {start} = inline.getSelection();
       focusNode(this.hostContext, node, start.index);
       if (keyboardEvent.shiftKey) {
         unindent(node);
-        return;
+      } else {
+        indent(node);
       }
-      indent(node);
+    } else {
       return;
     }
+    normalizeTree(node.viewModel.tree);
   }
   onInlineInput({
     detail: {inline, inputEvent, inputStart, inputEnd},
@@ -294,14 +295,28 @@ function* dfs(node: ViewModelNode) {
   function next(next?: ViewModelNode) {
     return next && (node = next);
   }
+  let parent = false;
   do {
-    while (next(node.viewModel.nextSibling)) {
-      while (next(node.viewModel.firstChild))
-        ;
-      yield node;
+    if (!parent) {
+      let moved = false;
+      while (next(node.viewModel.firstChild)) moved = true;
+      if (moved) {
+        yield node;
+        continue;
+      }
     }
+
+    if (next(node.viewModel.nextSibling)) {
+      parent = false;
+      if (!node.viewModel.firstChild) {
+        yield node;
+      }
+      continue;
+    }
+
     if (next(node.viewModel.parent)) {
       yield node;
+      parent = true;
       continue;
     }
     return;
@@ -320,10 +335,6 @@ function findAncestor(node: ViewModelNode, type: string) {
     path.unshift(ancestor);
   }
   return {};
-}
-
-function moveParagraphBackwards(node: ViewModelNode): boolean {
-  return false;
 }
 
 function unindent(node: ViewModelNode) {
@@ -493,6 +504,111 @@ function finishInsertParagraph(
     node.content = node.content.substring(0, startIndex);
   }
   focusNode(context, newParagraph);
+}
+
+function normalizeSection(node: ViewModelNode) {
+  const isFirstDocumentSection = node.viewModel.parent?.type === 'document' &&
+      node.viewModel.parent.viewModel.firstChild === node;
+  let next = node.viewModel.firstChild;
+  let hasHeading = false;
+  while (next) {
+    const child = next;
+    next = child.viewModel.nextSibling;
+    if (child.type === 'heading') {
+      if (hasHeading) {
+        // Found a second heading, split out a new sibling section and move
+        // all remaining children there.
+        const newSection = node.viewModel.tree.import({type: 'section'});
+        child.viewModel.insertBefore(newSection);
+        while (next) {
+          const child = next;
+          next = child.viewModel.nextSibling;
+          child.viewModel.insertBefore(newSection);
+        }
+        break;
+      }
+      hasHeading = true;
+    } else if (child.type === 'section') {
+      // Sections can't contain other sections.
+      child.viewModel.insertBefore(
+          node.viewModel.parent, node.viewModel.nextSibling);
+    } else if (isFirstDocumentSection) {
+      // First document section only optionally requires a heading.
+      hasHeading = true;
+    } else if (!hasHeading) {
+      child.viewModel.insertBefore(
+          node.viewModel.parent, node.viewModel.nextSibling);
+    }
+  }
+  if (hasHeading) {
+    return true;
+  }
+  // The section did not have a heading, the children have been removed.
+  node.viewModel.remove();
+  return false;
+}
+
+function findNextDfs(
+    node: ViewModelNode, predicate: (node: ViewModelNode) => boolean) {
+  for (const next of dfs(node)) {
+    if (next !== node && predicate(next)) return next;
+  }
+}
+
+function findPreviousDfs(
+    node: ViewModelNode, predicate: (node: ViewModelNode) => boolean) {
+  for (const next of reverseDfs(node)) {
+    if (next !== node && predicate(next)) return next;
+  }
+}
+
+function findChild(
+    node: ViewModelNode, predicate: (node: ViewModelNode) => boolean) {
+  let next = node.viewModel.firstChild;
+  while (next) {
+    if (next && predicate(next)) return next;
+    next = next.viewModel.nextSibling;
+  }
+  return null;
+}
+
+function normalizeSections(node: ViewModelNode) {
+  let section: ViewModelNode|undefined;
+  do {
+    section = findChild(node, ({type}) => type === 'section');
+    if (!section) return;
+  } while (!normalizeSection(section));
+  while (section.viewModel.nextSibling) {
+    const node = section.viewModel.nextSibling;
+    if (node.type === 'section') {
+      if (normalizeSection(node)) section = node;
+    } else if (node.type === 'heading') {
+      // Create and advance to a new section to hold the heading.
+      section = node.viewModel.tree.import({
+        type: 'section',
+      });
+      section.viewModel.insertBefore(node.viewModel.parent, node);
+      node.viewModel.insertBefore(section);
+    } else {
+      node.viewModel.insertBefore(section);
+    }
+  }
+}
+
+function normalizeTree(tree: MarkdownTree) {
+  const document = tree.root;
+  // ensure first child is a section
+  if (document.viewModel.firstChild?.type !== 'section') {
+    const section = tree.import({
+      type: 'section',
+    });
+    section.viewModel.insertBefore(document, document.viewModel.firstChild);
+  }
+  for (const node of dfs(tree.root)) {
+    normalizeSections(node);
+  }
+
+  // TODO: merge sibling lists
 }
 
 render(html`<test-host></test-host>`, document.body);
