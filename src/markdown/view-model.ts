@@ -113,22 +113,24 @@ class ViewModel {
 
 export class MarkdownTree {
   constructor(root: MarkdownNode) {
-    this.root = this.addDom(root);
+    this.root = this.addDom<MarkdownNode>(root);
   }
   root: ViewModelNode;
   readonly observe = new Observe(this);
 
-  import(node: MarkdownNode) {if((node as MaybeViewModelNode).viewModel)
+  import<T>(node: T&MarkdownNode) {
+    if ((node as MaybeViewModelNode).viewModel) {
       throw new Error('node is already part of a tree');
+    }
     return this.addDom(node);
   }
 
-  private addDom(
-    node: MarkdownNode,
+  private addDom<T>(
+    node: T&MarkdownNode,
     parent?: ViewModelNode,
     childIndex?: number
   ) {
-    const result = node as ViewModelNode;
+    const result = node as T&ViewModelNode;
     result.viewModel = new ViewModel(result, this, parent, childIndex);
     if (result.children) {
     for (let i = 0; i < result.children.length; i++) {
@@ -152,7 +154,7 @@ export type MaybeViewModelNode = MarkdownNode & {
   children?: MarkdownNode[];
 };
 
-      export type ViewModelNode = MarkdownNode&{
-        viewModel: ViewModel;
-        children?: ViewModelNode[];
-      };
+export type ViewModelNode = MarkdownNode&{
+  viewModel: ViewModel;
+  children?: ViewModelNode[];
+};

@@ -21,7 +21,7 @@ import {MarkdownRenderer} from './markdown/block-render.js';
 import {serializeToString} from './markdown/block-serializer.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
-import {InlineNode} from './markdown/node.js';
+import {InlineNode, ParagraphNode} from './markdown/node.js';
 import {MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 
 function debounce(f: () => void) {
@@ -199,13 +199,13 @@ export class TestHost extends LitElement {
       newEndIndex = startIndex + newText.length;
     } else if (inputEvent.inputType === 'insertParagraph') {
       if (insertParagraphInList(
-              inline.node!, inputStart.index === 0, this.hostContext)) {
+              inline.node!, inputStart.index, this.hostContext)) {
         return;
       }
-      if (insertParagraphInSection(inline.node!, this.hostContext)) return;
+      if (insertParagraphInSection(inline.node!, inputStart.index, this.hostContext)) return;
       return;
     } else if (inputEvent.inputType === 'insertLineBreak') {
-      if (insertSiblingParagraph(inline.node!, this.hostContext)) return;
+      if (insertSiblingParagraph(inline.node!, inputStart.index, this.hostContext)) return;
       return;
     } else {
       console.log('unsupported inputType:', inputEvent.inputType);
@@ -421,19 +421,19 @@ function indent(node: ViewModelNode) {
 }
 
 function insertSiblingParagraph(
-    node: ViewModelNode, context: HostContext): boolean {
+    node: InlineNode&ViewModelNode, startIndex: number, context: HostContext): boolean {
   const newParagraph = node.viewModel.tree.import({
     type: 'paragraph',
     content: '',
   });
-  context.focusNode = newParagraph;
   newParagraph.viewModel.insertBefore(
       node.viewModel.parent!, node.viewModel.nextSibling);
+  finishInsertParagraph(node, newParagraph, startIndex, context);
   return true;
 }
 
 function insertParagraphInList(
-    node: ViewModelNode, atStart: boolean, context: HostContext): boolean {
+    node: InlineNode&ViewModelNode, startIndex: number, context: HostContext): boolean {
   const {ancestor, path} = findAncestor(node, 'list');
   if (!ancestor) return false;
   let targetList;
@@ -467,22 +467,32 @@ function insertParagraphInList(
     content: '',
   });
   newParagraph.viewModel.insertBefore(newListItem);
-  if (atStart) swapNodes(node, newParagraph);
-  context.focusNode = newParagraph;
+  finishInsertParagraph(node, newParagraph, startIndex, context);
   return true;
 }
 
 function insertParagraphInSection(
-    node: ViewModelNode, context: HostContext): boolean {
+    node: InlineNode&ViewModelNode, startIndex: number, context: HostContext): boolean {
   const {ancestor: section, path} = findAncestor(node, 'section');
   if (!section) return false;
   const newParagraph = node.viewModel.tree.import({
     type: 'paragraph',
     content: '',
   });
-  context.focusNode = newParagraph;
   newParagraph.viewModel.insertBefore(section, path[0].viewModel.nextSibling);
+  finishInsertParagraph(node, newParagraph, startIndex, context);
   return true;
+}
+
+function finishInsertParagraph(
+  node: InlineNode&ViewModelNode, newParagraph: ParagraphNode&ViewModelNode, startIndex: number, context: HostContext) {
+  const atStart = startIndex === 0;
+  if (atStart) { swapNodes(node, newParagraph); }
+  else {
+    newParagraph.content = node.content.substring(startIndex);
+    node.content = node.content.substring(0, startIndex);
+  }
+  focusNode(context, newParagraph);
 }
 
 render(html`<test-host></test-host>`, document.body);
