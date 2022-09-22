@@ -12,3 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 export default window.TreeSitter;
+//# sourceMappingURL=tree-sitter.js.map

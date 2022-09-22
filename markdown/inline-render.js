@@ -510,3 +510,4 @@ function isFormatting(node) {
         'setext_h1_underline',
     ].includes(node.type);
 }
+//# sourceMappingURL=inline-render.js.map

@@ -110,3 +110,4 @@ function convertNode(node) {
             return undefined;
     }
 }
+//# sourceMappingURL=block-parser.js.map

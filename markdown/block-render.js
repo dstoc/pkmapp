@@ -154,3 +154,4 @@ MarkdownRenderer = __decorate([
     customElement('md-block-render')
 ], MarkdownRenderer);
 export { MarkdownRenderer };
+//# sourceMappingURL=block-render.js.map

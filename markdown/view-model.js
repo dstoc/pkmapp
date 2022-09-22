@@ -137,3 +137,4 @@ export class MarkdownTree {
         return result;
     }
 }
+//# sourceMappingURL=view-model.js.map

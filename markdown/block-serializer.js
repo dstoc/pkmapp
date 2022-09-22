@@ -92,3 +92,4 @@ export function serializeToString(node) {
     serialize(node, [], result);
     return result.join('');
 }
+//# sourceMappingURL=block-serializer.js.map

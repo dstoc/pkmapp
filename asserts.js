@@ -11,5 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-export {};
-//# sourceMappingURL=node.js.map
+export function assert(val) {
+    if (!val) {
+        throw new Error('assertion failed: ${val}');
+    }
+}
+export function cast(val) {
+    if (val === null || val === undefined) {
+        throw new Error('cast failed: ${val}');
+    }
+    return val;
+}
+//# sourceMappingURL=asserts.js.map

@@ -18,6 +18,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 import './markdown/block-render.js';
+import { assert, cast } from './asserts.js';
 import { contextProvider } from './deps/lit-labs-context.js';
 import { customElement, html, LitElement, property, query, render, } from './deps/lit.js';
 import { parseBlocks } from './markdown/block-parser.js';
@@ -98,6 +99,8 @@ let TestHost = class TestHost extends LitElement {
         this.load();
     }
     onInlineKeyDown({ detail: { inline, node, keyboardEvent }, }) {
+        if (!inline.node)
+            return;
         if (keyboardEvent.key === 'ArrowUp') {
             keyboardEvent.preventDefault();
             const result = inline.moveCaretUp();
@@ -133,6 +136,8 @@ let TestHost = class TestHost extends LitElement {
         normalizeTree(node.viewModel.tree);
     }
     onInlineInput({ detail: { inline, inputEvent, inputStart, inputEnd }, }) {
+        if (!inline.node)
+            return;
         let newText;
         let startIndex;
         let oldEndIndex;
@@ -160,7 +165,7 @@ let TestHost = class TestHost extends LitElement {
                             type: 'paragraph',
                             content: node.content,
                         });
-                        paragraph.viewModel.insertBefore(node.viewModel.parent, node);
+                        paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
                         node.viewModel.remove();
                         focusNode(this.hostContext, paragraph, 0);
                         return;
@@ -174,8 +179,8 @@ let TestHost = class TestHost extends LitElement {
                             if (maybeMergeContentInto(node, prev, this.hostContext))
                                 return;
                         }
-                        for (const child of [...ancestor.children]) {
-                            child.viewModel.insertBefore(ancestor.viewModel.parent, ancestor);
+                        for (const child of [...children(ancestor)]) {
+                            child.viewModel.insertBefore(cast(ancestor.viewModel.parent), ancestor);
                         }
                         ancestor.viewModel.remove();
                         focusNode(this.hostContext, node);
@@ -255,6 +260,8 @@ function maybeMergeContentInto(node, target, context) {
     return false;
 }
 function cleanupNode(node) {
+    if (!node)
+        return;
     if (node.type === 'block-quote' || node.type === 'heading' ||
         node.type === 'paragraph') {
         return;
@@ -273,7 +280,7 @@ function focusNode(context, node, offset) {
 function swapNodes(node1, node2) {
     const node1Parent = node1.viewModel.parent;
     const node1NextSibling = node1.viewModel.nextSibling;
-    node1.viewModel.insertBefore(node2.viewModel.parent, node2);
+    node1.viewModel.insertBefore(cast(node2.viewModel.parent), node2);
     node2.viewModel.insertBefore(node1Parent, node1NextSibling);
 }
 function* ancestors(node) {
@@ -335,7 +342,6 @@ function* dfs(node) {
 }
 function findAncestor(node, type) {
     const path = [node];
-    let ancestor = node;
     for (const ancestor of ancestors(node)) {
         if (ancestor.type === type)
             return {
@@ -348,17 +354,17 @@ function findAncestor(node, type) {
 }
 function unindent(node) {
     const { ancestor: listItem, path } = findAncestor(node, 'list-item');
-    if (!path)
+    if (!listItem || !path)
         return;
     const target = path[0];
     const nextSibling = listItem.viewModel.nextSibling;
     const list = listItem.viewModel.parent;
     const targetListItemSibling = list.viewModel.parent;
     if (targetListItemSibling?.type === 'list-item') {
-        listItem.viewModel.insertBefore(targetListItemSibling.viewModel.parent, targetListItemSibling.viewModel.nextSibling);
+        listItem.viewModel.insertBefore(cast(targetListItemSibling.viewModel.parent), targetListItemSibling.viewModel.nextSibling);
     }
     else {
-        target.viewModel.insertBefore(list.viewModel.parent, list.viewModel.nextSibling);
+        target.viewModel.insertBefore(cast(list.viewModel.parent), list.viewModel.nextSibling);
         listItem.viewModel.remove();
     }
     // Siblings of the undended list-item move to sublist.
@@ -382,7 +388,7 @@ function unindent(node) {
     // remaining siblings to the same level.
     if (listItem.children?.length && !listItem.viewModel.parent) {
         // TODO: move more than the first child.
-        listItem.viewModel.firstChild?.viewModel.insertBefore(target.viewModel.parent, target.viewModel.nextSibling);
+        listItem.viewModel.firstChild?.viewModel.insertBefore(cast(target.viewModel.parent), target.viewModel.nextSibling);
     }
     if (!list.children?.length) {
         list.viewModel.remove();
@@ -413,7 +419,7 @@ function indent(node) {
             type: 'list-item',
             marker: '* ',
         });
-        listItem.viewModel.insertBefore(target.viewModel.parent, target);
+        listItem.viewModel.insertBefore(cast(target.viewModel.parent), target);
         target.viewModel.insertBefore(listItem);
     }
     const listItemPreviousSibling = listItem.viewModel.previousSibling;
@@ -434,7 +440,7 @@ function indent(node) {
         const list = target.viewModel.tree.import({
             type: 'list',
         });
-        list.viewModel.insertBefore(listItem.viewModel.parent, listItem);
+        list.viewModel.insertBefore(cast(listItem.viewModel.parent), listItem);
         listItem.viewModel.insertBefore(list);
         // TODO: Merge this with any sibling lists.
     }
@@ -444,7 +450,7 @@ function insertSiblingParagraph(node, startIndex, context) {
         type: 'paragraph',
         content: '',
     });
-    newParagraph.viewModel.insertBefore(node.viewModel.parent, node.viewModel.nextSibling);
+    newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
     finishInsertParagraph(node, newParagraph, startIndex, context);
     return true;
 }
@@ -463,7 +469,7 @@ function insertParagraphInList(node, startIndex, context) {
             targetList = node.viewModel.tree.import({
                 type: 'list',
             });
-            targetList.viewModel.insertBefore(node.viewModel.parent, node.viewModel.nextSibling);
+            targetList.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
             targetListItemNextSibling = undefined;
         }
     }
@@ -535,14 +541,14 @@ function normalizeSection(node) {
         }
         else if (child.type === 'section') {
             // Sections can't contain other sections.
-            child.viewModel.insertBefore(node.viewModel.parent, node.viewModel.nextSibling);
+            child.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
         }
         else if (isFirstDocumentSection) {
             // First document section only optionally requires a heading.
             hasHeading = true;
         }
         else if (!hasHeading) {
-            child.viewModel.insertBefore(node.viewModel.parent, node.viewModel.nextSibling);
+            child.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
         }
     }
     if (hasHeading) {
@@ -557,12 +563,14 @@ function findNextDfs(node, predicate) {
         if (next !== node && predicate(next))
             return next;
     }
+    return null;
 }
 function findPreviousDfs(node, predicate) {
     for (const next of reverseDfs(node)) {
         if (next !== node && predicate(next))
             return next;
     }
+    return null;
 }
 function findChild(node, predicate) {
     let next = node.viewModel.firstChild;
@@ -573,6 +581,13 @@ function findChild(node, predicate) {
     }
     return null;
 }
+function* children(node) {
+    let next = node.viewModel.firstChild;
+    while (next) {
+        yield next;
+        next = next.viewModel.nextSibling;
+    }
+}
 function normalizeSections(node) {
     let section;
     do {
@@ -580,7 +595,7 @@ function normalizeSections(node) {
         if (!section)
             return;
     } while (!normalizeSection(section));
-    while (section.viewModel.nextSibling) {
+    while (section && section.viewModel.nextSibling) {
         const node = section.viewModel.nextSibling;
         if (node.type === 'section') {
             if (normalizeSection(node))
@@ -591,7 +606,8 @@ function normalizeSections(node) {
             section = node.viewModel.tree.import({
                 type: 'section',
             });
-            section.viewModel.insertBefore(node.viewModel.parent, node);
+            assert(section);
+            section.viewModel.insertBefore(cast(node.viewModel.parent), node);
             node.viewModel.insertBefore(section);
         }
         else {
@@ -614,3 +630,4 @@ function normalizeTree(tree) {
     // TODO: merge sibling lists
 }
 render(html `<test-host></test-host>`, document.body);
+//# sourceMappingURL=main.js.map
