@@ -136,6 +136,7 @@ let TestHost = class TestHost extends LitElement {
         normalizeTree(node.viewModel.tree);
     }
     onInlineInput({ detail: { inline, inputEvent, inputStart, inputEnd }, }) {
+        // TODO: Call normalizeTree at the right times
         if (!inline.node)
             return;
         let newText;
@@ -442,7 +443,6 @@ function indent(node) {
         });
         list.viewModel.insertBefore(cast(listItem.viewModel.parent), listItem);
         listItem.viewModel.insertBefore(list);
-        // TODO: Merge this with any sibling lists.
     }
 }
 function insertSiblingParagraph(node, startIndex, context) {
@@ -627,7 +627,17 @@ function normalizeTree(tree) {
     for (const node of dfs(tree.root)) {
         normalizeSections(node);
     }
-    // TODO: merge sibling lists
+    for (const node of dfs(tree.root)) {
+        if (node.type === 'list') {
+            while (node.viewModel.nextSibling?.type === 'list') {
+                let next = node.viewModel.nextSibling;
+                while (next.viewModel.firstChild) {
+                    next.viewModel.firstChild.viewModel.insertBefore(node);
+                }
+                next.viewModel.remove();
+            }
+        }
+    }
 }
 render(html `<test-host></test-host>`, document.body);
 //# sourceMappingURL=main.js.map
