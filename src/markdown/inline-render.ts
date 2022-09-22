@@ -68,7 +68,7 @@ declare global {
 
 @customElement('md-inline')
 export class MarkdownInline extends LitElement {
-  static get styles() {
+  static override get styles() {
     return [
       css`
         md-inline {
@@ -405,7 +405,7 @@ export class MarkdownSpan extends LitElement {
       composed: true,
     }));
   }
-  render() {
+  override render() {
     const node = this.node;
     if (!node) return html``;
     if (typeof node === 'string') {

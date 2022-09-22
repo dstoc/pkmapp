@@ -70,7 +70,7 @@ export class MarkdownBlock extends LitElement {
 
 @customElement('md-block-render')
 export class MarkdownRenderer extends LitElement {
-  static get styles() {
+  static override get styles() {
     return [
       ...MarkdownInline.styles,
       css`

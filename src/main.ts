@@ -14,6 +14,7 @@
 
 import './markdown/block-render.js';
 
+import {assert, cast} from './asserts.js';
 import {contextProvider} from './deps/lit-labs-context.js';
 import {customElement, html, LitElement, property, query, render,} from './deps/lit.js';
 import {parseBlocks} from './markdown/block-parser.js';
@@ -104,12 +105,13 @@ export class TestHost extends LitElement {
   onInlineKeyDown({
     detail: {inline, node, keyboardEvent},
   }: CustomEvent<InlineKeyDown>) {
+    if (!inline.node) return;
     if (keyboardEvent.key === 'ArrowUp') {
       keyboardEvent.preventDefault();
       const result = inline.moveCaretUp();
       if (result !== true) {
         const prev = findPreviousDfs(
-            node!,
+            node,
             ({type}) => ['paragraph', 'code-block', 'heading'].includes(type));
         if (prev) focusNode(this.hostContext, prev, -result);
       }
@@ -118,7 +120,7 @@ export class TestHost extends LitElement {
       const result = inline.moveCaretDown();
       if (result !== true) {
         const next = findNextDfs(
-            node!,
+            node,
             ({type}) => ['paragraph', 'code-block', 'heading'].includes(type));
         if (next) focusNode(this.hostContext, next, -result);
       }
@@ -139,6 +141,7 @@ export class TestHost extends LitElement {
   onInlineInput({
     detail: {inline, inputEvent, inputStart, inputEnd},
   }: CustomEvent<InlineInput>) {
+    if (!inline.node) return;
     let newText;
     let startIndex;
     let oldEndIndex;
@@ -164,7 +167,7 @@ export class TestHost extends LitElement {
               type: 'paragraph',
               content: node.content,
             });
-            paragraph.viewModel.insertBefore(node.viewModel.parent, node);
+            paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
             node.viewModel.remove();
             focusNode(this.hostContext, paragraph, 0);
             return;
@@ -178,8 +181,9 @@ export class TestHost extends LitElement {
             for (const prev of reverseDfs(node, ancestor)) {
               if (maybeMergeContentInto(node, prev, this.hostContext)) return;
             }
-            for (const child of [...ancestor.children]) {
-              child.viewModel.insertBefore(ancestor.viewModel.parent, ancestor);
+            for (const child of [...children(ancestor)]) {
+              child.viewModel.insertBefore(
+                  cast(ancestor.viewModel.parent), ancestor);
             }
             ancestor.viewModel.remove();
             focusNode(this.hostContext, node);
@@ -200,13 +204,17 @@ export class TestHost extends LitElement {
       newEndIndex = startIndex + newText.length;
     } else if (inputEvent.inputType === 'insertParagraph') {
       if (insertParagraphInList(
-              inline.node!, inputStart.index, this.hostContext)) {
+              inline.node, inputStart.index, this.hostContext)) {
         return;
       }
-      if (insertParagraphInSection(inline.node!, inputStart.index, this.hostContext)) return;
+      if (insertParagraphInSection(
+              inline.node, inputStart.index, this.hostContext))
+        return;
       return;
     } else if (inputEvent.inputType === 'insertLineBreak') {
-      if (insertSiblingParagraph(inline.node!, inputStart.index, this.hostContext)) return;
+      if (insertSiblingParagraph(
+              inline.node, inputStart.index, this.hostContext))
+        return;
       return;
     } else {
       console.log('unsupported inputType:', inputEvent.inputType);
@@ -240,6 +248,7 @@ function maybeMergeContentInto(
 }
 
 function cleanupNode(node?: ViewModelNode) {
+  if (!node) return;
   if (node.type === 'block-quote' || node.type === 'heading' ||
       node.type === 'paragraph') {
     return;
@@ -260,7 +269,7 @@ function focusNode(context: HostContext, node: ViewModelNode, offset?: number) {
 function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
   const node1Parent = node1.viewModel.parent!;
   const node1NextSibling = node1.viewModel.nextSibling;
-  node1.viewModel.insertBefore(node2.viewModel.parent!, node2);
+  node1.viewModel.insertBefore(cast(node2.viewModel.parent), node2);
   node2.viewModel.insertBefore(node1Parent, node1NextSibling);
 }
 
@@ -325,7 +334,6 @@ function* dfs(node: ViewModelNode) {
 
 function findAncestor(node: ViewModelNode, type: string) {
   const path = [node];
-  let ancestor: ViewModelNode|undefined = node;
   for (const ancestor of ancestors(node)) {
     if (ancestor.type === type)
       return {
@@ -339,18 +347,18 @@ function findAncestor(node: ViewModelNode, type: string) {
 
 function unindent(node: ViewModelNode) {
   const {ancestor: listItem, path} = findAncestor(node, 'list-item');
-  if (!path) return;
+  if (!listItem || !path) return;
   const target = path[0];
   const nextSibling = listItem.viewModel.nextSibling;
   const list = listItem.viewModel.parent!;
   const targetListItemSibling = list.viewModel.parent!;
   if (targetListItemSibling?.type === 'list-item') {
     listItem.viewModel.insertBefore(
-        targetListItemSibling.viewModel.parent!,
+        cast(targetListItemSibling.viewModel.parent),
         targetListItemSibling.viewModel.nextSibling);
   } else {
     target.viewModel.insertBefore(
-        list.viewModel.parent!, list.viewModel.nextSibling);
+        cast(list.viewModel.parent), list.viewModel.nextSibling);
     listItem.viewModel.remove();
   }
   // Siblings of the undended list-item move to sublist.
@@ -375,7 +383,7 @@ function unindent(node: ViewModelNode) {
   if (listItem.children?.length && !listItem.viewModel.parent) {
     // TODO: move more than the first child.
     listItem.viewModel.firstChild?.viewModel.insertBefore(
-        target.viewModel.parent!, target.viewModel.nextSibling);
+        cast(target.viewModel.parent), target.viewModel.nextSibling);
   }
   if (!list.children?.length) {
     list.viewModel.remove();
@@ -390,7 +398,7 @@ function indent(node: ViewModelNode) {
     }
     // Don't indent a section at the top level, unless we are inside a heading.
     if (ancestor.type === 'section' &&
-        ancestor.viewModel.parent.type == 'document') {
+        ancestor.viewModel.parent!.type == 'document') {
       if (target.type === 'heading') {
         target = ancestor;
       }
@@ -406,7 +414,7 @@ function indent(node: ViewModelNode) {
       type: 'list-item',
       marker: '* ',
     });
-    listItem.viewModel.insertBefore(target.viewModel.parent!, target);
+    listItem.viewModel.insertBefore(cast(target.viewModel.parent), target);
     target.viewModel.insertBefore(listItem);
   }
   const listItemPreviousSibling = listItem.viewModel.previousSibling;
@@ -425,7 +433,7 @@ function indent(node: ViewModelNode) {
     const list = target.viewModel.tree.import({
       type: 'list',
     });
-    list.viewModel.insertBefore(listItem.viewModel.parent!, listItem);
+    list.viewModel.insertBefore(cast(listItem.viewModel.parent), listItem);
     listItem.viewModel.insertBefore(list);
     // TODO: Merge this with any sibling lists.
   }
@@ -438,7 +446,7 @@ function insertSiblingParagraph(
     content: '',
   });
   newParagraph.viewModel.insertBefore(
-      node.viewModel.parent!, node.viewModel.nextSibling);
+      cast(node.viewModel.parent), node.viewModel.nextSibling);
   finishInsertParagraph(node, newParagraph, startIndex, context);
   return true;
 }
@@ -458,7 +466,7 @@ function insertParagraphInList(
         type: 'list',
       });
       targetList.viewModel.insertBefore(
-          node.viewModel.parent!, node.viewModel.nextSibling);
+          cast(node.viewModel.parent), node.viewModel.nextSibling);
       targetListItemNextSibling = undefined;
     }
   } else {
@@ -531,13 +539,13 @@ function normalizeSection(node: ViewModelNode) {
     } else if (child.type === 'section') {
       // Sections can't contain other sections.
       child.viewModel.insertBefore(
-          node.viewModel.parent, node.viewModel.nextSibling);
+          cast(node.viewModel.parent), node.viewModel.nextSibling);
     } else if (isFirstDocumentSection) {
       // First document section only optionally requires a heading.
       hasHeading = true;
     } else if (!hasHeading) {
       child.viewModel.insertBefore(
-          node.viewModel.parent, node.viewModel.nextSibling);
+          cast(node.viewModel.parent), node.viewModel.nextSibling);
     }
   }
   if (hasHeading) {
@@ -553,6 +561,7 @@ function findNextDfs(
   for (const next of dfs(node)) {
     if (next !== node && predicate(next)) return next;
   }
+  return null;
 }
 
 function findPreviousDfs(
@@ -560,6 +569,7 @@ function findPreviousDfs(
   for (const next of reverseDfs(node)) {
     if (next !== node && predicate(next)) return next;
   }
+  return null;
 }
 
 function findChild(
@@ -572,14 +582,22 @@ function findChild(
   return null;
 }
 
+function* children(node: ViewModelNode) {
+  let next = node.viewModel.firstChild;
+  while (next) {
+    yield next;
+    next = next.viewModel.nextSibling;
+  }
+}
+
 function normalizeSections(node: ViewModelNode) {
-  let section: ViewModelNode|undefined;
+  let section: ViewModelNode|null;
   do {
     section = findChild(node, ({type}) => type === 'section');
     if (!section) return;
   } while (!normalizeSection(section));
-  while (section.viewModel.nextSibling) {
-    const node = section.viewModel.nextSibling;
+  while (section && section.viewModel.nextSibling) {
+    const node: ViewModelNode = section.viewModel.nextSibling;
     if (node.type === 'section') {
       if (normalizeSection(node)) section = node;
     } else if (node.type === 'heading') {
@@ -587,7 +605,8 @@ function normalizeSections(node: ViewModelNode) {
       section = node.viewModel.tree.import({
         type: 'section',
       });
-      section.viewModel.insertBefore(node.viewModel.parent, node);
+      assert(section);
+      section.viewModel.insertBefore(cast(node.viewModel.parent), node);
       node.viewModel.insertBefore(section);
     } else {
       node.viewModel.insertBefore(section);

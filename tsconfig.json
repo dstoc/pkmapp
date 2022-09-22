@@ -9,12 +9,34 @@
     "module": "es2022",
     "moduleResolution": "node",
     "allowJs": true,
-    "experimentalDecorators": true,
     "outDir": "build",
-    "plugins": [{
+    "plugins": [
+      {
         "name": "ts-lit-plugin",
         "strict": true
-    }]
+      }
+    ],
+    "allowUnreachableCode": false,
+    "experimentalDecorators": true,
+    "inlineSources": true,
+    "noEmit": true,
+    "noEmitOnError": false,
+    "noErrorTruncation": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUnusedLocals": true,
+    "preserveConstEnums": false,
+    "skipDefaultLibCheck": true,
+    "sourceMap": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "stripInternal": true,
+    "useUnknownInCatchVariables": true
   },
   "include": [
     "src/**/*",
