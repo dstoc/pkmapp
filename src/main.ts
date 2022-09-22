@@ -141,6 +141,7 @@ export class TestHost extends LitElement {
   onInlineInput({
     detail: {inline, inputEvent, inputStart, inputEnd},
   }: CustomEvent<InlineInput>) {
+    // TODO: Call normalizeTree at the right times
     if (!inline.node) return;
     let newText;
     let startIndex;
@@ -435,7 +436,6 @@ function indent(node: ViewModelNode) {
     });
     list.viewModel.insertBefore(cast(listItem.viewModel.parent), listItem);
     listItem.viewModel.insertBefore(list);
-    // TODO: Merge this with any sibling lists.
   }
 }
 
@@ -626,8 +626,17 @@ function normalizeTree(tree: MarkdownTree) {
   for (const node of dfs(tree.root)) {
     normalizeSections(node);
   }
-
-  // TODO: merge sibling lists
+  for (const node of dfs(tree.root)) {
+    if (node.type === 'list') {
+      while (node.viewModel.nextSibling?.type === 'list') {
+        let next = node.viewModel.nextSibling;
+        while (next.viewModel.firstChild) {
+          next.viewModel.firstChild.viewModel.insertBefore(node);
+        }
+        next.viewModel.remove();
+      }
+    }
+  }
 }
 
 render(html`<test-host></test-host>`, document.body);
