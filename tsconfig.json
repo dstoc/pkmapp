@@ -10,16 +10,13 @@
     "moduleResolution": "node",
     "allowJs": true,
     "outDir": "build",
-    "plugins": [
-      {
+    "plugins": [{
         "name": "ts-lit-plugin",
         "strict": true
-      }
-    ],
+    }],
     "allowUnreachableCode": false,
     "experimentalDecorators": true,
     "inlineSources": true,
-    "noEmit": true,
     "noEmitOnError": false,
     "noErrorTruncation": false,
     "noFallthroughCasesInSwitch": true,
