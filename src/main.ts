@@ -599,7 +599,7 @@ function handleInlineInputAsBlockEdit({
   // TODO: Call normalizeTree at the right times
   if (!inline.node) return false;
   if (inputEvent.inputType === 'deleteContentBackward') {
-    if (inputStart.index !== 0 && inputEnd.index !== 0) return false;
+    if (inputStart.index !== 0 || inputEnd.index !== 0) return false;
     const node = inline.node;
     // Turn headings and code-blocks into paragraphs.
     if (node.type === 'heading' || node.type === 'code-block') {
