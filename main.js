@@ -135,10 +135,14 @@ let TestHost = class TestHost extends LitElement {
         }
         normalizeTree(node.viewModel.tree);
     }
-    onInlineInput({ detail: { inline, inputEvent, inputStart, inputEnd }, }) {
-        // TODO: Call normalizeTree at the right times
+    onInlineInput(event) {
+        const { detail: { inline, inputEvent, inputStart, inputEnd }, } = event;
         if (!inline.node)
             return;
+        if (handleInlineInputAsBlockEdit(event, this.hostContext)) {
+            normalizeTree(inline.node.viewModel.tree);
+            return;
+        }
         let newText;
         let startIndex;
         let oldEndIndex;
@@ -158,42 +162,6 @@ let TestHost = class TestHost extends LitElement {
                 newText = '';
             }
             else if (inputEvent.inputType === 'deleteContentBackward') {
-                if (inputStart.index === 0 && inputEnd.index === 0) {
-                    const node = inline.node;
-                    // Turn headings and code-blocks into paragraphs.
-                    if (node.type === 'heading' || node.type === 'code-block') {
-                        const paragraph = node.viewModel.tree.import({
-                            type: 'paragraph',
-                            content: node.content,
-                        });
-                        paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
-                        node.viewModel.remove();
-                        focusNode(this.hostContext, paragraph, 0);
-                        return;
-                    }
-                    // Remove a surrounding block-quote.
-                    const { ancestor } = findAncestor(node, 'block-quote');
-                    if (ancestor) {
-                        // Unless there's an earlier opportunity to merge into a previous
-                        // content node.
-                        for (const prev of reverseDfs(node, ancestor)) {
-                            if (maybeMergeContentInto(node, prev, this.hostContext))
-                                return;
-                        }
-                        for (const child of [...children(ancestor)]) {
-                            child.viewModel.insertBefore(cast(ancestor.viewModel.parent), ancestor);
-                        }
-                        ancestor.viewModel.remove();
-                        focusNode(this.hostContext, node);
-                        return;
-                    }
-                    // Merge into a previous content node.
-                    for (const prev of reverseDfs(node)) {
-                        if (maybeMergeContentInto(node, prev, this.hostContext))
-                            return;
-                    }
-                    return;
-                }
                 newText = '';
                 startIndex = Math.max(0, startIndex - 1);
             }
@@ -201,19 +169,6 @@ let TestHost = class TestHost extends LitElement {
                 newText = inputEvent.data ?? '';
             }
             newEndIndex = startIndex + newText.length;
-        }
-        else if (inputEvent.inputType === 'insertParagraph') {
-            if (insertParagraphInList(inline.node, inputStart.index, this.hostContext)) {
-                return;
-            }
-            if (insertParagraphInSection(inline.node, inputStart.index, this.hostContext))
-                return;
-            return;
-        }
-        else if (inputEvent.inputType === 'insertLineBreak') {
-            if (insertSiblingParagraph(inline.node, inputStart.index, this.hostContext))
-                return;
-            return;
         }
         else {
             console.log('unsupported inputType:', inputEvent.inputType);
@@ -520,6 +475,7 @@ function normalizeSection(node) {
     const isFirstDocumentSection = node.viewModel.parent?.type === 'document' &&
         node.viewModel.parent.viewModel.firstChild === node;
     let next = node.viewModel.firstChild;
+    const sectionNextSibling = node.viewModel.nextSibling;
     let hasHeading = false;
     while (next) {
         const child = next;
@@ -541,14 +497,14 @@ function normalizeSection(node) {
         }
         else if (child.type === 'section') {
             // Sections can't contain other sections.
-            child.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
+            child.viewModel.insertBefore(cast(node.viewModel.parent), sectionNextSibling);
         }
         else if (isFirstDocumentSection) {
             // First document section only optionally requires a heading.
             hasHeading = true;
         }
         else if (!hasHeading) {
-            child.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
+            child.viewModel.insertBefore(cast(node.viewModel.parent), sectionNextSibling);
         }
     }
     if (hasHeading) {
@@ -638,6 +594,55 @@ function normalizeTree(tree) {
             }
         }
     }
+}
+function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart, inputEnd }, }, context) {
+    // TODO: Call normalizeTree at the right times
+    if (!inline.node)
+        return false;
+    if (inputEvent.inputType === 'deleteContentBackward') {
+        if (inputStart.index !== 0 && inputEnd.index !== 0)
+            return false;
+        const node = inline.node;
+        // Turn headings and code-blocks into paragraphs.
+        if (node.type === 'heading' || node.type === 'code-block') {
+            const paragraph = node.viewModel.tree.import({
+                type: 'paragraph',
+                content: node.content,
+            });
+            paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
+            node.viewModel.remove();
+            focusNode(context, paragraph, 0);
+            return true;
+        }
+        // Remove a surrounding block-quote.
+        const { ancestor } = findAncestor(node, 'block-quote');
+        if (ancestor) {
+            // Unless there's an earlier opportunity to merge into a previous
+            // content node.
+            for (const prev of reverseDfs(node, ancestor)) {
+                if (maybeMergeContentInto(node, prev, context))
+                    return true;
+            }
+            for (const child of [...children(ancestor)]) {
+                child.viewModel.insertBefore(cast(ancestor.viewModel.parent), ancestor);
+            }
+            ancestor.viewModel.remove();
+            focusNode(context, node);
+            return true;
+        }
+        // Merge into a previous content node.
+        for (const prev of reverseDfs(node)) {
+            if (maybeMergeContentInto(node, prev, context))
+                return true;
+        }
+    }
+    else if (inputEvent.inputType === 'insertParagraph') {
+        return insertParagraphInList(inline.node, inputStart.index, context) || insertParagraphInSection(inline.node, inputStart.index, context);
+    }
+    else if (inputEvent.inputType === 'insertLineBreak') {
+        return insertSiblingParagraph(inline.node, inputStart.index, context);
+    }
+    return false;
 }
 render(html `<test-host></test-host>`, document.body);
 //# sourceMappingURL=main.js.map
