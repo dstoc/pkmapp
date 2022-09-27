@@ -182,7 +182,10 @@ export class TestHost extends LitElement {
       newEndIndex,
     };
 
-    inline.edit(edit, true);
+    inline.node.viewModel.edit(edit);
+    // TODO: fix focus when edit mutates blocks
+    this.hostContext.focusNode = inline.node;
+    this.hostContext.focusOffset = newEndIndex;
   }
 }
 
@@ -461,6 +464,7 @@ function finishInsertParagraph(
   const atStart = startIndex === 0;
   if (atStart) { swapNodes(node, newParagraph); }
   else {
+    // TODO: detect new blocks caused by this edit
     newParagraph.content = node.content.substring(startIndex);
     node.content = node.content.substring(0, startIndex);
   }

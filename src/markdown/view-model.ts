@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type {MarkdownNode} from './node.js';
+import type {MarkdownNode, InlineNode} from './node.js';
+
+import {parser} from './inline-parser.js';
+import Parser from 'web-tree-sitter';
 
 class Observe<T> {
   private observers = new Set<(target: T) => void>();
@@ -111,6 +114,36 @@ class ViewModel {
   }
 }
 
+export class InlineViewModel extends ViewModel {
+  constructor(
+      self: InlineNode&ViewModelNode, tree: MarkdownTree,
+      parent?: ViewModelNode, childIndex?: number) {
+    super(self, tree, parent, childIndex);
+    this.inlineTree = parser.parse(self.content);
+  }
+  inlineTree: Parser.Tree;
+  override self!: InlineNode&ViewModelNode;
+  edit({startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit) {
+    const oldText = this.self.content.substring(startIndex, oldEndIndex);
+    const result = {
+      oldText,
+      newText,
+      startIndex,
+      startPosition: indexToPosition(this.self.content, startIndex),
+      oldEndIndex,
+      oldEndPosition: indexToPosition(this.self.content, oldEndIndex),
+      newEndIndex,
+      newEndPosition: indexToPosition(this.self.content, newEndIndex),
+    };
+
+    this.self.content = apply(this.self.content, result);
+    this.tree.observe.notify();
+    this.inlineTree = this.inlineTree!.edit(result);
+    this.inlineTree = parser.parse(this.self.content, this.inlineTree);
+    this.observe.notify();
+  }
+}
+
 export class MarkdownTree {
   constructor(root: MarkdownNode) {
     this.root = this.addDom<MarkdownNode>(root);
@@ -131,7 +164,11 @@ export class MarkdownTree {
     childIndex?: number
   ) {
     const result = node as T&ViewModelNode;
+    if ('content' in result) {
+    result.viewModel = new InlineViewModel(result, this, parent, childIndex);
+    } else {
     result.viewModel = new ViewModel(result, this, parent, childIndex);
+    }
     if (result.children) {
     for (let i = 0; i < result.children.length; i++) {
       this.addDom(result.children[i], result, i);
@@ -158,3 +195,50 @@ export type ViewModelNode = MarkdownNode&{
   viewModel: ViewModel;
   children?: ViewModelNode[];
 };
+
+export type InlineViewModelNode = InlineNode&{
+  viewModel: InlineViewModel;
+  children?: ViewModelNode[];
+};
+
+interface Position {
+  row: number;
+  column: number;
+}
+
+function indexToPosition(text: string, index: number): Position {
+  let row = 1;
+  let column = 1;
+  for (let i = 0; i < index; i++) {
+    if (text[i] === '\n') {
+      row++;
+      column = 1;
+    } else {
+      column++;
+    }
+  }
+  return {row, column};
+}
+
+interface Edit {
+  startIndex: number;
+  startPosition: Position;
+  newEndIndex: number;
+  newEndPosition: Position;
+  oldEndIndex: number;
+  oldEndPosition: Position;
+  newText?: string;
+}
+
+function apply(text: string, edit: Edit) {
+  return (
+      text.substring(0, edit.startIndex) + (edit.newText ?? '') +
+      text.substring(edit.oldEndIndex));
+}
+
+interface InlineEdit {
+  newText: string;
+  startIndex: number;
+  oldEndIndex: number;
+  newEndIndex: number;
+}
