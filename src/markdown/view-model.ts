@@ -14,8 +14,10 @@
 
 import type {MarkdownNode, InlineNode} from './node.js';
 
-import {parser} from './inline-parser.js';
+import {parser as inlineParser} from './inline-parser.js';
+import {parseBlocks} from './block-parser.js';
 import Parser from 'web-tree-sitter';
+import {assert, cast} from '../asserts.js';
 
 class Observe<T> {
   private observers = new Set<(target: T) => void>();
@@ -119,7 +121,7 @@ export class InlineViewModel extends ViewModel {
       self: InlineNode&ViewModelNode, tree: MarkdownTree,
       parent?: ViewModelNode, childIndex?: number) {
     super(self, tree, parent, childIndex);
-    this.inlineTree = parser.parse(self.content);
+    this.inlineTree = inlineParser.parse(self.content);
   }
   inlineTree: Parser.Tree;
   override self!: InlineNode&ViewModelNode;
@@ -137,12 +139,42 @@ export class InlineViewModel extends ViewModel {
     };
 
     this.self.content = apply(this.self.content, result);
+    if (this.maybeReplaceWithBlocks()) return;
     this.tree.observe.notify();
     this.inlineTree = this.inlineTree!.edit(result);
-    this.inlineTree = parser.parse(this.self.content, this.inlineTree);
+    this.inlineTree = inlineParser.parse(this.self.content, this.inlineTree);
     this.observe.notify();
   }
+  private maybeReplaceWithBlocks() {
+    const blocks = this.parseAsBlocks(this.self.content);
+    if (!blocks) return false;
+    for (const child of blocks) {
+      const node = this.tree.import<MarkdownNode>(child);
+      node.viewModel.insertBefore(cast(this.parent), this.nextSibling);
+    }
+    this.remove();
+    return true;
+  }
+  private parseAsBlocks() {
+    // TODO: Ensure there's a trailing new line.
+    // TODO: Have a fast path to early exit without invoking the parser.
+    if (this.self.type !== 'paragraph') return;
+    const node = parseBlocks(this.self.content + '\n');
+    assert(node);
+    assert(node.type === 'document' && node.children);
+    if (node.children.length > 1) {
+      return node.children;
+    }
+    const section = node.children[0];
+    assert(section.type === 'section' && section.children);
+    if (section.children.length > 1 ||
+        section.children[0].type !== this.self.type) {
+      return section.children;
+    }
+    return;
+  }
 }
+
 
 export class MarkdownTree {
   constructor(root: MarkdownNode) {

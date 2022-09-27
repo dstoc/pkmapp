@@ -23,7 +23,7 @@ import {serializeToString} from './markdown/block-serializer.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
 import {InlineNode, ParagraphNode} from './markdown/node.js';
-import {MarkdownTree, ViewModelNode} from './markdown/view-model.js';
+import {InlineViewModel, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 
 function debounce(f: () => void) {
   let scheduled = false;
@@ -195,7 +195,12 @@ function maybeMergeContentInto(
   if (target.type === 'code-block' || target.type === 'paragraph' ||
       target.type === 'heading') {
     focusNode(context, target, target.content.length);
-    target.content += node.content;
+    (target.viewModel as InlineViewModel).edit({
+      startIndex: target.content.length,
+      oldEndIndex: target.content.length,
+      newEndIndex: target.content.length + node.content.length,
+      newText: node.content,
+    });
     let parent = node.viewModel.parent;
     node.viewModel.remove();
     cleanupNode(parent);
@@ -464,9 +469,20 @@ function finishInsertParagraph(
   const atStart = startIndex === 0;
   if (atStart) { swapNodes(node, newParagraph); }
   else {
-    // TODO: detect new blocks caused by this edit
-    newParagraph.content = node.content.substring(startIndex);
-    node.content = node.content.substring(0, startIndex);
+    (newParagraph.viewModel as InlineViewModel).edit({
+      startIndex: 0,
+      newEndIndex: 0,
+      oldEndIndex: 0,
+      newText: node.content.substring(startIndex)
+    });
+
+
+    (node.viewModel as InlineViewModel).edit({
+      startIndex,
+      oldEndIndex: node.content.length,
+      newEndIndex: startIndex,
+      newText: '',
+    });
   }
   focusNode(context, newParagraph);
 }
@@ -609,7 +625,7 @@ function handleInlineInputAsBlockEdit({
     if (node.type === 'heading' || node.type === 'code-block') {
       const paragraph = node.viewModel.tree.import({
         type: 'paragraph',
-        content: node.content,
+        content: node.content,  // TODO: detect new blocks
       });
       paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
       node.viewModel.remove();

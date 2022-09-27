@@ -131,7 +131,6 @@ export class MarkdownInline extends LitElement {
   @property({type: Boolean, reflect: true}) active = false;
   hasFocus = false;
 
-  // TODO: Replace with a sequence number.
   override render() {
     if (!this.node) return;
     return html`<md-span
