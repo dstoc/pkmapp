@@ -20,12 +20,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var MarkdownInline_1;
 import { contextProvided } from '../deps/lit-labs-context.js';
 import { css, customElement, html, LitElement, property, repeat, } from '../deps/lit.js';
-import Parser from '../deps/tree-sitter.js';
 import { hostContext } from './host-context.js';
-await Parser.init();
-const blocks = await Parser.Language.load('tree-sitter-markdown_inline.wasm');
-const parser = new Parser();
-parser.setLanguage(blocks);
 let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement {
     constructor() {
         super();
@@ -105,20 +100,12 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
       `,
         ];
     }
+    // TODO: Replace with a sequence number.
     render() {
         if (!this.node)
             return;
-        if (this.node !== this.lastNode) {
-            this.tree = undefined;
-        }
-        if (this.content !== this.node.content) {
-            this.tree = undefined;
-            this.content = this.node.content;
-        }
-        this.lastNode = this.node;
-        this.tree = parser.parse(this.node.content, this.tree);
         return html `<md-span
-      .node=${this.tree.rootNode}
+      .node=${this.node.viewModel.inlineTree.rootNode}
       .active=${this.active}
     ></md-span>`;
     }
@@ -241,30 +228,6 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         selection.modify('move', 'forward', 'line');
         const { start: result } = MarkdownInline_1.getSelectionRange(selection);
         return result.index > lineEnd.index || offsetStart.index - lineStart.index;
-    }
-    edit({ startIndex, newEndIndex, oldEndIndex, newText }, setFocus) {
-        if (!this.node)
-            throw new Error('no node');
-        const oldText = this.node.content.substring(startIndex, oldEndIndex);
-        const result = {
-            oldText,
-            newText,
-            startIndex,
-            startPosition: indexToPosition(this.node.content, startIndex),
-            oldEndIndex,
-            oldEndPosition: indexToPosition(this.node.content, oldEndIndex),
-            newEndIndex,
-            newEndPosition: indexToPosition(this.node.content, newEndIndex),
-        };
-        this.node.content = apply(this.node.content, result);
-        this.content = this.node.content;
-        this.node.viewModel.tree.observe.notify();
-        this.tree = this.tree.edit(result);
-        this.requestUpdate();
-        if (setFocus && this.hostContext) {
-            this.hostContext.focusNode = this.node;
-            this.hostContext.focusOffset = newEndIndex;
-        }
     }
     getSelection() {
         const selection = this.getRootNode().getSelection();
@@ -477,24 +440,6 @@ function* childNodes(node) {
             yield node;
         } while (next(node.nextSibling));
     }
-}
-function indexToPosition(text, index) {
-    let row = 1;
-    let column = 1;
-    for (let i = 0; i < index; i++) {
-        if (text[i] === '\n') {
-            row++;
-            column = 1;
-        }
-        else {
-            column++;
-        }
-    }
-    return { row, column };
-}
-function apply(text, edit) {
-    return (text.substring(0, edit.startIndex) + (edit.newText ?? '') +
-        text.substring(edit.oldEndIndex));
 }
 function isFormatting(node) {
     return [

@@ -180,7 +180,10 @@ let TestHost = class TestHost extends LitElement {
             oldEndIndex,
             newEndIndex,
         };
-        inline.edit(edit, true);
+        inline.node.viewModel.edit(edit);
+        // TODO: fix focus when edit mutates blocks
+        this.hostContext.focusNode = inline.node;
+        this.hostContext.focusOffset = newEndIndex;
     }
 };
 __decorate([
@@ -466,6 +469,7 @@ function finishInsertParagraph(node, newParagraph, startIndex, context) {
         swapNodes(node, newParagraph);
     }
     else {
+        // TODO: detect new blocks caused by this edit
         newParagraph.content = node.content.substring(startIndex);
         node.content = node.content.substring(0, startIndex);
     }
@@ -600,7 +604,7 @@ function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart
     if (!inline.node)
         return false;
     if (inputEvent.inputType === 'deleteContentBackward') {
-        if (inputStart.index !== 0 && inputEnd.index !== 0)
+        if (inputStart.index !== 0 || inputEnd.index !== 0)
             return false;
         const node = inline.node;
         // Turn headings and code-blocks into paragraphs.

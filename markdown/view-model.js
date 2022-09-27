@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+import { parser } from './inline-parser.js';
 class Observe {
     constructor(target) {
         this.target = target;
@@ -107,6 +108,30 @@ class ViewModel {
         this.tree.observe.notify();
     }
 }
+export class InlineViewModel extends ViewModel {
+    constructor(self, tree, parent, childIndex) {
+        super(self, tree, parent, childIndex);
+        this.inlineTree = parser.parse(self.content);
+    }
+    edit({ startIndex, newEndIndex, oldEndIndex, newText }) {
+        const oldText = this.self.content.substring(startIndex, oldEndIndex);
+        const result = {
+            oldText,
+            newText,
+            startIndex,
+            startPosition: indexToPosition(this.self.content, startIndex),
+            oldEndIndex,
+            oldEndPosition: indexToPosition(this.self.content, oldEndIndex),
+            newEndIndex,
+            newEndPosition: indexToPosition(this.self.content, newEndIndex),
+        };
+        this.self.content = apply(this.self.content, result);
+        this.tree.observe.notify();
+        this.inlineTree = this.inlineTree.edit(result);
+        this.inlineTree = parser.parse(this.self.content, this.inlineTree);
+        this.observe.notify();
+    }
+}
 export class MarkdownTree {
     constructor(root) {
         this.observe = new Observe(this);
@@ -120,7 +145,12 @@ export class MarkdownTree {
     }
     addDom(node, parent, childIndex) {
         const result = node;
-        result.viewModel = new ViewModel(result, this, parent, childIndex);
+        if ('content' in result) {
+            result.viewModel = new InlineViewModel(result, this, parent, childIndex);
+        }
+        else {
+            result.viewModel = new ViewModel(result, this, parent, childIndex);
+        }
         if (result.children) {
             for (let i = 0; i < result.children.length; i++) {
                 this.addDom(result.children[i], result, i);
@@ -136,5 +166,23 @@ export class MarkdownTree {
         result.children = node.children?.map(this.serialize);
         return result;
     }
+}
+function indexToPosition(text, index) {
+    let row = 1;
+    let column = 1;
+    for (let i = 0; i < index; i++) {
+        if (text[i] === '\n') {
+            row++;
+            column = 1;
+        }
+        else {
+            column++;
+        }
+    }
+    return { row, column };
+}
+function apply(text, edit) {
+    return (text.substring(0, edit.startIndex) + (edit.newText ?? '') +
+        text.substring(edit.oldEndIndex));
 }
 //# sourceMappingURL=view-model.js.map
