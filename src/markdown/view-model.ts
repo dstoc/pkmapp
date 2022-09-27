@@ -146,7 +146,7 @@ export class InlineViewModel extends ViewModel {
     this.observe.notify();
   }
   private maybeReplaceWithBlocks() {
-    const blocks = this.parseAsBlocks(this.self.content);
+    const blocks = this.parseAsBlocks();
     if (!blocks) return false;
     for (const child of blocks) {
       const node = this.tree.import<MarkdownNode>(child);
