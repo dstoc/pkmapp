@@ -100,7 +100,6 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
       `,
         ];
     }
-    // TODO: Replace with a sequence number.
     render() {
         if (!this.node)
             return;

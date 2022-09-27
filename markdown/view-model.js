@@ -11,7 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { parser } from './inline-parser.js';
+import { parser as inlineParser } from './inline-parser.js';
+import { parseBlocks } from './block-parser.js';
+import { assert, cast } from '../asserts.js';
 class Observe {
     constructor(target) {
         this.target = target;
@@ -111,7 +113,7 @@ class ViewModel {
 export class InlineViewModel extends ViewModel {
     constructor(self, tree, parent, childIndex) {
         super(self, tree, parent, childIndex);
-        this.inlineTree = parser.parse(self.content);
+        this.inlineTree = inlineParser.parse(self.content);
     }
     edit({ startIndex, newEndIndex, oldEndIndex, newText }) {
         const oldText = this.self.content.substring(startIndex, oldEndIndex);
@@ -126,10 +128,42 @@ export class InlineViewModel extends ViewModel {
             newEndPosition: indexToPosition(this.self.content, newEndIndex),
         };
         this.self.content = apply(this.self.content, result);
+        if (this.maybeReplaceWithBlocks())
+            return;
         this.tree.observe.notify();
         this.inlineTree = this.inlineTree.edit(result);
-        this.inlineTree = parser.parse(this.self.content, this.inlineTree);
+        this.inlineTree = inlineParser.parse(this.self.content, this.inlineTree);
         this.observe.notify();
+    }
+    maybeReplaceWithBlocks() {
+        const blocks = this.parseAsBlocks();
+        if (!blocks)
+            return false;
+        for (const child of blocks) {
+            const node = this.tree.import(child);
+            node.viewModel.insertBefore(cast(this.parent), this.nextSibling);
+        }
+        this.remove();
+        return true;
+    }
+    parseAsBlocks() {
+        // TODO: Ensure there's a trailing new line.
+        // TODO: Have a fast path to early exit without invoking the parser.
+        if (this.self.type !== 'paragraph')
+            return;
+        const node = parseBlocks(this.self.content + '\n');
+        assert(node);
+        assert(node.type === 'document' && node.children);
+        if (node.children.length > 1) {
+            return node.children;
+        }
+        const section = node.children[0];
+        assert(section.type === 'section' && section.children);
+        if (section.children.length > 1 ||
+            section.children[0].type !== this.self.type) {
+            return section.children;
+        }
+        return;
     }
 }
 export class MarkdownTree {
