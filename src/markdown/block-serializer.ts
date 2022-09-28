@@ -37,10 +37,13 @@ function serializeBlocks(
   let first = true;
   for (const block of blocks) {
     if (!first && separator.length) {
-      for (const indent of indents) {
-        result.push(indent.next().value);
+      const nextSeparator = separator(block);
+      if (nextSeparator !== '') {
+        for (const indent of indents) {
+          result.push(indent.next().value);
+        }
       }
-      result.push(separator(block));
+      result.push(nextSeparator);
     }
     first = false;
     serialize(block, indents, result);
@@ -62,7 +65,7 @@ function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
   if (node.type === 'list-item') {
     indents = [...indents, onceThenWhitespace(node.marker)];
     separator = (node: MarkdownNode) => {
-      if (node.type === 'list-item') return '';
+      if (node.type === 'list-item' || node.type === 'list') return '';
       return '\n';
     };
   } else if (node.type === 'block-quote') {
