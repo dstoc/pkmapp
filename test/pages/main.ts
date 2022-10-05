@@ -34,7 +34,7 @@ export class Main extends Page {
 
 export class FileSystem {
   async getFile(fileName: string): Promise<string> {
-    return await browser.executeAsyncScript(`
+    const result = await browser.executeAsyncScript(`
       const [fileName, callback] = arguments;
       (async () => {
         try {
@@ -44,14 +44,20 @@ export class FileSystem {
           const decoder = new TextDecoder();
           callback(decoder.decode(await file.arrayBuffer()));
         } catch (e) {
-          callback(e);
+          callback({
+            message: e.message,
+            stack: e.stack,
+          });
         }
       })();
     `, [fileName]);
-
+    if (typeof result === 'string') return result;
+    const error = new Error(result.message);
+    error.stack = result.stack;
+    throw error;
   }
   async setFile(fileName: string, content: string): Promise<string> {
-    return await browser.executeAsyncScript(`
+    const result = await browser.executeAsyncScript(`
       const [fileName, content, callback] = arguments;
       (async () => {
         try {
@@ -60,11 +66,18 @@ export class FileSystem {
           const stream = await handle.createWritable();
           await stream.write(content);
           await stream.close();
-          callback();
+          callback('');
         } catch (e) {
-          callback(e);
+          callback({
+            message: e.message,
+            stack: e.stack,
+          });
         }
       })();
     `, [fileName, content]);
+    if (typeof result === 'string') return;
+    const error = new Error(result.message);
+    error.stack = result.stack;
+    throw error;
   }
 }

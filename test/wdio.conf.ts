@@ -38,6 +38,7 @@ export const config: Options.Testrunner = {
     }],
     // Level of logging verbosity: trace | debug | info | warn | error | silent
     logLevel: 'warn',
+    outputDir: 'test/logs',
     bail: 0,
     baseUrl: 'http://localhost:8001',
     waitforTimeout: 10000,

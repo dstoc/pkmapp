@@ -12,7 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {getOriginPrivateDirectory} from 'https://cdn.jsdelivr.net/npm/native-file-system-adapter/mod.js'
-window.showDirectoryPicker = () => {
-  return getOriginPrivateDirectory(import('https://cdn.jsdelivr.net/npm/native-file-system-adapter/src/adapters/memory.js'));
+let used = false;
+
+window.showDirectoryPicker = async () => {
+  const root = await navigator.storage.getDirectory();
+
+  if (!used) {
+    used = true;
+    for await (const name of root.keys()) {
+      await root.removeEntry(name, {recursive: true}); 
+    }
+  }
+  return root.getDirectoryHandle(`tmp`, {create: true});
 };
