@@ -115,7 +115,10 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
             this.addObserver(this.node);
         }
     }
-    async updated() {
+    updated() {
+        this.maybeSetFocus();
+    }
+    async maybeSetFocus() {
         if (this.hostContext?.focusNode !== this.node)
             return;
         // TODO: What are we waiting for?
@@ -156,8 +159,11 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
                 }
             }
         }
-        this.hostContext.focusNode = undefined;
-        this.hostContext.focusOffset = undefined;
+        // TODO: Avoid this by always maintaining accurate values?
+        setTimeout(() => {
+            this.hostContext.focusNode = undefined;
+            this.hostContext.focusOffset = undefined;
+        });
     }
     createRenderRoot() {
         return this;
