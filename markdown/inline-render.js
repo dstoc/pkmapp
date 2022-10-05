@@ -115,56 +115,49 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
             this.addObserver(this.node);
         }
     }
-    updated() {
-        if (this.hostContext?.focusNode === this.node) {
-            setTimeout(() => {
-                if (this.hostContext?.focusNode !== this.node)
-                    return;
-                if (!this.isConnected)
-                    return;
-                const selection = this.getRootNode().getSelection();
-                const range = document.createRange();
-                range.setStart(this, 0);
-                selection.removeAllRanges();
-                selection.addRange(range);
-                this.active = true;
-            });
-            setTimeout(() => {
-                if (this.hostContext?.focusNode !== this.node)
-                    return;
-                if (!this.isConnected)
-                    return;
-                const selection = this.getRootNode().getSelection();
-                let focusOffset = this.hostContext?.focusOffset;
-                if (focusOffset !== undefined) {
-                    if (focusOffset < 0 || Object.is(focusOffset, -0)) {
-                        let index = NaN;
-                        let last = NaN;
-                        do {
-                            last = index;
-                            selection.modify('move', 'forward', 'line');
-                            ({
-                                start: { index },
-                            } = MarkdownInline_1.getSelectionRange(selection));
-                        } while (index !== last);
-                        selection.modify('move', 'backward', 'lineboundary');
-                        focusOffset = -focusOffset;
-                    }
-                    if (focusOffset === Infinity) {
-                        selection.modify('move', 'forward', 'lineboundary');
-                    }
-                    else {
-                        // TODO: Check for overrun first line, but note that this conflicts
-                        // with the edit/setFocus case.
-                        for (let i = 0; i < focusOffset; i++) {
-                            selection.modify('move', 'forward', 'character');
-                        }
-                    }
+    async updated() {
+        if (this.hostContext?.focusNode !== this.node)
+            return;
+        // TODO: What are we waiting for?
+        await 0;
+        if (this.hostContext?.focusNode !== this.node)
+            return;
+        if (!this.isConnected)
+            return;
+        const selection = this.getRootNode().getSelection();
+        const range = document.createRange();
+        range.setStart(this, 0);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        this.active = true;
+        let focusOffset = this.hostContext?.focusOffset;
+        if (focusOffset !== undefined) {
+            if (focusOffset < 0 || Object.is(focusOffset, -0)) {
+                let index = NaN;
+                let last = NaN;
+                do {
+                    last = index;
+                    selection.modify('move', 'forward', 'line');
+                    ({
+                        start: { index },
+                    } = MarkdownInline_1.getSelectionRange(selection));
+                } while (index !== last);
+                selection.modify('move', 'backward', 'lineboundary');
+                focusOffset = -focusOffset;
+            }
+            if (focusOffset === Infinity) {
+                selection.modify('move', 'forward', 'lineboundary');
+            }
+            else {
+                // TODO: Check for overrun first line, but note that this conflicts
+                // with the edit/setFocus case.
+                for (let i = 0; i < focusOffset; i++) {
+                    selection.modify('move', 'forward', 'character');
                 }
-                this.hostContext.focusNode = undefined;
-                this.hostContext.focusOffset = undefined;
-            });
+            }
         }
+        this.hostContext.focusNode = undefined;
+        this.hostContext.focusOffset = undefined;
     }
     createRenderRoot() {
         return this;
