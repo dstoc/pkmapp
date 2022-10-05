@@ -145,7 +145,10 @@ export class MarkdownInline extends LitElement {
       this.addObserver(this.node);
     }
   }
-  override async updated() {
+  override updated() {
+    this.maybeSetFocus();
+  }
+  async maybeSetFocus() {
     if (this.hostContext?.focusNode !== this.node) return;
     // TODO: What are we waiting for?
     await 0;
@@ -182,8 +185,11 @@ export class MarkdownInline extends LitElement {
         }
       }
     }
-    this.hostContext!.focusNode = undefined;
-    this.hostContext!.focusOffset = undefined;
+    // TODO: Avoid this by always maintaining accurate values?
+    setTimeout(() => {
+      this.hostContext!.focusNode = undefined;
+      this.hostContext!.focusOffset = undefined;
+    });
   }
   protected override createRenderRoot() {
     return this;
