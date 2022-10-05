@@ -43,15 +43,15 @@ let TestHost = class TestHost extends LitElement {
     render() {
         if (!this.directory) {
             return html `
-        <button @click=${this.ensureDirectory}>
+        <button id=opendir @click=${this.ensureDirectory}>
           Open directory...
         </button>
       `;
         }
         return html `
     <input type=text value="test.md"></input>
-    <button @click=${this.load}>Load</button>
-    <button @click=${this.save}>Save</button>
+    <button id=load @click=${this.load}>Load</button>
+    <button id=save @click=${this.save}>Save</button>
     <br>
     <md-block-render
       .block=${this.tree?.root}
