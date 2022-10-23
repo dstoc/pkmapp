@@ -55,42 +55,44 @@ const expectedWhitespaceVariants = {
   32: true,
 };
 
-describe('github flavored markdown', () => {
-  let tests = [];
-  let main: Main;
-  let fs: FileSystem;
-  afterEach(async () => {
-    expect(await browser.getLogs('browser')).toEqual([]);
-  });
-  beforeAll(async () => {
-    tests = await getTests();
-    tests.unshift(null);
-    expect(tests.length).toEqual(677);
-    main = await new Main().load();
-    fs = await main.fileSystem;
-    await main.opendirButton.click();
-    await browser.waitUntil(main.fileInput.isExisting);
-  });
-  for (let i = 1; i < 678; i++) {
-    it(`can ${expectedFailures[i] !== undefined ? '(not) ' : ''}roundtrip https://github.github.com/gfm/#example-${i}`, async () => {
-      const content = tests[i].content.trim() + '\n';
-      await fs.setFile('test.md', content);
-      await main.loadButton.click();
-      expect(await main.status('loaded', 'error')).toEqual('loaded');
-      await main.saveButton.click();
-      const result = await fs.getFile('test.md');
-      const resultv = result.replace(/\s+/g, '');
-      const contentv = content.replace(/\s+/g, '');
-      // Alternatively, remove leading/trailing whitespace, collapse remanining to \n or ' '.
-      // But this only produces a handful of new normalization failures.
-      // const resultv = result.replace(/\s*\n\s*/gs, '\n').replace(/[ \t]+/g, ' ');
-      // const contentv = content.replace(/\s*\n\s*/gs, '\n').replace(/[ \t]+/g, ' ');
-      if (expectedFailures[i] !== undefined) {
-        expect(resultv).not.toEqual(contentv);
-        expect(result).toContain(expectedFailures[i]);
-      } else {
-        if (resultv !== contentv) expect(resultv).toEqual(content);
-      }
+export function runTests(start=1, limit=678) {
+  describe('github flavored markdown', () => {
+    let tests = [];
+    let main: Main;
+    let fs: FileSystem;
+    afterEach(async () => {
+      expect(await browser.getLogs('browser')).toEqual([]);
     });
-  }
-});
+    beforeAll(async () => {
+      tests = await getTests();
+      tests.unshift(null);
+      expect(tests.length).toEqual(677);
+      main = await new Main().load();
+      fs = await main.fileSystem;
+      await main.opendirButton.click();
+      await browser.waitUntil(main.fileInput.isExisting);
+    });
+    for (let i = start; i < Math.min(limit, 678); i++) {
+      it(`can ${expectedFailures[i] !== undefined ? '(not) ' : ''}roundtrip https://github.github.com/gfm/#example-${i}`, async () => {
+        const content = tests[i].content.trim() + '\n';
+        await fs.setFile('test.md', content);
+        await main.loadButton.click();
+        expect(await main.status('loaded', 'error')).toEqual('loaded');
+        await main.saveButton.click();
+        const result = await fs.getFile('test.md');
+        const resultv = result.replace(/\s+/g, '');
+        const contentv = content.replace(/\s+/g, '');
+        // Alternatively, remove leading/trailing whitespace, collapse remanining to \n or ' '.
+        // But this only produces a handful of new normalization failures.
+        // const resultv = result.replace(/\s*\n\s*/gs, '\n').replace(/[ \t]+/g, ' ');
+        // const contentv = content.replace(/\s*\n\s*/gs, '\n').replace(/[ \t]+/g, ' ');
+        if (expectedFailures[i] !== undefined) {
+          expect(resultv).not.toEqual(contentv);
+          expect(result).toContain(expectedFailures[i]);
+        } else {
+          if (resultv !== contentv) expect(resultv).toEqual(content);
+        }
+      });
+    }
+  });
+};
