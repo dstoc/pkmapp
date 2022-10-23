@@ -29,7 +29,7 @@ export const config: Options.Testrunner = {
     ],
     maxInstances: 10,
     capabilities: [{
-        maxInstances: 10,
+        maxInstances: 1,
         browserName: 'chrome',
         acceptInsecureCerts: true,
         'goog:chromeOptions': {
