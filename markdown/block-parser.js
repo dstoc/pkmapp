@@ -103,8 +103,24 @@ function convertNode(node) {
         case 'block_continuation':
         case 'list_marker_star':
         case 'list_marker_minus':
+        case 'list_marker_dot':
+        case 'list_marker_parenthesis':
+        case 'list_marker_plus':
         case 'block_quote_marker':
             return undefined;
+        case 'setext_heading':
+        case 'thematic_break':
+        case 'indented_code_block':
+        case 'html_block':
+        case 'minus_metadata':
+        case 'link_reference_definition':
+        case 'pipe_table':
+        case 'task_list_marker_unchecked':
+        case 'task_list_marker_checked':
+            return {
+                type: 'unsupported',
+                content: node.text,
+            };
         default:
             console.error(node.type);
             return undefined;

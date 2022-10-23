@@ -179,7 +179,7 @@ export class MarkdownTree {
     }
     addDom(node, parent, childIndex) {
         const result = node;
-        if ('content' in result) {
+        if (result.type === 'paragraph' || result.type === 'heading' || result.type === 'code-block') {
             result.viewModel = new InlineViewModel(result, this, parent, childIndex);
         }
         else {

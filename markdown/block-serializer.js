@@ -17,17 +17,26 @@ function* always(s) {
     }
 }
 function* onceThenWhitespace(s) {
-    const ws = s.replace(/./, ' ');
+    const ws = s.replace(/./g, ' ');
     yield s;
     while (true) {
         yield ws;
     }
 }
-function serializeBlocks(blocks, indents, result, separator) {
-    let first = true;
+function separator(prev, next) {
+    if (prev.type === 'heading')
+        return '';
+    if (next.type === 'list-item')
+        return '';
+    if (prev.type === 'paragraph' && next.type === 'list')
+        return '';
+    return '\n';
+}
+function serializeBlocks(blocks, indents, result) {
+    let prev;
     for (const block of blocks) {
-        if (!first && separator.length) {
-            const nextSeparator = separator(block);
+        if (prev) {
+            const nextSeparator = separator(prev, block);
             if (nextSeparator !== '') {
                 for (const indent of indents) {
                     result.push(indent.next().value);
@@ -35,7 +44,7 @@ function serializeBlocks(blocks, indents, result, separator) {
             }
             result.push(nextSeparator);
         }
-        first = false;
+        prev = block;
         serialize(block, indents, result);
     }
 }
@@ -45,18 +54,8 @@ function serialize(node, indents, result) {
             result.push(indent.next().value);
         }
     }
-    let separator = (node) => '\n';
-    const emptySeparator = () => '';
-    if (node.type === 'list') {
-        separator = emptySeparator;
-    }
     if (node.type === 'list-item') {
         indents = [...indents, onceThenWhitespace(node.marker)];
-        separator = (node) => {
-            if (node.type === 'list-item' || node.type === 'list')
-                return '';
-            return '\n';
-        };
     }
     else if (node.type === 'block-quote') {
         indents = [...indents, always(node.marker)];
@@ -88,7 +87,14 @@ function serialize(node, indents, result) {
         indent();
         result.push('```\n');
     }
-    serializeBlocks(node.children || [], indents, result, separator);
+    else if (node.type === 'unsupported') {
+        for (const line of node.content.trimEnd().split('\n')) {
+            indent();
+            result.push(line);
+            result.push('\n');
+        }
+    }
+    serializeBlocks(node.children || [], indents, result);
 }
 export function serializeToString(node) {
     const result = [];

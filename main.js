@@ -66,6 +66,8 @@ let TestHost = class TestHost extends LitElement {
         return this.directory;
     }
     async load() {
+        this.status = 'loading';
+        this.tree = undefined;
         const directory = await this.ensureDirectory();
         const fileName = this.fileInput.value;
         let text = '';
@@ -78,10 +80,18 @@ let TestHost = class TestHost extends LitElement {
         catch (e) {
             console.warn(e);
         }
-        const node = parseBlocks(text);
-        if (node)
-            this.tree = new MarkdownTree(node);
-        this.tree?.observe.add(debounce(() => this.save()));
+        try {
+            const node = parseBlocks(text);
+            if (node)
+                this.tree = new MarkdownTree(node);
+            this.tree?.observe.add(debounce(() => this.save()));
+            this.status = 'loaded';
+        }
+        catch (e) {
+            this.status = 'error';
+            // TODO: store this somewhere?
+            // throw e;
+        }
     }
     async save() {
         if (!this.tree)
@@ -192,6 +202,9 @@ __decorate([
 __decorate([
     query('input')
 ], TestHost.prototype, "fileInput", void 0);
+__decorate([
+    property({ type: String, reflect: true })
+], TestHost.prototype, "status", void 0);
 __decorate([
     property({ type: Object, reflect: false })
 ], TestHost.prototype, "tree", void 0);
