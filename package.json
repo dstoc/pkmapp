@@ -2,7 +2,7 @@
   "scripts": {
     "dev": "concurrently -n tsc,wds \"tsc --watch --preserveWatchOutput\" \"npx web-dev-server --port 8001 --watch --root-dir build\"",
     "compile": "tsc",
-    "build": "npm run compile && ./build-wasm.sh && cp index.html build/ && cp node_modules/web-tree-sitter/tree-sitter.js build/ && cp node_modules/web-tree-sitter/tree-sitter.wasm build/",
+    "build": "npm run compile && ./build-wasm.sh && cp index.html build/",
     "test": "wdio run test/wdio.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json",
     "precommit": "npx check-clang-format"
   },
