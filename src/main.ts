@@ -39,6 +39,7 @@ function debounce(f: () => void) {
 export class TestHost extends LitElement {
   @query('md-block-render') blockRender!: MarkdownRenderer;
   @query('input') fileInput!: HTMLInputElement;
+  @property({type: String, reflect: true}) status: 'loading'|'loaded'|'error'|undefined;
   @property({type: Object, reflect: false}) tree: MarkdownTree|undefined;
   @property({reflect: false}) directory?: FileSystemDirectoryHandle;
   @contextProvider({context: hostContext})
@@ -70,6 +71,8 @@ export class TestHost extends LitElement {
     return this.directory;
   }
   async load() {
+    this.status = 'loading';
+    this.tree = undefined;
     const directory = await this.ensureDirectory();
     const fileName = this.fileInput.value;
     let text = '';
@@ -82,9 +85,16 @@ export class TestHost extends LitElement {
       console.warn(e);
     }
 
-    const node = parseBlocks(text);
-    if (node) this.tree = new MarkdownTree(node);
-    this.tree?.observe.add(debounce(() => this.save()));
+    try {
+      const node = parseBlocks(text);
+      if (node) this.tree = new MarkdownTree(node);
+      this.tree?.observe.add(debounce(() => this.save()));
+      this.status = 'loaded';
+    } catch (e) {
+      this.status = 'error';
+      // TODO: store this somewhere?
+      // throw e;
+    }
   }
   async save() {
     if (!this.tree) return;

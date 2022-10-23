@@ -14,6 +14,7 @@
 
 import {Page} from './page';
 
+type Status = 'loading'|'loaded'|'error';
 export class Main extends Page {
   path = '/';
   host = $('test-host');
@@ -30,6 +31,10 @@ export class Main extends Page {
     `, []);
     resolve(new FileSystem());
   });
+  async status(...status: Status[]): Promise<Status> {
+    await browser.waitUntil(async () => status.includes(await this.host.getAttribute('status') as Status));
+    return this.host.getAttribute('status') as Promise<Status>;
+  }
 }
 
 export class FileSystem {

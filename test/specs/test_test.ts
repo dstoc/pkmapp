@@ -13,14 +13,7 @@
 // limitations under the License.
 
 import {Main} from '../pages/main';
-
-function testState<T>(makeState: () => T|Promise<T>): T {
-  const result = {};
-  beforeEach(async () => {
-    Object.assign(result, await makeState());
-  });
-  return result as T;
-}
+import {testState} from '../util/test_state';
 
 describe('main', () => {
   const state = testState(async () => {
@@ -29,7 +22,7 @@ describe('main', () => {
       main,
       fs: await main.fileSystem
     };
-  })
+  });
   it('can roundtrip simple markdown', async () => {
     const content = ` * a\n`
     await state.fs.setFile('test.md', content);

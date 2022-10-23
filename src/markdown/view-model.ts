@@ -196,10 +196,10 @@ export class MarkdownTree {
     childIndex?: number
   ) {
     const result = node as T&ViewModelNode;
-    if ('content' in result) {
-    result.viewModel = new InlineViewModel(result, this, parent, childIndex);
+    if (result.type === 'paragraph' || result.type === 'heading' || result.type === 'code-block') {
+      result.viewModel = new InlineViewModel(result, this, parent, childIndex);
     } else {
-    result.viewModel = new ViewModel(result, this, parent, childIndex);
+      result.viewModel = new ViewModel(result, this, parent, childIndex);
     }
     if (result.children) {
     for (let i = 0; i < result.children.length; i++) {

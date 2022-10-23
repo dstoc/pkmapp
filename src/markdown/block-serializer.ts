@@ -21,7 +21,7 @@ function* always(s: string): IndentGenerator {
 }
 
 function* onceThenWhitespace(s: string): IndentGenerator {
-  const ws = s.replace(/./, ' ');
+  const ws = s.replace(/./g, ' ');
   yield s;
   while (true) {
     yield ws;
@@ -31,13 +31,19 @@ function* onceThenWhitespace(s: string): IndentGenerator {
 type IndentGenerator = Generator<string, string, unknown>;
 type Indents = Generator<string, string, unknown>[];
 
+function separator(prev: MarkdownNode, next: MarkdownNode): string {
+  if (prev.type === 'heading') return '';
+  if (next.type === 'list-item') return '';
+  if (prev.type === 'paragraph' && next.type === 'list') return '';
+  return '\n';
+}
+
 function serializeBlocks(
-    blocks: MarkdownNode[], indents: Indents, result: string[],
-    separator: (node: MarkdownNode) => string) {
-  let first = true;
+    blocks: MarkdownNode[], indents: Indents, result: string[]) {
+  let prev: MarkdownNode|undefined;
   for (const block of blocks) {
-    if (!first && separator.length) {
-      const nextSeparator = separator(block);
+    if (prev) {
+      const nextSeparator = separator(prev, block);
       if (nextSeparator !== '') {
         for (const indent of indents) {
           result.push(indent.next().value);
@@ -45,7 +51,7 @@ function serializeBlocks(
       }
       result.push(nextSeparator);
     }
-    first = false;
+    prev = block;
     serialize(block, indents, result);
   }
 }
@@ -57,17 +63,8 @@ function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
     }
   }
 
-  let separator = (node: MarkdownNode) => '\n';
-  const emptySeparator = () => '';
-  if (node.type === 'list') {
-    separator = emptySeparator;
-  }
   if (node.type === 'list-item') {
     indents = [...indents, onceThenWhitespace(node.marker)];
-    separator = (node: MarkdownNode) => {
-      if (node.type === 'list-item' || node.type === 'list') return '';
-      return '\n';
-    };
   } else if (node.type === 'block-quote') {
     indents = [...indents, always(node.marker)];
   } else if (node.type === 'paragraph') {
@@ -94,8 +91,14 @@ function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
     }
     indent();
     result.push('```\n');
+  } else if (node.type === 'unsupported') {
+    for (const line of node.content.trimEnd().split('\n')) {
+      indent();
+      result.push(line);
+      result.push('\n');
+    }
   }
-  serializeBlocks(node.children || [], indents, result, separator);
+  serializeBlocks(node.children || [], indents, result);
 }
 
 export function serializeToString(node: MarkdownNode): string {

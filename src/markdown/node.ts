@@ -13,7 +13,7 @@
 // limitations under the License.
 
 export type MarkdownNode =
-    |ContainerNode|ParagraphNode|MarkedNode|HeadingNode|CodeBlockNode;
+    |ContainerNode|ParagraphNode|MarkedNode|HeadingNode|CodeBlockNode|UnsupportedNode;
 export type InlineNode = ParagraphNode|CodeBlockNode|HeadingNode;
 export type ParentNode = ContainerNode|MarkedNode;
 
@@ -45,5 +45,10 @@ export type HeadingNode = Node&{
 export type CodeBlockNode = Node&{
   type: 'code-block';
   info: string|null;
+  content: string;
+};
+
+export type UnsupportedNode = Node&{
+  type: 'unsupported';
   content: string;
 };
