@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {contextProvided} from '../deps/lit-labs-context.js';
-import {css, customElement, html, LitElement, property, repeat, TemplateResult,} from '../deps/lit.js';
+import {css, customElement, html, LitElement, property, query, queryAll, repeat, TemplateResult,} from '../deps/lit.js';
 import Parser from '../deps/tree-sitter.js';
 
 import {HostContext, hostContext} from './host-context.js';
@@ -129,6 +129,7 @@ export class MarkdownInline extends LitElement {
   @property({type: Object, reflect: false}) node: InlineViewModelNode|undefined;
   @property({type: Boolean, reflect: true}) contenteditable = true;
   @property({type: Boolean, reflect: true}) active = false;
+  @query('md-span') span!: MarkdownSpan;
   hasFocus = false;
 
   override render() {
@@ -150,8 +151,8 @@ export class MarkdownInline extends LitElement {
   }
   async maybeSetFocus() {
     if (this.hostContext?.focusNode !== this.node) return;
-    // TODO: What are we waiting for?
-    await 0;
+    // Wait for the nested md-span (and all of the decendant md-spans to update).
+    await this.span.updateComplete;
     if (this.hostContext?.focusNode !== this.node) return;
     if (!this.isConnected) return;
     const selection = (this.getRootNode()! as Document).getSelection()!;
@@ -315,11 +316,16 @@ export class MarkdownSpan extends LitElement {
   @property({type: Boolean, reflect: true}) formatting = false;
   @property({type: String, reflect: true}) type = '';
 
-  @property({type: Object, reflect: false}) node?: Parser.SyntaxNode;
+  @property({attribute: false}) node?: Parser.SyntaxNode;
+  @queryAll('md-span') spans!: NodeListOf<MarkdownSpan>;
   nodeIds = new NodeIds();
 
   constructor() {
     super();
+  }
+  override async performUpdate() {
+    await super.performUpdate();
+    await Promise.all(Array.from(this.spans).map(span => span.updateComplete));
   }
 
   override shouldUpdate(changed: Map<string, unknown>) {
@@ -333,6 +339,9 @@ export class MarkdownSpan extends LitElement {
         result = true;
         this.nodeIds?.migrate(oldSyntaxNode, newSyntaxNode);
       }
+    }
+    if (changed.has('active')) {
+      result = true;
     }
     return result;
   }
