@@ -19,7 +19,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 var MarkdownInline_1;
 import { contextProvided } from '../deps/lit-labs-context.js';
-import { css, customElement, html, LitElement, property, repeat, } from '../deps/lit.js';
+import { css, customElement, html, LitElement, property, query, queryAll, repeat, } from '../deps/lit.js';
 import { hostContext } from './host-context.js';
 let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement {
     constructor() {
@@ -121,8 +121,8 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
     async maybeSetFocus() {
         if (this.hostContext?.focusNode !== this.node)
             return;
-        // TODO: What are we waiting for?
-        await 0;
+        // Wait for the nested md-span (and all of the decendant md-spans to update).
+        await this.span.updateComplete;
         if (this.hostContext?.focusNode !== this.node)
             return;
         if (!this.isConnected)
@@ -283,6 +283,9 @@ __decorate([
 __decorate([
     property({ type: Boolean, reflect: true })
 ], MarkdownInline.prototype, "active", void 0);
+__decorate([
+    query('md-span')
+], MarkdownInline.prototype, "span", void 0);
 MarkdownInline = MarkdownInline_1 = __decorate([
     customElement('md-inline')
 ], MarkdownInline);
@@ -295,6 +298,10 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
         this.type = '';
         this.nodeIds = new NodeIds();
     }
+    async performUpdate() {
+        await super.performUpdate();
+        await Promise.all(Array.from(this.spans).map(span => span.updateComplete));
+    }
     shouldUpdate(changed) {
         let result = false;
         if (changed.has('node')) {
@@ -305,6 +312,9 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
                 result = true;
                 this.nodeIds?.migrate(oldSyntaxNode, newSyntaxNode);
             }
+        }
+        if (changed.has('active')) {
+            result = true;
         }
         return result;
     }
@@ -396,8 +406,11 @@ __decorate([
     property({ type: String, reflect: true })
 ], MarkdownSpan.prototype, "type", void 0);
 __decorate([
-    property({ type: Object, reflect: false })
+    property({ attribute: false })
 ], MarkdownSpan.prototype, "node", void 0);
+__decorate([
+    queryAll('md-span')
+], MarkdownSpan.prototype, "spans", void 0);
 MarkdownSpan = __decorate([
     customElement('md-span')
 ], MarkdownSpan);
