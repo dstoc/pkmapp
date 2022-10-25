@@ -15,6 +15,7 @@
 import type { Options } from '@wdio/types'
 import * as os from 'os';
 
+const instances = Math.min(1, Math.round(os.cpus().length / 2));
 export const config: Options.Testrunner = {
     autoCompileOpts: {
         autoCompile: true,
@@ -28,9 +29,9 @@ export const config: Options.Testrunner = {
     ],
     exclude: [
     ],
-    maxInstances: os.cpus().length,
+    maxInstances: instances,
     capabilities: [{
-        maxInstances: os.cpus().length,
+        maxInstances: instances,
         browserName: 'chrome',
         acceptInsecureCerts: true,
         'goog:chromeOptions': {
