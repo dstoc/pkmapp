@@ -139,21 +139,26 @@ export class InlineViewModel extends ViewModel {
     };
 
     this.self.content = apply(this.self.content, result);
-    if (this.maybeReplaceWithBlocks()) return;
+    const newNodes = this.maybeReplaceWithBlocks();
+    if (newNodes) return newNodes;
     this.tree.observe.notify();
     this.inlineTree = this.inlineTree!.edit(result);
     this.inlineTree = inlineParser.parse(this.self.content, this.inlineTree);
     this.observe.notify();
+    return null;
   }
   private maybeReplaceWithBlocks() {
     const blocks = this.parseAsBlocks();
     if (!blocks) return false;
+    const newNodes: ViewModelNode[] = [];
     for (const child of blocks) {
       const node = this.tree.import<MarkdownNode>(child);
       node.viewModel.insertBefore(cast(this.parent), this.nextSibling);
+      newNodes.push(node);
+      
     }
     this.remove();
-    return true;
+    return newNodes;
   }
   private parseAsBlocks() {
     // TODO: Ensure there's a trailing new line.
