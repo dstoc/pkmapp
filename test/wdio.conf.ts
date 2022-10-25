@@ -15,7 +15,7 @@
 import type { Options } from '@wdio/types'
 import * as os from 'os';
 
-const instances = Math.min(1, Math.round(os.cpus().length / 2));
+const instances = Math.max(1, Math.round(os.cpus().length / 2));
 export const config: Options.Testrunner = {
     autoCompileOpts: {
         autoCompile: true,
@@ -50,6 +50,7 @@ export const config: Options.Testrunner = {
     framework: 'jasmine',
     reporters: ['spec'],
     jasmineOpts: {
+        stopOnSpecFailure: true,
         defaultTimeoutInterval: 60000,
         //
         // The Jasmine framework allows interception of each assertion in order to log the state of the application

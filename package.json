@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "serve": "web-dev-server --port 8001 --root-dir build",
     "dev": "concurrently -n tsc,wds \"tsc --watch --preserveWatchOutput\" \"npx web-dev-server --port 8001 --watch --root-dir build\"",
     "compile": "tsc",
     "build": "npm run compile && ./build-wasm.sh && cp index.html build/",
