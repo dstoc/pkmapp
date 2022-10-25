@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import type { Options } from '@wdio/types'
+import * as os from 'os';
 
 export const config: Options.Testrunner = {
     autoCompileOpts: {
@@ -27,9 +28,9 @@ export const config: Options.Testrunner = {
     ],
     exclude: [
     ],
-    maxInstances: 10,
+    maxInstances: os.cpus().length,
     capabilities: [{
-        maxInstances: 1,
+        maxInstances: os.cpus().length,
         browserName: 'chrome',
         acceptInsecureCerts: true,
         'goog:chromeOptions': {
