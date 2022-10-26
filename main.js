@@ -568,6 +568,7 @@ function normalizeSection(node) {
         return true;
     }
     // The section did not have a heading, the children have been removed.
+    assert(!node.children || !node.children.length);
     node.viewModel.remove();
     return false;
 }

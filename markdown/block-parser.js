@@ -33,9 +33,9 @@ const emptyParagraph = {
 };
 const emptySection = {
     type: 'section',
-    children: [emptyParagraph],
+    children: [{ ...emptyParagraph }],
 };
-function ensureContent(children, result = [emptyParagraph]) {
+function ensureContent(children, result = [{ ...emptyParagraph }]) {
     if (children.length)
         return children;
     return result;
@@ -45,7 +45,7 @@ function convertNode(node) {
         case 'document':
             return {
                 type: 'document',
-                children: ensureContent([...convertNodes(node.namedChildren)], [emptySection]),
+                children: ensureContent([...convertNodes(node.namedChildren)], [{ ...emptySection }]),
             };
         case 'section':
             return {
@@ -64,7 +64,10 @@ function convertNode(node) {
             };
         case 'list_item': {
             const children = node.namedChildren;
-            const marker = children[0].text;
+            let marker = children[0].text;
+            if (!marker.endsWith(' ')) {
+                marker += ' ';
+            }
             return {
                 type: 'list-item',
                 marker,

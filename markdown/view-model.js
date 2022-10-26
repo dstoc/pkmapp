@@ -184,9 +184,11 @@ export class MarkdownTree {
     addDom(node, parent, childIndex) {
         const result = node;
         if (result.type === 'paragraph' || result.type === 'heading' || result.type === 'code-block') {
+            assert(!result.viewModel);
             result.viewModel = new InlineViewModel(result, this, parent, childIndex);
         }
         else {
+            assert(!result.viewModel);
             result.viewModel = new ViewModel(result, this, parent, childIndex);
         }
         if (result.children) {

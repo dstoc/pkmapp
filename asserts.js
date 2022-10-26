@@ -13,12 +13,12 @@
 // limitations under the License.
 export function assert(val) {
     if (!val) {
-        throw new Error('assertion failed: ${val}');
+        throw new Error(`assertion failed: ${val}`);
     }
 }
 export function cast(val) {
     if (val === null || val === undefined) {
-        throw new Error('cast failed: ${val}');
+        throw new Error(`cast failed: ${val}`);
     }
     return val;
 }
