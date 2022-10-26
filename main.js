@@ -43,7 +43,7 @@ let TestHost = class TestHost extends LitElement {
         return html `
     <input type=text value="test.md"></input>
     <button id=load @click=${this.load}>Load</button>
-    <button id=save @click=${this.markDirty}>Save</button>
+    <button id=save @click=${this.markDirty}>Save</button>${this.dirty ? '*' : ''}
     <br>
     <md-block-render
       .block=${this.tree?.root}
@@ -89,11 +89,21 @@ let TestHost = class TestHost extends LitElement {
         this.dirty = true;
         if (this.pendingModifications++)
             return;
-        while (this.pendingModifications) {
-            this.pendingModifications = await 0;
+        while (true) {
+            const preIdle = this.pendingModifications;
+            await new Promise(resolve => requestIdleCallback(resolve));
+            // Wait for an idle period where there are no new modifications.
+            if (this.pendingModifications != preIdle) {
+                continue;
+            }
+            let preSave = this.pendingModifications;
             await this.save();
+            if (this.pendingModifications === preSave) {
+                this.pendingModifications = 0;
+                this.dirty = false;
+                return;
+            }
         }
-        this.dirty = false;
     }
     async save() {
         if (!this.tree)
@@ -192,10 +202,18 @@ let TestHost = class TestHost extends LitElement {
             oldEndIndex,
             newEndIndex,
         };
-        inline.node.viewModel.edit(edit);
-        // TODO: fix focus when edit mutates blocks
-        this.hostContext.focusNode = inline.node;
-        this.hostContext.focusOffset = newEndIndex;
+        const newNodes = inline.node.viewModel.edit(edit);
+        if (newNodes) {
+            normalizeTree(inline.node.viewModel.tree);
+            const prev = newNodes[0].viewModel.previousSibling || newNodes[0].viewModel.parent;
+            const next = findNextDfs(prev, ({ type }) => ['paragraph', 'code-block', 'heading'].includes(type));
+            // TODO: is the focus offset always 0?
+            if (next)
+                focusNode(this.hostContext, next, 0);
+        }
+        else {
+            focusNode(this.hostContext, inline.node, newEndIndex);
+        }
     }
 };
 __decorate([
@@ -521,6 +539,7 @@ function normalizeSection(node) {
                 // Found a second heading, split out a new sibling section and move
                 // all remaining children there.
                 const newSection = node.viewModel.tree.import({ type: 'section' });
+                newSection.viewModel.insertBefore(child.viewModel.parent, child);
                 child.viewModel.insertBefore(newSection);
                 while (next) {
                     const child = next;
