@@ -90,19 +90,21 @@ let TestHost = class TestHost extends LitElement {
         if (this.pendingModifications++)
             return;
         while (true) {
-            const preIdle = this.pendingModifications;
-            await new Promise(resolve => requestIdleCallback(resolve));
-            // Wait for an idle period where there are no new modifications.
-            if (this.pendingModifications != preIdle) {
-                continue;
-            }
             let preSave = this.pendingModifications;
+            // Save immediately on the fist iteration, may help keep tests fast.
             await this.save();
             if (this.pendingModifications === preSave) {
                 this.pendingModifications = 0;
                 this.dirty = false;
                 return;
             }
+            // Wait for an idle period with no modifications.
+            let preIdle = NaN;
+            do {
+                preIdle = this.pendingModifications;
+                // TODO: maybe a timeout is better?
+                await new Promise(resolve => requestIdleCallback(resolve));
+            } while (preIdle != this.pendingModifications);
         }
     }
     async save() {
