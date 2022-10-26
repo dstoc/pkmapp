@@ -79,6 +79,7 @@ export function runTests(start=1, limit=678) {
         await main.loadButton.click();
         expect(await main.status('loaded', 'error')).toEqual('loaded');
         await main.saveButton.click();
+        await browser.waitUntil(main.isClean);
         const result = await fs.getFile('test.md');
         const resultv = result.replace(/\s+/g, '');
         const contentv = content.replace(/\s+/g, '');

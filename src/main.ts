@@ -25,23 +25,14 @@ import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-re
 import {InlineNode, ParagraphNode} from './markdown/node.js';
 import {InlineViewModel, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 
-function debounce(f: () => void) {
-  let scheduled = false;
-  return async () => {
-    if (scheduled) return;
-    scheduled = true;
-    scheduled = await false;
-    f();
-  };
-}
-
 @customElement('test-host')
 export class TestHost extends LitElement {
   @query('md-block-render') blockRender!: MarkdownRenderer;
   @query('input') fileInput!: HTMLInputElement;
   @property({type: String, reflect: true}) status: 'loading'|'loaded'|'error'|undefined;
-  @property({type: Object, reflect: false}) tree: MarkdownTree|undefined;
-  @property({reflect: false}) directory?: FileSystemDirectoryHandle;
+  @property({type: Boolean, reflect: true}) dirty = false;
+  @property({attribute: false}) tree: MarkdownTree|undefined;
+  @property({attribute: false}) directory?: FileSystemDirectoryHandle;
   @contextProvider({context: hostContext})
   @property({reflect: false})
   hostContext: HostContext = {};
@@ -56,7 +47,7 @@ export class TestHost extends LitElement {
     return html`
     <input type=text value="test.md"></input>
     <button id=load @click=${this.load}>Load</button>
-    <button id=save @click=${this.save}>Save</button>
+    <button id=save @click=${this.markDirty}>Save</button>
     <br>
     <md-block-render
       .block=${this.tree?.root}
@@ -88,7 +79,7 @@ export class TestHost extends LitElement {
     try {
       const node = parseBlocks(text);
       if (node) this.tree = new MarkdownTree(node);
-      this.tree?.observe.add(debounce(() => this.save()));
+      this.tree?.observe.add(() => this.markDirty());
       this.status = 'loaded';
     } catch (e) {
       this.status = 'error';
@@ -96,7 +87,18 @@ export class TestHost extends LitElement {
       // throw e;
     }
   }
-  async save() {
+
+  private pendingModifications = 0;
+  async markDirty() {
+    this.dirty = true;
+    if (this.pendingModifications++) return;
+    while (this.pendingModifications) {
+      this.pendingModifications = await 0;
+      await this.save();
+    }
+    this.dirty = false;
+  }
+  private async save() {
     if (!this.tree) return;
     const text = serializeToString(this.tree.root);
     const directory = await this.ensureDirectory();
