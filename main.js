@@ -25,20 +25,12 @@ import { parseBlocks } from './markdown/block-parser.js';
 import { serializeToString } from './markdown/block-serializer.js';
 import { hostContext } from './markdown/host-context.js';
 import { MarkdownTree } from './markdown/view-model.js';
-function debounce(f) {
-    let scheduled = false;
-    return async () => {
-        if (scheduled)
-            return;
-        scheduled = true;
-        scheduled = await false;
-        f();
-    };
-}
 let TestHost = class TestHost extends LitElement {
     constructor() {
         super(...arguments);
+        this.dirty = false;
         this.hostContext = {};
+        this.pendingModifications = 0;
     }
     render() {
         if (!this.directory) {
@@ -51,7 +43,7 @@ let TestHost = class TestHost extends LitElement {
         return html `
     <input type=text value="test.md"></input>
     <button id=load @click=${this.load}>Load</button>
-    <button id=save @click=${this.save}>Save</button>
+    <button id=save @click=${this.markDirty}>Save</button>
     <br>
     <md-block-render
       .block=${this.tree?.root}
@@ -84,7 +76,7 @@ let TestHost = class TestHost extends LitElement {
             const node = parseBlocks(text);
             if (node)
                 this.tree = new MarkdownTree(node);
-            this.tree?.observe.add(debounce(() => this.save()));
+            this.tree?.observe.add(() => this.markDirty());
             this.status = 'loaded';
         }
         catch (e) {
@@ -92,6 +84,16 @@ let TestHost = class TestHost extends LitElement {
             // TODO: store this somewhere?
             // throw e;
         }
+    }
+    async markDirty() {
+        this.dirty = true;
+        if (this.pendingModifications++)
+            return;
+        while (this.pendingModifications) {
+            this.pendingModifications = await 0;
+            await this.save();
+        }
+        this.dirty = false;
     }
     async save() {
         if (!this.tree)
@@ -206,10 +208,13 @@ __decorate([
     property({ type: String, reflect: true })
 ], TestHost.prototype, "status", void 0);
 __decorate([
-    property({ type: Object, reflect: false })
+    property({ type: Boolean, reflect: true })
+], TestHost.prototype, "dirty", void 0);
+__decorate([
+    property({ attribute: false })
 ], TestHost.prototype, "tree", void 0);
 __decorate([
-    property({ reflect: false })
+    property({ attribute: false })
 ], TestHost.prototype, "directory", void 0);
 __decorate([
     contextProvider({ context: hostContext }),
