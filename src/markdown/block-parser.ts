@@ -40,12 +40,12 @@ const emptyParagraph: ParagraphNode = {
 
 const emptySection: MarkdownNode = {
   type: 'section',
-  children: [emptyParagraph],
+  children: [{...emptyParagraph}],
 };
 
 function ensureContent(
     children: MarkdownNode[],
-    result: MarkdownNode[] = [emptyParagraph]): MarkdownNode[] {
+    result: MarkdownNode[] = [{...emptyParagraph}]): MarkdownNode[] {
   if (children.length) return children;
   return result;
 }
@@ -56,7 +56,7 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
       return {
         type: 'document',
         children: ensureContent(
-            [...convertNodes(node.namedChildren)], [emptySection]),
+            [...convertNodes(node.namedChildren)], [{...emptySection}]),
       };
     case 'section':
       return {
@@ -75,7 +75,10 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
       };
     case 'list_item': {
       const children = node.namedChildren;
-      const marker = children[0].text;
+      let marker = children[0].text;
+      if (!marker.endsWith(' ')) {
+        marker += ' ';
+      }
       return {
         type: 'list-item',
         marker,

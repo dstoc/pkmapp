@@ -51,4 +51,12 @@ describe('main', () => {
      b
      `,
   ));
+  it('can generate a list', inputOutputTest(
+    // TODO: require a space after '*' to generate a new list
+    `*a
+     b`,
+    `* a
+     * b
+     `,
+  ));
 });
