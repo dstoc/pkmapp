@@ -28,9 +28,31 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
+      - name: Cache build
+        id: cache-build
+        uses: actions/cache@v3
+        with:
+          key: build-${{ hashFiles('package-lock.json') }}
+          path: build
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
       - name: install
         run: npm install
-      - name: build
+      - if: ${{ steps.cache-build.outputs.cache-hit == 'true' }}
+        name: build (cached)
+        run: npm run build-cached
+      - if: ${{ steps.cache-build.outputs.cache-hit != 'true' }}
+        name: build
         run: npm run build
       - name: deploy
         uses: peaceiris/actions-gh-pages@v3
