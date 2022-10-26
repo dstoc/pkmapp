@@ -16,8 +16,12 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for details.
 
 1. Clone this repo.
 2. `npm install`
-3. `./build-wasm.sh`
+3. `npm run build`
 4. `npm run dev`
+
+## Testing
+
+1. `npm run test`
 
 ## License
 
