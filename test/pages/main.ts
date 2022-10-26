@@ -31,6 +31,7 @@ export class Main extends Page {
     `, []);
     resolve(new FileSystem());
   });
+  isClean = async () => (await this.host.getAttribute('dirty')) === null;
   async status(...status: Status[]): Promise<Status> {
     await browser.waitUntil(async () => status.includes(await this.host.getAttribute('status') as Status));
     return this.host.getAttribute('status') as Promise<Status>;

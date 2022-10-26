@@ -30,7 +30,7 @@ describe('main', () => {
     await browser.waitUntil(state.main.fileInput.isExisting);
     await state.main.loadButton.click();
     await browser.waitUntil($('>>>[contenteditable]').isExisting);
-    await state.main.saveButton.click();
+    await browser.waitUntil(state.main.isClean);
     expect(await state.fs.getFile('test.md')).toEqual(content);
   });
   it('can process inputs and save automatically', async () => {
@@ -41,6 +41,7 @@ describe('main', () => {
     const inline = $('>>>[contenteditable]');
     await inline.click();
     await browser.keys('# hello world'.split(''));
+    await browser.waitUntil(state.main.isClean);
     expect(await state.fs.getFile('test.md')).toEqual('# hello world\n');
   });
 });
