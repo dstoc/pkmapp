@@ -51,11 +51,19 @@ describe('main', () => {
          ));
   it('can generate a list',
      inputOutputTest(
-         // TODO: require a space after '*' to generate a new list
-         `*a
+         `* a
           b`,
          `* a
           * b
+          `,
+         ));
+  it('does not generate lists in ambiguous situations',
+     inputOutputTest(
+         `*a
+          b`,
+         `*a
+
+          b
           `,
          ));
 });
