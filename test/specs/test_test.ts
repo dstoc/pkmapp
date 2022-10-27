@@ -18,13 +18,10 @@ import {testState} from '../util/test_state';
 describe('main', () => {
   const state = testState(async () => {
     const main = await new Main().load();
-    return {
-      main,
-      fs: await main.fileSystem
-    };
+    return {main, fs: await main.fileSystem};
   });
   it('can roundtrip simple markdown', async () => {
-    const content = ` * a\n`
+    const content = ` * a\n`;
     await state.fs.setFile('test.md', content);
     await state.main.opendirButton.click();
     await browser.waitUntil(state.main.fileInput.isExisting);

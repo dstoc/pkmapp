@@ -25,22 +25,27 @@ export class Main extends Page {
   isReady = this.opendirButton.isExisting;
   fileSystem = new Promise<FileSystem>(async resolve => {
     await this.loaded;
-    await browser.executeAsyncScript(`
+    await browser.executeAsyncScript(
+        `
       const callback = arguments[arguments.length - 1];
       import("/testing/memory_file_system.js").then(callback);
-    `, []);
+    `,
+        []);
     resolve(new FileSystem());
   });
   isClean = async () => (await this.host.getAttribute('dirty')) === null;
   async status(...status: Status[]): Promise<Status> {
-    await browser.waitUntil(async () => status.includes(await this.host.getAttribute('status') as Status));
+    await browser.waitUntil(
+        async () =>
+            status.includes(await this.host.getAttribute('status') as Status));
     return this.host.getAttribute('status') as Promise<Status>;
   }
 }
 
 export class FileSystem {
   async getFile(fileName: string): Promise<string> {
-    const result = await browser.executeAsyncScript(`
+    const result = await browser.executeAsyncScript(
+        `
       const [fileName, callback] = arguments;
       (async () => {
         try {
@@ -56,14 +61,16 @@ export class FileSystem {
           });
         }
       })();
-    `, [fileName]);
+    `,
+        [fileName]);
     if (typeof result === 'string') return result;
     const error = new Error(result.message);
     error.stack = result.stack;
     throw error;
   }
   async setFile(fileName: string, content: string): Promise<string> {
-    const result = await browser.executeAsyncScript(`
+    const result = await browser.executeAsyncScript(
+        `
       const [fileName, content, callback] = arguments;
       (async () => {
         try {
@@ -80,7 +87,8 @@ export class FileSystem {
           });
         }
       })();
-    `, [fileName, content]);
+    `,
+        [fileName, content]);
     if (typeof result === 'string') return;
     const error = new Error(result.message);
     error.stack = result.stack;

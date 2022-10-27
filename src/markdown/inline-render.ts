@@ -151,7 +151,8 @@ export class MarkdownInline extends LitElement {
   }
   async maybeSetFocus() {
     if (this.hostContext?.focusNode !== this.node) return;
-    // Wait for the nested md-span (and all of the decendant md-spans to update).
+    // Wait for the nested md-span (and all of the decendant md-spans to
+    // update).
     await this.span.updateComplete;
     if (this.hostContext?.focusNode !== this.node) return;
     if (!this.isConnected) return;

@@ -18,10 +18,7 @@ import {testState} from '../util/test_state';
 describe('main', () => {
   const state = testState(async () => {
     const main = await new Main().load();
-    return {
-      main,
-      fs: await main.fileSystem
-    };
+    return {main, fs: await main.fileSystem};
   });
   function inputOutputTest(input, output) {
     return async () => {
@@ -39,24 +36,26 @@ describe('main', () => {
       expect(await state.fs.getFile('test.md')).toEqual(output);
     };
   }
-  it('can generate multiple sections', inputOutputTest(
-    `# 1
-     a
-     # 2
-     b`,
-    `# 1
-     a
-     
-     # 2
-     b
-     `,
-  ));
-  it('can generate a list', inputOutputTest(
-    // TODO: require a space after '*' to generate a new list
-    `*a
-     b`,
-    `* a
-     * b
-     `,
-  ));
+  it('can generate multiple sections',
+     inputOutputTest(
+         `# 1
+          a
+          # 2
+          b`,
+         `# 1
+          a
+
+          # 2
+          b
+          `,
+         ));
+  it('can generate a list',
+     inputOutputTest(
+         // TODO: require a space after '*' to generate a new list
+         `*a
+          b`,
+         `* a
+          * b
+          `,
+         ));
 });

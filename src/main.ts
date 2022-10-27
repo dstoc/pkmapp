@@ -29,7 +29,8 @@ import {InlineViewModel, MarkdownTree, ViewModelNode} from './markdown/view-mode
 export class TestHost extends LitElement {
   @query('md-block-render') blockRender!: MarkdownRenderer;
   @query('input') fileInput!: HTMLInputElement;
-  @property({type: String, reflect: true}) status: 'loading'|'loaded'|'error'|undefined;
+  @property({type: String, reflect: true})
+  status: 'loading'|'loaded'|'error'|undefined;
   @property({type: Boolean, reflect: true}) dirty = false;
   @property({attribute: false}) tree: MarkdownTree|undefined;
   @property({attribute: false}) directory?: FileSystemDirectoryHandle;
@@ -47,7 +48,8 @@ export class TestHost extends LitElement {
     return html`
     <input type=text value="test.md"></input>
     <button id=load @click=${this.load}>Load</button>
-    <button id=save @click=${this.markDirty}>Save</button>${this.dirty ? '*' : ''}
+    <button id=save @click=${this.markDirty}>Save</button>${
+        this.dirty ? '*' : ''}
     <br>
     <md-block-render
       .block=${this.tree?.root}
@@ -164,8 +166,8 @@ export class TestHost extends LitElement {
   }
   onInlineInput(event: CustomEvent<InlineInput>) {
     const {
-    detail: {inline, inputEvent, inputStart, inputEnd},
-  } = event;
+      detail: {inline, inputEvent, inputStart, inputEnd},
+    } = event;
     if (!inline.node) return;
     if (handleInlineInputAsBlockEdit(event, this.hostContext)) {
       normalizeTree(inline.node.viewModel.tree);
@@ -209,7 +211,8 @@ export class TestHost extends LitElement {
     const newNodes = inline.node.viewModel.edit(edit);
     if (newNodes) {
       normalizeTree(inline.node.viewModel.tree);
-      const prev = newNodes[0].viewModel.previousSibling || newNodes[0].viewModel.parent!;
+      const prev = newNodes[0].viewModel.previousSibling ||
+          newNodes[0].viewModel.parent!;
       const next = findNextDfs(
           prev,
           ({type}) => ['paragraph', 'code-block', 'heading'].includes(type));
@@ -433,7 +436,8 @@ function indent(node: ViewModelNode) {
 }
 
 function insertSiblingParagraph(
-    node: InlineNode&ViewModelNode, startIndex: number, context: HostContext): boolean {
+    node: InlineNode&ViewModelNode, startIndex: number,
+    context: HostContext): boolean {
   const newParagraph = node.viewModel.tree.import({
     type: 'paragraph',
     content: '',
@@ -445,7 +449,8 @@ function insertSiblingParagraph(
 }
 
 function insertParagraphInList(
-    node: InlineNode&ViewModelNode, startIndex: number, context: HostContext): boolean {
+    node: InlineNode&ViewModelNode, startIndex: number,
+    context: HostContext): boolean {
   const {ancestor, path} = findAncestor(node, 'list');
   if (!ancestor) return false;
   let targetList;
@@ -484,7 +489,8 @@ function insertParagraphInList(
 }
 
 function insertParagraphInSection(
-    node: InlineNode&ViewModelNode, startIndex: number, context: HostContext): boolean {
+    node: InlineNode&ViewModelNode, startIndex: number,
+    context: HostContext): boolean {
   const {ancestor: section, path} = findAncestor(node, 'section');
   if (!section) return false;
   const newParagraph = node.viewModel.tree.import({
@@ -497,10 +503,12 @@ function insertParagraphInSection(
 }
 
 function finishInsertParagraph(
-  node: InlineNode&ViewModelNode, newParagraph: ParagraphNode&ViewModelNode, startIndex: number, context: HostContext) {
+    node: InlineNode&ViewModelNode, newParagraph: ParagraphNode&ViewModelNode,
+    startIndex: number, context: HostContext) {
   const atStart = startIndex === 0;
-  if (atStart) { swapNodes(node, newParagraph); }
-  else {
+  if (atStart) {
+    swapNodes(node, newParagraph);
+  } else {
     (newParagraph.viewModel as InlineViewModel).edit({
       startIndex: 0,
       newEndIndex: 0,
@@ -647,9 +655,11 @@ function normalizeTree(tree: MarkdownTree) {
   }
 }
 
-function handleInlineInputAsBlockEdit({
-  detail: {inline, inputEvent, inputStart, inputEnd},
-}: CustomEvent<InlineInput>, context: HostContext): boolean {
+function handleInlineInputAsBlockEdit(
+    {
+      detail: {inline, inputEvent, inputStart, inputEnd},
+    }: CustomEvent<InlineInput>,
+    context: HostContext): boolean {
   // TODO: Call normalizeTree at the right times
   if (!inline.node) return false;
   if (inputEvent.inputType === 'deleteContentBackward') {
@@ -676,8 +686,7 @@ function handleInlineInputAsBlockEdit({
         if (maybeMergeContentInto(node, prev, context)) return true;
       }
       for (const child of [...children(ancestor)]) {
-        child.viewModel.insertBefore(
-            cast(ancestor.viewModel.parent), ancestor);
+        child.viewModel.insertBefore(cast(ancestor.viewModel.parent), ancestor);
       }
       ancestor.viewModel.remove();
       focusNode(context, node);
@@ -689,12 +698,10 @@ function handleInlineInputAsBlockEdit({
       if (maybeMergeContentInto(node, prev, context)) return true;
     }
   } else if (inputEvent.inputType === 'insertParagraph') {
-    return insertParagraphInList(
-            inline.node, inputStart.index, context) || insertParagraphInSection(
-            inline.node, inputStart.index, context);
+    return insertParagraphInList(inline.node, inputStart.index, context) ||
+        insertParagraphInSection(inline.node, inputStart.index, context);
   } else if (inputEvent.inputType === 'insertLineBreak') {
-    return insertSiblingParagraph(
-            inline.node, inputStart.index, context);
+    return insertSiblingParagraph(inline.node, inputStart.index, context);
   }
   return false;
 }
