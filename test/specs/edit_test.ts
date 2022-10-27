@@ -49,6 +49,9 @@ describe('input helper', () => {
 });
 
 describe('main', () => {
+  afterEach(async () => {
+    expect(await browser.getLogs('browser')).toEqual([]);
+  });
   const state = testState(async () => {
     const main = await new Main().load();
     return {main, fs: await main.fileSystem};
@@ -58,6 +61,7 @@ describe('main', () => {
       output = removeLeadingWhitespace(output);
       await state.main.opendirButton.click();
       await browser.waitUntil(state.main.fileInput.isExisting);
+      await state.fs.setFile('test.md', '');
       await state.main.loadButton.click();
       await browser.waitUntil($('>>>[contenteditable]').isExisting);
       const inline = $('>>>[contenteditable]');
@@ -97,10 +101,17 @@ describe('main', () => {
           b
           `,
          ));
-  it('can indent a top level paragraph',
-     inputOutputTest(
-         input`a${['Tab']}`,
-         `* a
-          `,
-         ));
+  describe('indentation', () => {
+    it('can indent a top level paragraph',
+       inputOutputTest(
+           input`a${['Tab']}`,
+           `* a
+            `,
+           ));
+    it('can unindent a list-item in a list-item',
+       inputOutputTest(
+           input`* * a${['Shift', 'Tab', 'Shift']}`,
+           `* a\n`,
+           ));
+  });
 });

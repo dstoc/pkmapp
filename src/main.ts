@@ -85,13 +85,15 @@ export class TestHost extends LitElement {
       this.status = 'loaded';
     } catch (e) {
       this.status = 'error';
-      // TODO: store this somewhere?
-      // throw e;
+      console.error(e);
     }
   }
 
   private pendingModifications = 0;
   async markDirty() {
+    // TODO: The tree could be in an inconsistent state, don't trigger the
+    // the observer until the edit is finished, or wait for normalization.
+    await 0;
     this.dirty = true;
     if (this.pendingModifications++) return;
     while (true) {
@@ -632,6 +634,17 @@ function normalizeSections(node: ViewModelNode) {
 
 function normalizeTree(tree: MarkdownTree) {
   const document = tree.root;
+  // Remove empty nodes.
+  for (const node of [...dfs(tree.root)]) {
+    if (node.viewModel.firstChild) continue;
+    switch (node.type) {
+      case 'list-item':
+      case 'list':
+      case 'block-quote':
+        node.viewModel.remove();
+        break;
+    }
+  }
   // ensure first child is a section
   if (document.viewModel.firstChild?.type !== 'section') {
     const section = tree.import({
@@ -705,5 +718,8 @@ function handleInlineInputAsBlockEdit(
   }
   return false;
 }
+
+onunhandledrejection = (e) => console.error(e.reason);
+onerror = (event, source, lineno, colno, error) => console.error(event, error);
 
 render(html`<test-host></test-host>`, document.body);

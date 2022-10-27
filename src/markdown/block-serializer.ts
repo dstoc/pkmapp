@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {assert} from '../asserts.js';
+
 import {MarkdownNode} from './node.js';
 
 function* always(s: string): IndentGenerator {
@@ -63,40 +65,57 @@ function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
     }
   }
 
-  if (node.type === 'list-item') {
-    indents = [...indents, onceThenWhitespace(node.marker)];
-  } else if (node.type === 'block-quote') {
-    indents = [...indents, always(node.marker)];
-  } else if (node.type === 'paragraph') {
-    indent();
-    result.push(node.content);
-    result.push('\n');
-  } else if (node.type === 'heading') {
-    indent();
-    result.push(node.marker);
-    result.push(' ');
-    result.push(node.content.trimStart());
-    result.push('\n');
-  } else if (node.type === 'code-block') {
-    indent();
-    result.push('```');
-    if (node.info !== null) {
-      result.push(node.info);
-    }
-    result.push('\n');
-    for (const line of node.content.trimEnd().split('\n')) {
+  switch (node.type) {
+    case 'document':
+    case 'section':
+    case 'list':
+      assert(node.children && node.children.length);
+      break;
+    case 'list-item':
+      assert(node.children && node.children.length);
+      indents = [...indents, onceThenWhitespace(node.marker)];
+      break;
+    case 'block-quote':
+      assert(node.children && node.children.length);
+      indents = [...indents, always(node.marker)];
+      break;
+    case 'paragraph':
       indent();
-      result.push(line);
+      result.push(node.content);
       result.push('\n');
-    }
-    indent();
-    result.push('```\n');
-  } else if (node.type === 'unsupported') {
-    for (const line of node.content.trimEnd().split('\n')) {
+      break;
+    case 'heading':
       indent();
-      result.push(line);
+      result.push(node.marker);
+      result.push(' ');
+      result.push(node.content.trimStart());
       result.push('\n');
-    }
+      break;
+    case 'code-block':
+      indent();
+      result.push('```');
+      if (node.info !== null) {
+        result.push(node.info);
+      }
+      result.push('\n');
+      for (const line of node.content.trimEnd().split('\n')) {
+        indent();
+        result.push(line);
+        result.push('\n');
+      }
+      indent();
+      result.push('```\n');
+      break;
+    case 'unsupported':
+      for (const line of node.content.trimEnd().split('\n')) {
+        indent();
+        result.push(line);
+        result.push('\n');
+      }
+      break;
+    default:
+      // TODO: assert not reached?
+      break;
   }
   serializeBlocks(node.children || [], indents, result);
 }
