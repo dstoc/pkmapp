@@ -155,7 +155,6 @@ export class InlineViewModel extends ViewModel {
       const node = this.tree.import<MarkdownNode>(child);
       node.viewModel.insertBefore(cast(this.parent), this.nextSibling);
       newNodes.push(node);
-      
     }
     this.remove();
     return newNodes;
@@ -190,7 +189,7 @@ export class MarkdownTree {
 
   import<T>(node: T&MarkdownNode) {
     if ((node as MaybeViewModelNode).viewModel) {
-      throw new Error('node is already part of a tree');
+    throw new Error('node is already part of a tree');
     }
     return this.addDom(node);
   }
@@ -202,11 +201,11 @@ export class MarkdownTree {
   ) {
     const result = node as T&ViewModelNode;
     if (result.type === 'paragraph' || result.type === 'heading' || result.type === 'code-block') {
-      assert(!result.viewModel);
-      result.viewModel = new InlineViewModel(result, this, parent, childIndex);
+    assert(!result.viewModel);
+    result.viewModel = new InlineViewModel(result, this, parent, childIndex);
     } else {
-      assert(!result.viewModel);
-      result.viewModel = new ViewModel(result, this, parent, childIndex);
+    assert(!result.viewModel);
+    result.viewModel = new ViewModel(result, this, parent, childIndex);
     }
     if (result.children) {
     for (let i = 0; i < result.children.length; i++) {
@@ -230,54 +229,54 @@ export type MaybeViewModelNode = MarkdownNode & {
   children?: MarkdownNode[];
 };
 
-export type ViewModelNode = MarkdownNode&{
-  viewModel: ViewModel;
-  children?: ViewModelNode[];
-};
+  export type ViewModelNode = MarkdownNode&{
+    viewModel: ViewModel;
+    children?: ViewModelNode[];
+  };
 
-export type InlineViewModelNode = InlineNode&{
-  viewModel: InlineViewModel;
-  children?: ViewModelNode[];
-};
+  export type InlineViewModelNode = InlineNode&{
+    viewModel: InlineViewModel;
+    children?: ViewModelNode[];
+  };
 
-interface Position {
-  row: number;
-  column: number;
-}
-
-function indexToPosition(text: string, index: number): Position {
-  let row = 1;
-  let column = 1;
-  for (let i = 0; i < index; i++) {
-    if (text[i] === '\n') {
-      row++;
-      column = 1;
-    } else {
-      column++;
-    }
+  interface Position {
+    row: number;
+    column: number;
   }
-  return {row, column};
-}
 
-interface Edit {
-  startIndex: number;
-  startPosition: Position;
-  newEndIndex: number;
-  newEndPosition: Position;
-  oldEndIndex: number;
-  oldEndPosition: Position;
-  newText?: string;
-}
+  function indexToPosition(text: string, index: number): Position {
+    let row = 1;
+    let column = 1;
+    for (let i = 0; i < index; i++) {
+      if (text[i] === '\n') {
+        row++;
+        column = 1;
+      } else {
+        column++;
+      }
+    }
+    return {row, column};
+  }
 
-function apply(text: string, edit: Edit) {
-  return (
-      text.substring(0, edit.startIndex) + (edit.newText ?? '') +
-      text.substring(edit.oldEndIndex));
-}
+  interface Edit {
+    startIndex: number;
+    startPosition: Position;
+    newEndIndex: number;
+    newEndPosition: Position;
+    oldEndIndex: number;
+    oldEndPosition: Position;
+    newText?: string;
+  }
 
-interface InlineEdit {
-  newText: string;
-  startIndex: number;
-  oldEndIndex: number;
-  newEndIndex: number;
-}
+  function apply(text: string, edit: Edit) {
+    return (
+        text.substring(0, edit.startIndex) + (edit.newText ?? '') +
+        text.substring(edit.oldEndIndex));
+  }
+
+  interface InlineEdit {
+    newText: string;
+    startIndex: number;
+    oldEndIndex: number;
+    newEndIndex: number;
+  }

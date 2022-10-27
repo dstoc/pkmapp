@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export function testState<T>(makeState: () => T|Promise<T>): T {
+export function testState<T>(makeState: () => T | Promise<T>): T {
   const result = {};
   beforeEach(async () => {
     Object.assign(result, await makeState());
