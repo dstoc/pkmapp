@@ -15,30 +15,61 @@
 import {Main} from '../pages/main';
 import {testState} from '../util/test_state';
 
+interface Input {
+  keys: string[];
+  leading?: string;
+}
+
+function removeLeadingWhitespace(input: string, leading?: string) {
+  if (leading == undefined) {
+    leading = /(\n +)/.exec(input)?.[1];
+  }
+  return leading ? input.replace(new RegExp(leading, 'g'), '\n') : input;
+}
+
+function input(strings: TemplateStringsArray, ...keys: string[][]): string[] {
+  const leading = /(\n +)/.exec(strings.join(''))?.[1];
+  const result: string[] = [];
+  for (let i = 0; i < strings.length; i++) {
+    result.push(...removeLeadingWhitespace(strings[i], leading).split(''));
+    result.push(...keys[i] ?? []);
+  }
+  return result;
+}
+
+describe('input helper', () => {
+  it('removes leading whitespace', () => {
+    expect(input`a
+                 b`)
+        .toEqual(['a', '\n', 'b']);
+  });
+  it('merges keys', () => {
+    expect(input`a${['Tab']}b`).toEqual(['a', 'Tab', 'b']);
+  });
+});
+
 describe('main', () => {
   const state = testState(async () => {
     const main = await new Main().load();
     return {main, fs: await main.fileSystem};
   });
-  function inputOutputTest(input, output) {
+  function inputOutputTest(keys: string[], output: string) {
     return async () => {
-      const leading = /(\n +)/.exec(input)[1];
-      input = input.replace(new RegExp(leading, 'g'), '\n');
-      output = output.replace(new RegExp(leading, 'g'), '\n');
+      output = removeLeadingWhitespace(output);
       await state.main.opendirButton.click();
       await browser.waitUntil(state.main.fileInput.isExisting);
       await state.main.loadButton.click();
       await browser.waitUntil($('>>>[contenteditable]').isExisting);
       const inline = $('>>>[contenteditable]');
       await inline.click();
-      await browser.keys(input.split(''));
+      await browser.keys(keys);
       await browser.waitUntil(state.main.isClean);
       expect(await state.fs.getFile('test.md')).toEqual(output);
     };
   }
   it('can generate multiple sections',
      inputOutputTest(
-         `# 1
+         input`# 1
           a
           # 2
           b`,
@@ -51,7 +82,7 @@ describe('main', () => {
          ));
   it('can generate a list',
      inputOutputTest(
-         `* a
+         input`* a
           b`,
          `* a
           * b
@@ -59,11 +90,17 @@ describe('main', () => {
          ));
   it('does not generate lists in ambiguous situations',
      inputOutputTest(
-         `*a
+         input`*a
           b`,
          `*a
 
           b
+          `,
+         ));
+  it('can indent a top level paragraph',
+     inputOutputTest(
+         input`a${['Tab']}`,
+         `* a
           `,
          ));
 });
