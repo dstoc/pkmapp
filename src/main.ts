@@ -16,7 +16,7 @@ import './markdown/block-render.js';
 
 import {assert, cast} from './asserts.js';
 import {contextProvider} from './deps/lit-labs-context.js';
-import {customElement, html, LitElement, property, query, render,} from './deps/lit.js';
+import {css, customElement, html, LitElement, property, query, render,} from './deps/lit.js';
 import {parseBlocks} from './markdown/block-parser.js';
 import {MarkdownRenderer} from './markdown/block-render.js';
 import {serializeToString} from './markdown/block-serializer.js';

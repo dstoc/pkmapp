@@ -99,6 +99,9 @@ export class MarkdownInline extends LitElement {
         md-span[type='strong_emphasis'] {
           font-weight: bold;
         }
+        md-span[type='strikethrough'] {
+          text-decoration: line-through;
+        }
         md-span[type='code_span'] {
           white-space: pre;
           font-family: monospace;
