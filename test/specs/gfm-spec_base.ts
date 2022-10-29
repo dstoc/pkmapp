@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import {FileSystem, Main} from '../pages/main';
+import {testRoundtrip} from '../util/test_roundtrip';
 
 async function getTests() {
   await browser.url('https://github.github.com/gfm');
@@ -78,29 +79,9 @@ export function runTests(start = 1, limit = 678) {
              expectedFailures[i] !== undefined ?
                  '(not) ' :
                  ''}roundtrip https://github.github.com/gfm/#example-${i}`,
-         async () => {
-           const content = tests[i].content.trim() + '\n';
-           await fs.setFile('test.md', content);
-           await main.loadButton.click();
-           expect(await main.status('loaded', 'error')).toEqual('loaded');
-           await main.saveButton.click();
-           await browser.waitUntil(main.isClean);
-           const result = await fs.getFile('test.md');
-           const resultv = result.replace(/\s+/g, '');
-           const contentv = content.replace(/\s+/g, '');
-           // Alternatively, remove leading/trailing whitespace, collapse
-           // remanining to \n or ' '. But this only produces a handful of new
-           // normalization failures. const resultv =
-           // result.replace(/\s*\n\s*/gs, '\n').replace(/[ \t]+/g, ' '); const
-           // contentv = content.replace(/\s*\n\s*/gs, '\n').replace(/[ \t]+/g,
-           // ' ');
-           if (expectedFailures[i] !== undefined) {
-             expect(resultv).not.toEqual(contentv);
-             expect(result).toContain(expectedFailures[i]);
-           } else {
-             if (resultv !== contentv) expect(resultv).toEqual(content);
-           }
-         });
+         async () => testRoundtrip(
+             tests[i].content.trim() + '\n', main, fs, true,
+             expectedFailures[i]));
     }
   });
 };
