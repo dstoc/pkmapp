@@ -76,9 +76,6 @@ export class MarkdownRenderer extends LitElement {
       ...MarkdownInline.styles,
       css`
         md-block {
-          font-family: 'Roboto', sans-serif;
-        }
-        md-block {
           display: block;
           margin-block-start: 1em;
           margin-block-end: 1em;
@@ -93,7 +90,7 @@ export class MarkdownRenderer extends LitElement {
           margin-block: 0;
         }
         md-block[type='code-block'] md-inline {
-          font-family: 'Roboto Mono', monospace;
+          font-family: monospace;
           white-space: pre-wrap;
         }
         md-block[type='heading'] md-inline {
@@ -109,12 +106,39 @@ export class MarkdownRenderer extends LitElement {
           margin-block-end: 0em;
         }
         md-block[type='block-quote'] {
-          background: #f9f9f9;
-          border-left: 10px solid #ccc;
-          padding: 0.5em 10px;
         }
         md-block[type='list'] + md-block {
           margin-block-start: 0em;
+        }
+      `,
+      // Overridable styles.
+      css`
+        md-span[type='code_span'] {
+          font-family: var(--md-code-font-family);
+          border-radius: 3px;
+          padding: 3px;
+          background: var(--md-code-block-bgcolor);
+        }
+        md-block[type='block-quote'] {
+          background: var(--md-block-quote-bgcolor);
+          border-left: 10px solid var(--md-accent-color);
+          padding: 10px;
+          border-radius: 10px;
+        }
+        md-block[type='code-block'] md-inline {
+          font-family: var(--md-code-font-family);
+          background: var(--md-code-block-bgcolor);
+          padding: 10px;
+          border-radius: 10px;
+        }
+        md-span[type='shortcut_link'],
+        md-span[type='inline_link'] {
+          color: var(--md-accent-color);
+        }
+        md-span[type='shortcut_link'] a,
+        md-span[type='inline_link'] a {
+          color: var(--md-accent-color);
+          text-decoration: none;
         }
       `,
     ];
