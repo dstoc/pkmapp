@@ -14,8 +14,6 @@
 
 import './markdown/block-render.js';
 
-import {openStdin} from 'process';
-
 import {assert, cast} from './asserts.js';
 import {contextProvider} from './deps/lit-labs-context.js';
 import {css, customElement, html, LitElement, property, query, render,} from './deps/lit.js';
@@ -26,6 +24,10 @@ import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
 import {InlineNode, ParagraphNode} from './markdown/node.js';
 import {InlineViewModel, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
+import {styles} from './style.js';
+
+// TODO: why can't we place this in an element's styles?
+document.adoptedStyleSheets = [...styles];
 
 @customElement('test-host')
 export class TestHost extends LitElement {
@@ -39,6 +41,20 @@ export class TestHost extends LitElement {
   @contextProvider({context: hostContext})
   @property({reflect: false})
   hostContext: HostContext = {};
+  static override get styles() {
+    return [
+      css`
+        #content {
+          display: flex;
+          justify-content: center;
+          flex-grow: 1;
+        }
+        md-block-render {
+          width: 700px;
+        }
+      `,
+    ];
+  }
   override render() {
     if (!this.directory) {
       return html`
@@ -53,11 +69,13 @@ export class TestHost extends LitElement {
     <button id=save @click=${this.markDirty}>Save</button>${
         this.dirty ? '*' : ''}
     <br>
+    <div id=content>
     <md-block-render
       .block=${this.tree?.root}
       @inline-input=${this.onInlineInput}
       @inline-link-click=${this.onInlineLinkClick}
-      @inline-keydown=${this.onInlineKeyDown}></md-block-render>`;
+      @inline-keydown=${this.onInlineKeyDown}></md-block-render>
+    </div>`;
   }
   override async connectedCallback() {
     super.connectedCallback();
