@@ -16,23 +16,13 @@ import {Page} from './page';
 
 type Status = 'loading'|'loaded'|'error';
 export class Main extends Page {
-  path = '/';
+  path = '/?opfs';
   host = $('test-host');
-  opendirButton = this.host.shadow$('#opendir');
   fileInput = this.host.shadow$('input');
   loadButton = this.host.shadow$('#load');
   saveButton = this.host.shadow$('#save');
-  isReady = this.opendirButton.isExisting;
-  fileSystem = new Promise<FileSystem>(async resolve => {
-    await this.loaded;
-    await browser.executeAsyncScript(
-        `
-      const callback = arguments[arguments.length - 1];
-      import("/testing/memory_file_system.js").then(callback);
-    `,
-        []);
-    resolve(new FileSystem());
-  });
+  isReady = this.host.shadow$('*').isExisting;
+  fileSystem = new FileSystem();
   isClean = async () => (await this.host.getAttribute('dirty')) === null;
   async status(...status: Status[]): Promise<Status> {
     await browser.waitUntil(
@@ -49,7 +39,7 @@ export class FileSystem {
       const [fileName, callback] = arguments;
       (async () => {
         try {
-          const directory = await showDirectoryPicker({mode: 'readwrite'});
+          const directory = await navigator.storage.getDirectory();
           const handle = await directory.getFileHandle(fileName);
           const file = await handle.getFile();
           const decoder = new TextDecoder();
@@ -74,7 +64,7 @@ export class FileSystem {
       const [fileName, content, callback] = arguments;
       (async () => {
         try {
-          const directory = await showDirectoryPicker({mode: 'readwrite'});
+          const directory = await navigator.storage.getDirectory();
           const handle = await directory.getFileHandle(fileName, {create: true});
           const stream = await handle.createWritable();
           await stream.write(content);

@@ -59,11 +59,9 @@ describe('main', () => {
   function inputOutputTest(keys: string[], output: string) {
     return async () => {
       output = removeLeadingWhitespace(output);
-      await state.main.opendirButton.click();
-      await browser.waitUntil(state.main.fileInput.isExisting);
       await state.fs.setFile('test.md', '');
       await state.main.loadButton.click();
-      await browser.waitUntil($('>>>[contenteditable]').isExisting);
+      await state.main.status('loaded');
       const inline = $('>>>[contenteditable]');
       await inline.click();
       await browser.keys(keys);
