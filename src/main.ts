@@ -14,6 +14,8 @@
 
 import './markdown/block-render.js';
 
+import {openStdin} from 'process';
+
 import {assert, cast} from './asserts.js';
 import {contextProvider} from './deps/lit-labs-context.js';
 import {css, customElement, html, LitElement, property, query, render,} from './deps/lit.js';
@@ -57,9 +59,30 @@ export class TestHost extends LitElement {
       @inline-link-click=${this.onInlineLinkClick}
       @inline-keydown=${this.onInlineKeyDown}></md-block-render>`;
   }
+  override async connectedCallback() {
+    super.connectedCallback();
+    const url = new URL(location.toString());
+    if (url.searchParams.has('opfs')) {
+      await this.ensureDirectory();
+    }
+    await this.updateComplete;
+    if (url.searchParams.has('path')) {
+      this.fileInput.value = url.searchParams.get('path')!;
+      await this.load();
+    }
+  }
   async ensureDirectory() {
     if (!this.directory) {
-      this.directory = await showDirectoryPicker({mode: 'readwrite'});
+      const url = new URL(location.toString());
+      if (url.searchParams.has('opfs')) {
+        const opfs = await navigator.storage.getDirectory();
+        const path = url.searchParams.get('opfs')!;
+        this.directory = path == '' ?
+            opfs :
+            await opfs.getDirectoryHandle(path, {create: true});
+      } else {
+        this.directory = await showDirectoryPicker({mode: 'readwrite'});
+      }
     }
     return this.directory;
   }
