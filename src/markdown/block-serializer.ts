@@ -58,6 +58,29 @@ function serializeBlocks(
   }
 }
 
+export function getPrefix(node: MarkdownNode): string {
+  switch (node.type) {
+    case 'document':
+    case 'section':
+    case 'list':
+    case 'paragraph':
+      return '';
+    case 'list-item':
+      return node.marker;
+    case 'block-quote':
+      return node.marker;
+    case 'heading':
+      return node.marker + ' ';
+    case 'code-block':
+      return '```' + (node.info ?? '');
+    case 'unsupported':
+      return '';
+    default:
+      // TODO: assert unreachable
+      assert(false);
+  }
+}
+
 function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
   function indent() {
     for (const indent of indents) {
@@ -115,7 +138,7 @@ function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
       break;
     default:
       // TODO: assert not reached?
-      break;
+      assert(false);
   }
   serializeBlocks(node.children || [], indents, result);
 }

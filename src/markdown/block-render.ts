@@ -44,7 +44,8 @@ export class MarkdownBlock extends LitElement {
     this.type = node.type;
     if (node.type === 'paragraph' || node.type === 'code-block' ||
         node.type === 'heading') {
-      return html`<md-inline .node=${node}></md-inline>`;
+      return html`
+        <md-inline .node=${node}></md-inline>`;
     } else {
       return node.children?.map(
           node => html`<md-block .node=${node}></md-block>`);
@@ -89,24 +90,13 @@ export class MarkdownRenderer extends LitElement {
         md-block[type='list-item'] {
           display: list-item;
           white-space: initial;
-          position: relative;
           margin-block: 0;
         }
-        md-block[type='list-item']::before {
-          position: absolute;
-          content: ' ';
-          margin-left: -14px;
-          margin-top: 18px;
-          width: 4px;
-          background: silver;
-          height: calc(100% - 19px);
-          border-radius: 2px;
-        }
-        md-block[type='code-block'] {
+        md-block[type='code-block'] md-inline {
           font-family: 'Roboto Mono', monospace;
           white-space: pre-wrap;
         }
-        md-block[type='heading'] {
+        md-block[type='heading'] md-inline {
           font-weight: bold;
         }
         md-block + md-block[type='list'] {
