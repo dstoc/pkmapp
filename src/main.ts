@@ -522,6 +522,10 @@ function insertParagraphInList(
     marker: firstListItem?.marker ?? '* ',
   });
   newListItem.viewModel.insertBefore(targetList, targetListItemNextSibling);
+  if (newListItem.viewModel.previousSibling?.type === 'list-item' &&
+      newListItem.viewModel.previousSibling.checked !== undefined) {
+    newListItem.checked = false;
+  }
   const newParagraph = node.viewModel.tree.import({
     type: 'paragraph',
     content: '',
