@@ -262,6 +262,19 @@ export class TestHost extends LitElement {
       // TODO: is the focus offset always 0?
       if (next) focusNode(this.hostContext, next, 0);
     } else {
+      // TODO: generalize this (inline block mutation)
+      const parent = inline.node.viewModel.parent;
+      if (parent?.type === 'list-item' && parent.checked === undefined &&
+          /^\[( |x)] /.test(inline.node.content)) {
+        parent.checked = inline.node.content[1] === 'x';
+        parent.viewModel.observe.notify();
+        inline.node.viewModel.edit({
+          newText: '',
+          startIndex: 0,
+          newEndIndex: 0,
+          oldEndIndex: 4,
+        });
+      }
       focusNode(this.hostContext, inline.node, newEndIndex);
     }
   }
