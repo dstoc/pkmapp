@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {fira, opensans} from './deps/fonts.js';
+import {fira} from './deps/fonts.js';
 import {css} from './deps/lit.js';
 
 export const styles = [
