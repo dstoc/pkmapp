@@ -86,6 +86,7 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         md-span[type='shortcut_link'],
         md-span[type='inline_link'] {
           color: blue;
+          cursor: pointer;
         }
         md-span[type='emphasis'] {
           font-style: italic;
@@ -301,6 +302,12 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
         this.formatting = false;
         this.type = '';
         this.nodeIds = new NodeIds();
+        this.addEventListener('pointerdown', e => {
+            this.handlePointerDown(e);
+        });
+        this.addEventListener('click', e => {
+            this.handleClick(e);
+        });
     }
     async performUpdate() {
         await super.performUpdate();
@@ -325,12 +332,33 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
     createRenderRoot() {
         return this;
     }
-    onLinkClick(event) {
+    handlePointerDown(event) {
+        if (this.active)
+            return;
+        const node = this.node;
+        if (!node)
+            return;
+        if (node.type === 'inline_link' || node.type === 'shortcut_link') {
+            // Prevent focus before link click.
+            event.preventDefault();
+        }
+    }
+    handleClick(event) {
+        if (this.active)
+            return;
+        const node = this.node;
+        if (!node)
+            return;
+        if (node.type !== 'inline_link' && node.type !== 'shortcut_link')
+            return;
         event.preventDefault();
-        const anchor = event.composedPath()[0];
+        const text = node.namedChildren.find(node => node.type === 'link_text')?.text ?? '';
+        const destination = node.namedChildren.find(node => node.type === 'link_destination')
+            ?.text ??
+            text;
         const inlineLinkClick = {
             type: this.node.type,
-            destination: anchor.getAttribute('href') ?? '',
+            destination,
         };
         this.dispatchEvent(new CustomEvent('inline-link-click', {
             detail: inlineLinkClick,
@@ -349,21 +377,6 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
         this.type = node.type;
         this.formatting = isFormatting(node);
         let index = node.startIndex;
-        if (!this.active &&
-            (node.type === 'inline_link' || node.type === 'shortcut_link')) {
-            const text = node.namedChildren.find(node => node.type === 'link_text')?.text ??
-                '';
-            const destination = node.namedChildren.find(node => node.type === 'link_destination')
-                ?.text ??
-                text;
-            return html `<a
-        href="${destination}"
-        target="_blank"
-        @click=${this.onLinkClick}
-        contenteditable=${false}
-        >${text}</a
-      >`;
-        }
         const results = [];
         const children = [...node.namedChildren];
         while (index < node.endIndex) {
