@@ -92,6 +92,7 @@ export class MarkdownInline extends LitElement {
         md-span[type='shortcut_link'],
         md-span[type='inline_link'] {
           color: blue;
+          cursor: pointer;
         }
         md-span[type='emphasis'] {
           font-style: italic;
@@ -326,6 +327,12 @@ export class MarkdownSpan extends LitElement {
 
   constructor() {
     super();
+    this.addEventListener('pointerdown', e => {
+      this.handlePointerDown(e);
+    });
+    this.addEventListener('click', e => {
+      this.handleClick(e);
+    });
   }
   override async performUpdate() {
     await super.performUpdate();
@@ -352,12 +359,30 @@ export class MarkdownSpan extends LitElement {
   protected override createRenderRoot() {
     return this;
   }
-  private onLinkClick(event: Event) {
+  private handlePointerDown(event: Event) {
+    if (this.active) return;
+    const node = this.node;
+    if (!node) return;
+    if (node.type === 'inline_link' || node.type === 'shortcut_link') {
+      // Prevent focus before link click.
+      event.preventDefault();
+    }
+  }
+  private handleClick(event: Event) {
+    if (this.active) return;
+    const node = this.node;
+    if (!node) return;
+    if (node.type !== 'inline_link' && node.type !== 'shortcut_link') return;
     event.preventDefault();
-    const anchor = event.composedPath()[0] as HTMLAnchorElement;
+    const text =
+        node.namedChildren.find(node => node.type === 'link_text')?.text ?? '';
+    const destination =
+        node.namedChildren.find(node => node.type === 'link_destination')
+            ?.text ??
+        text;
     const inlineLinkClick: InlineLinkClick = {
       type: this.node!.type,
-      destination: anchor.getAttribute('href') ?? '',
+      destination,
     };
     this.dispatchEvent(new CustomEvent('inline-link-click', {
       detail: inlineLinkClick,
@@ -375,25 +400,6 @@ export class MarkdownSpan extends LitElement {
     this.type = node.type;
     this.formatting = isFormatting(node);
     let index = node.startIndex;
-
-    if (!this.active &&
-        (node.type === 'inline_link' || node.type === 'shortcut_link')) {
-      const text =
-          node.namedChildren.find(node => node.type === 'link_text')?.text ??
-          '';
-      const destination =
-          node.namedChildren.find(node => node.type === 'link_destination')
-              ?.text ??
-          text;
-      return html`<a
-        href="${destination}"
-        target="_blank"
-        @click=${this.onLinkClick}
-        contenteditable=${false}
-        >${text}</a
-      >`;
-    }
-
     interface Result {
       node?: Parser.SyntaxNode;
       result: TemplateResult;
