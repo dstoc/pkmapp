@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export type MarkdownNode =|ContainerNode|ParagraphNode|BlockQuoteNode|ListItemNode|HeadingNode|
-    CodeBlockNode|UnsupportedNode;
+export type MarkdownNode =|ContainerNode|ParagraphNode|BlockQuoteNode|
+    ListItemNode|HeadingNode|CodeBlockNode|UnsupportedNode;
 export type InlineNode = ParagraphNode|CodeBlockNode|HeadingNode;
 export type ParentNode = ContainerNode|BlockQuoteNode|ListItemNode;
 
