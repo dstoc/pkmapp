@@ -90,6 +90,21 @@ describe('main', () => {
           * b
           `,
          ));
+  describe('checklists', () => {
+    it('can generate unchecked',
+       inputOutputTest(
+           input`* [ ] milk\neggs`,
+           `* [ ] milk\n* [ ] eggs\n`,
+           ));
+    it('can generate checked',
+       inputOutputTest(
+           input`* [x] milk\neggs`,
+           `* [x] milk\n* [ ] eggs\n`,
+           ));
+    it('ignores double check',
+       inputOutputTest(
+           input`* [x] [ ] milk\neggs`, `* [x] [ ] milk\n* [ ] eggs\n`));
+  });
   it('does not generate lists in ambiguous situations',
      inputOutputTest(
          input`*a
