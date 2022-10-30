@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export type MarkdownNode =|ContainerNode|ParagraphNode|MarkedNode|HeadingNode|
+export type MarkdownNode =|ContainerNode|ParagraphNode|BlockQuoteNode|ListItemNode|HeadingNode|
     CodeBlockNode|UnsupportedNode;
 export type InlineNode = ParagraphNode|CodeBlockNode|HeadingNode;
-export type ParentNode = ContainerNode|MarkedNode;
+export type ParentNode = ContainerNode|BlockQuoteNode|ListItemNode;
 
 // TODO: ID, Sequence Number (per tree?)
 interface Node {
@@ -31,9 +31,15 @@ export type ParagraphNode = Node&{
   content: string;
 };
 
-export type MarkedNode = Node&{
-  type: 'list-item'|'block-quote';
+export type BlockQuoteNode = Node&{
+  type: 'block-quote';
   marker: string;
+};
+
+export type ListItemNode = Node&{
+  type: 'list-item';
+  marker: string;
+  checked?: boolean;
 };
 
 export type HeadingNode = Node&{
