@@ -68,9 +68,15 @@ function convertNode(node) {
             if (!marker.endsWith(' ')) {
                 marker += ' ';
             }
+            let checked;
+            if (children[1]?.type === 'task_list_marker_unchecked')
+                checked = false;
+            if (children[1]?.type === 'task_list_marker_checked')
+                checked = true;
             return {
                 type: 'list-item',
                 marker,
+                checked,
                 children: ensureContent([...convertNodes(children)]),
             };
         }
@@ -112,6 +118,8 @@ function convertNode(node) {
         case 'list_marker_parenthesis':
         case 'list_marker_plus':
         case 'block_quote_marker':
+        case 'task_list_marker_unchecked':
+        case 'task_list_marker_checked':
             return undefined;
         case 'setext_heading':
         case 'thematic_break':
@@ -120,8 +128,6 @@ function convertNode(node) {
         case 'minus_metadata':
         case 'link_reference_definition':
         case 'pipe_table':
-        case 'task_list_marker_unchecked':
-        case 'task_list_marker_checked':
             return {
                 type: 'unsupported',
                 content: node.text,

@@ -24,6 +24,12 @@ function* onceThenWhitespace(s) {
         yield ws;
     }
 }
+function* onceThenNothing(s) {
+    yield s;
+    while (true) {
+        yield '';
+    }
+}
 function separator(prev, next) {
     if (prev.type === 'heading')
         return '';
@@ -86,6 +92,10 @@ function serialize(node, indents, result) {
         case 'list-item':
             assert(node.children && node.children.length);
             indents = [...indents, onceThenWhitespace(node.marker)];
+            if (node.checked === true)
+                indents.push(onceThenNothing('[x] '));
+            if (node.checked === false)
+                indents.push(onceThenNothing('[ ] '));
             break;
         case 'block-quote':
             assert(node.children && node.children.length);

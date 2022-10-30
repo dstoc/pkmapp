@@ -21,7 +21,7 @@ import { css, customElement, html, LitElement, property } from '../deps/lit.js';
 import { MarkdownInline } from './inline-render.js';
 let MarkdownBlock = class MarkdownBlock extends LitElement {
     constructor() {
-        super(...arguments);
+        super();
         this.type = '';
         this.observer = (node) => {
             if (node !== this.node) {
@@ -30,6 +30,7 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
             }
             this.requestUpdate();
         };
+        this.addEventListener('click', e => this.handleClick(e));
     }
     connectedCallback() {
         super.connectedCallback();
@@ -53,6 +54,9 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
         if (!node)
             return;
         this.type = node.type;
+        if (node.type === 'list-item') {
+            this.checked = node.checked;
+        }
         if (node.type === 'paragraph' || node.type === 'code-block' ||
             node.type === 'heading') {
             return html `
@@ -65,6 +69,30 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
     createRenderRoot() {
         return this;
     }
+    handleClick(e) {
+        const node = this.node;
+        if (!node)
+            return;
+        if (node.type === 'list-item') {
+            if (e.target !== this)
+                return;
+            e.preventDefault();
+            switch (node.checked) {
+                case true:
+                    node.checked = undefined;
+                    break;
+                case false:
+                    node.checked = true;
+                    break;
+                case undefined:
+                    node.checked = false;
+                    break;
+            }
+            // TODO: there should be a helper to do both of these
+            node.viewModel.observe.notify();
+            node.viewModel.tree.observe.notify();
+        }
+    }
     addObserver(node) {
         node?.viewModel.observe.add(this.observer);
     }
@@ -74,9 +102,12 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
 };
 __decorate([
     property({ type: String, reflect: true })
+], MarkdownBlock.prototype, "checked", void 0);
+__decorate([
+    property({ type: String, reflect: true })
 ], MarkdownBlock.prototype, "type", void 0);
 __decorate([
-    property({ type: Object, reflect: false })
+    property({ attribute: false })
 ], MarkdownBlock.prototype, "node", void 0);
 MarkdownBlock = __decorate([
     customElement('md-block')
@@ -100,6 +131,12 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
           display: list-item;
           white-space: initial;
           margin-block: 0;
+        }
+        md-block[type='list-item'][checked='true']::marker {
+          content: '🗹 ';
+        }
+        md-block[type='list-item'][checked='false']::marker {
+          content: '☐ ';
         }
         md-block[type='code-block'] md-inline {
           font-family: monospace;
