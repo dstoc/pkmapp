@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+import { assert } from '../asserts.js';
 function* always(s) {
     while (true) {
         yield s;
@@ -48,51 +49,85 @@ function serializeBlocks(blocks, indents, result) {
         serialize(block, indents, result);
     }
 }
+export function getPrefix(node) {
+    switch (node.type) {
+        case 'document':
+        case 'section':
+        case 'list':
+        case 'paragraph':
+            return '';
+        case 'list-item':
+            return node.marker;
+        case 'block-quote':
+            return node.marker;
+        case 'heading':
+            return node.marker + ' ';
+        case 'code-block':
+            return '```' + (node.info ?? '');
+        case 'unsupported':
+            return '';
+        default:
+            // TODO: assert unreachable
+            assert(false);
+    }
+}
 function serialize(node, indents, result) {
     function indent() {
         for (const indent of indents) {
             result.push(indent.next().value);
         }
     }
-    if (node.type === 'list-item') {
-        indents = [...indents, onceThenWhitespace(node.marker)];
-    }
-    else if (node.type === 'block-quote') {
-        indents = [...indents, always(node.marker)];
-    }
-    else if (node.type === 'paragraph') {
-        indent();
-        result.push(node.content);
-        result.push('\n');
-    }
-    else if (node.type === 'heading') {
-        indent();
-        result.push(node.marker);
-        result.push(' ');
-        result.push(node.content.trimStart());
-        result.push('\n');
-    }
-    else if (node.type === 'code-block') {
-        indent();
-        result.push('```');
-        if (node.info !== null) {
-            result.push(node.info);
-        }
-        result.push('\n');
-        for (const line of node.content.trimEnd().split('\n')) {
+    switch (node.type) {
+        case 'document':
+        case 'section':
+        case 'list':
+            assert(node.children && node.children.length);
+            break;
+        case 'list-item':
+            assert(node.children && node.children.length);
+            indents = [...indents, onceThenWhitespace(node.marker)];
+            break;
+        case 'block-quote':
+            assert(node.children && node.children.length);
+            indents = [...indents, always(node.marker)];
+            break;
+        case 'paragraph':
             indent();
-            result.push(line);
+            result.push(node.content);
             result.push('\n');
-        }
-        indent();
-        result.push('```\n');
-    }
-    else if (node.type === 'unsupported') {
-        for (const line of node.content.trimEnd().split('\n')) {
+            break;
+        case 'heading':
             indent();
-            result.push(line);
+            result.push(node.marker);
+            result.push(' ');
+            result.push(node.content.trimStart());
             result.push('\n');
-        }
+            break;
+        case 'code-block':
+            indent();
+            result.push('```');
+            if (node.info !== null) {
+                result.push(node.info);
+            }
+            result.push('\n');
+            for (const line of node.content.trimEnd().split('\n')) {
+                indent();
+                result.push(line);
+                result.push('\n');
+            }
+            indent();
+            result.push('```\n');
+            break;
+        case 'unsupported':
+            for (const line of node.content.trimEnd().split('\n')) {
+                indent();
+                result.push(line);
+                result.push('\n');
+            }
+            break;
+        default:
+            // TODO: assert not reached?
+            assert(false);
     }
     serializeBlocks(node.children || [], indents, result);
 }

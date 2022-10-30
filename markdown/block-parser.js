@@ -87,10 +87,12 @@ function convertNode(node) {
             const children = node.namedChildren;
             const info = children.find(node => node.type === 'info_string');
             const content = children.find(node => node.type === 'code_fence_content');
+            const offset = content?.startPosition.column ?? 0;
+            const prefix = new RegExp(`(?<=\n).{${offset}}`, 'g');
             return {
                 type: 'code-block',
                 info: info?.text ?? null,
-                content: content?.text.trimEnd() ?? '',
+                content: content?.text.replace(prefix, '').trimEnd() ?? '',
             };
         }
         case 'atx_heading': {

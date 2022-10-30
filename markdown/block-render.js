@@ -55,7 +55,8 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
         this.type = node.type;
         if (node.type === 'paragraph' || node.type === 'code-block' ||
             node.type === 'heading') {
-            return html `<md-inline .node=${node}></md-inline>`;
+            return html `
+        <md-inline .node=${node}></md-inline>`;
         }
         else {
             return node.children?.map(node => html `<md-block .node=${node}></md-block>`);
@@ -87,9 +88,6 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
             ...MarkdownInline.styles,
             css `
         md-block {
-          font-family: 'Roboto', sans-serif;
-        }
-        md-block {
           display: block;
           margin-block-start: 1em;
           margin-block-end: 1em;
@@ -101,24 +99,13 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
         md-block[type='list-item'] {
           display: list-item;
           white-space: initial;
-          position: relative;
           margin-block: 0;
         }
-        md-block[type='list-item']::before {
-          position: absolute;
-          content: ' ';
-          margin-left: -14px;
-          margin-top: 18px;
-          width: 4px;
-          background: silver;
-          height: calc(100% - 19px);
-          border-radius: 2px;
-        }
-        md-block[type='code-block'] {
-          font-family: 'Roboto Mono', monospace;
+        md-block[type='code-block'] md-inline {
+          font-family: monospace;
           white-space: pre-wrap;
         }
-        md-block[type='heading'] {
+        md-block[type='heading'] md-inline {
           font-weight: bold;
         }
         md-block + md-block[type='list'] {
@@ -131,12 +118,39 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
           margin-block-end: 0em;
         }
         md-block[type='block-quote'] {
-          background: #f9f9f9;
-          border-left: 10px solid #ccc;
-          padding: 0.5em 10px;
         }
         md-block[type='list'] + md-block {
           margin-block-start: 0em;
+        }
+      `,
+            // Overridable styles.
+            css `
+        md-span[type='code_span'] {
+          font-family: var(--md-code-font-family);
+          border-radius: 3px;
+          padding: 3px;
+          background: var(--md-code-block-bgcolor);
+        }
+        md-block[type='block-quote'] {
+          background: var(--md-block-quote-bgcolor);
+          border-left: 10px solid var(--md-accent-color);
+          padding: 10px;
+          border-radius: 10px;
+        }
+        md-block[type='code-block'] md-inline {
+          font-family: var(--md-code-font-family);
+          background: var(--md-code-block-bgcolor);
+          padding: 10px;
+          border-radius: 10px;
+        }
+        md-span[type='shortcut_link'],
+        md-span[type='inline_link'] {
+          color: var(--md-accent-color);
+        }
+        md-span[type='shortcut_link'] a,
+        md-span[type='inline_link'] a {
+          color: var(--md-accent-color);
+          text-decoration: none;
         }
       `,
         ];

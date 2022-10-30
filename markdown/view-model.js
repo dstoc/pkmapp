@@ -151,10 +151,15 @@ export class InlineViewModel extends ViewModel {
         return newNodes;
     }
     parseAsBlocks() {
-        // TODO: Ensure there's a trailing new line.
-        // TODO: Have a fast path to early exit without invoking the parser.
+        const content = this.self.content;
+        // TODO: Ensure inline does not start with whitespace, or contain tabs or
+        // newlines.
+        // TODO: Support other block types.
+        if (!/^(\d+[.)] |[\-+*>] |#+ |[`*\-_]{3})/.test(content))
+            return;
         if (this.self.type !== 'paragraph')
             return;
+        // TODO: Ensure there's a trailing new line?
         const node = parseBlocks(this.self.content + '\n');
         assert(node);
         assert(node.type === 'document' && node.children);

@@ -93,6 +93,9 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         md-span[type='strong_emphasis'] {
           font-weight: bold;
         }
+        md-span[type='strikethrough'] {
+          text-decoration: line-through;
+        }
         md-span[type='code_span'] {
           white-space: pre;
           font-family: monospace;
@@ -121,7 +124,8 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
     async maybeSetFocus() {
         if (this.hostContext?.focusNode !== this.node)
             return;
-        // Wait for the nested md-span (and all of the decendant md-spans to update).
+        // Wait for the nested md-span (and all of the decendant md-spans to
+        // update).
         await this.span.updateComplete;
         if (this.hostContext?.focusNode !== this.node)
             return;

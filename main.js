@@ -20,17 +20,34 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 import './markdown/block-render.js';
 import { assert, cast } from './asserts.js';
 import { contextProvider } from './deps/lit-labs-context.js';
-import { customElement, html, LitElement, property, query, render, } from './deps/lit.js';
+import { css, customElement, html, LitElement, property, query, render, } from './deps/lit.js';
 import { parseBlocks } from './markdown/block-parser.js';
 import { serializeToString } from './markdown/block-serializer.js';
 import { hostContext } from './markdown/host-context.js';
 import { MarkdownTree } from './markdown/view-model.js';
+import { styles } from './style.js';
+// TODO: why can't we place this in an element's styles?
+document.adoptedStyleSheets = [...styles];
 let TestHost = class TestHost extends LitElement {
     constructor() {
         super(...arguments);
         this.dirty = false;
         this.hostContext = {};
         this.pendingModifications = 0;
+    }
+    static get styles() {
+        return [
+            css `
+        #content {
+          display: flex;
+          justify-content: center;
+          flex-grow: 1;
+        }
+        md-block-render {
+          width: 700px;
+        }
+      `,
+        ];
     }
     render() {
         if (!this.directory) {
@@ -45,15 +62,39 @@ let TestHost = class TestHost extends LitElement {
     <button id=load @click=${this.load}>Load</button>
     <button id=save @click=${this.markDirty}>Save</button>${this.dirty ? '*' : ''}
     <br>
+    <div id=content>
     <md-block-render
       .block=${this.tree?.root}
       @inline-input=${this.onInlineInput}
       @inline-link-click=${this.onInlineLinkClick}
-      @inline-keydown=${this.onInlineKeyDown}></md-block-render>`;
+      @inline-keydown=${this.onInlineKeyDown}></md-block-render>
+    </div>`;
+    }
+    async connectedCallback() {
+        super.connectedCallback();
+        const url = new URL(location.toString());
+        if (url.searchParams.has('opfs')) {
+            await this.ensureDirectory();
+        }
+        await this.updateComplete;
+        if (url.searchParams.has('path')) {
+            this.fileInput.value = url.searchParams.get('path');
+            await this.load();
+        }
     }
     async ensureDirectory() {
         if (!this.directory) {
-            this.directory = await showDirectoryPicker({ mode: 'readwrite' });
+            const url = new URL(location.toString());
+            if (url.searchParams.has('opfs')) {
+                const opfs = await navigator.storage.getDirectory();
+                const path = url.searchParams.get('opfs');
+                this.directory = path == '' ?
+                    opfs :
+                    await opfs.getDirectoryHandle(path, { create: true });
+            }
+            else {
+                this.directory = await showDirectoryPicker({ mode: 'readwrite' });
+            }
         }
         return this.directory;
     }
@@ -81,11 +122,13 @@ let TestHost = class TestHost extends LitElement {
         }
         catch (e) {
             this.status = 'error';
-            // TODO: store this somewhere?
-            // throw e;
+            console.error(e);
         }
     }
     async markDirty() {
+        // TODO: The tree could be in an inconsistent state, don't trigger the
+        // the observer until the edit is finished, or wait for normalization.
+        await 0;
         this.dirty = true;
         if (this.pendingModifications++)
             return;
@@ -207,7 +250,8 @@ let TestHost = class TestHost extends LitElement {
         const newNodes = inline.node.viewModel.edit(edit);
         if (newNodes) {
             normalizeTree(inline.node.viewModel.tree);
-            const prev = newNodes[0].viewModel.previousSibling || newNodes[0].viewModel.parent;
+            const prev = newNodes[0].viewModel.previousSibling ||
+                newNodes[0].viewModel.parent;
             const next = findNextDfs(prev, ({ type }) => ['paragraph', 'code-block', 'heading'].includes(type));
             // TODO: is the focus offset always 0?
             if (next)
@@ -631,6 +675,18 @@ function normalizeSections(node) {
 }
 function normalizeTree(tree) {
     const document = tree.root;
+    // Remove empty nodes.
+    for (const node of [...dfs(tree.root)]) {
+        if (node.viewModel.firstChild)
+            continue;
+        switch (node.type) {
+            case 'list-item':
+            case 'list':
+            case 'block-quote':
+                node.viewModel.remove();
+                break;
+        }
+    }
     // ensure first child is a section
     if (document.viewModel.firstChild?.type !== 'section') {
         const section = tree.import({
@@ -695,12 +751,15 @@ function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart
         }
     }
     else if (inputEvent.inputType === 'insertParagraph') {
-        return insertParagraphInList(inline.node, inputStart.index, context) || insertParagraphInSection(inline.node, inputStart.index, context);
+        return insertParagraphInList(inline.node, inputStart.index, context) ||
+            insertParagraphInSection(inline.node, inputStart.index, context);
     }
     else if (inputEvent.inputType === 'insertLineBreak') {
         return insertSiblingParagraph(inline.node, inputStart.index, context);
     }
     return false;
 }
+onunhandledrejection = (e) => console.error(e.reason);
+onerror = (event, source, lineno, colno, error) => console.error(event, error);
 render(html `<test-host></test-host>`, document.body);
 //# sourceMappingURL=main.js.map
