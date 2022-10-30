@@ -19,8 +19,13 @@ import {ViewModelNode} from './view-model.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement {
+  @property({type: String, reflect: true}) checked?: boolean;
   @property({type: String, reflect: true}) type = '';
-  @property({type: Object, reflect: false}) node: ViewModelNode|undefined;
+  @property({attribute: false}) node: ViewModelNode|undefined;
+  constructor() {
+    super();
+    this.addEventListener('click', e => this.handleClick(e));
+  }
   override connectedCallback(): void {
     super.connectedCallback();
     this.addObserver(this.node);
@@ -42,6 +47,9 @@ export class MarkdownBlock extends LitElement {
     const node = this.node;
     if (!node) return;
     this.type = node.type;
+    if (node.type === 'list-item') {
+      this.checked = node.checked;
+    }
     if (node.type === 'paragraph' || node.type === 'code-block' ||
         node.type === 'heading') {
       return html`
@@ -53,6 +61,28 @@ export class MarkdownBlock extends LitElement {
   }
   protected override createRenderRoot() {
     return this;
+  }
+  private handleClick(e: Event) {
+    const node = this.node;
+    if (!node) return;
+    if (node.type === 'list-item') {
+      if (e.target !== this) return;
+      e.preventDefault();
+      switch (node.checked) {
+        case true:
+          node.checked = undefined;
+          break;
+        case false:
+          node.checked = true;
+          break;
+        case undefined:
+          node.checked = false;
+          break;
+      }
+      // TODO: there should be a helper to do both of these
+      node.viewModel.observe.notify();
+      node.viewModel.tree.observe.notify();
+    }
   }
   private readonly observer = (node: ViewModelNode) => {
     if (node !== this.node) {
@@ -88,6 +118,12 @@ export class MarkdownRenderer extends LitElement {
           display: list-item;
           white-space: initial;
           margin-block: 0;
+        }
+        md-block[type='list-item'][checked='true']::marker {
+          content: '🗹 ';
+        }
+        md-block[type='list-item'][checked='false']::marker {
+          content: '☐ ';
         }
         md-block[type='code-block'] md-inline {
           font-family: monospace;

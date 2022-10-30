@@ -30,6 +30,13 @@ function* onceThenWhitespace(s: string): IndentGenerator {
   }
 }
 
+function* onceThenNothing(s: string): IndentGenerator {
+  yield s;
+  while (true) {
+    yield '';
+  }
+}
+
 type IndentGenerator = Generator<string, string, unknown>;
 type Indents = Generator<string, string, unknown>[];
 
@@ -97,6 +104,8 @@ function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
     case 'list-item':
       assert(node.children && node.children.length);
       indents = [...indents, onceThenWhitespace(node.marker)];
+      if (node.checked === true) indents.push(onceThenNothing('[x] '));
+      if (node.checked === false) indents.push(onceThenNothing('[ ] '));
       break;
     case 'block-quote':
       assert(node.children && node.children.length);
