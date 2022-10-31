@@ -18,22 +18,7 @@ import {parser as inlineParser} from './inline-parser.js';
 import {parseBlocks} from './block-parser.js';
 import Parser from 'web-tree-sitter';
 import {assert, cast} from '../asserts.js';
-
-class Observe<T> {
-  private observers = new Set<(target: T) => void>();
-  constructor(readonly target: T) {}
-  notify() {
-    for (const observer of this.observers.values()) {
-      observer(this.target);
-    }
-  }
-  add(observer: (node: T) => void) {
-    this.observers.add(observer);
-  }
-  remove(observer: (node: T) => void) {
-    this.observers.delete(observer);
-  }
-}
+import {Observe} from '../observe.js';
 
 class ViewModel {
   constructor(

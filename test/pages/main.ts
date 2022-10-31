@@ -17,7 +17,7 @@ import {Page} from './page';
 type Status = 'loading'|'loaded'|'error';
 export class Main extends Page {
   path = '/?opfs';
-  host = $('test-host');
+  host = $('>>>test-host');
   fileInput = this.host.shadow$('input');
   loadButton = this.host.shadow$('#load');
   saveButton = this.host.shadow$('#save');

@@ -16,18 +16,137 @@ import './markdown/block-render.js';
 
 import {assert, cast} from './asserts.js';
 import {contextProvider} from './deps/lit-labs-context.js';
-import {css, customElement, html, LitElement, property, query, render,} from './deps/lit.js';
+import {css, customElement, html, LitElement, property, query, render, state} from './deps/lit.js';
 import {parseBlocks} from './markdown/block-parser.js';
 import {MarkdownRenderer} from './markdown/block-render.js';
 import {serializeToString} from './markdown/block-serializer.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
-import {InlineNode, ParagraphNode} from './markdown/node.js';
+import {InlineNode, MarkdownNode, ParagraphNode} from './markdown/node.js';
 import {InlineViewModel, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
+import {Observe, Observer, Observers} from './observe.js';
 import {styles} from './style.js';
 
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
+
+interface Document {
+  refresh(): Promise<void>;
+  save(): Promise<void>;
+  readonly tree: MarkdownTree;
+  readonly dirty: boolean;
+  readonly observe: Observe<Document>;
+}
+
+interface Library {
+  getDocument(name: string): Promise<Document>;
+}
+
+class FileSystemLibrary implements Library {
+  constructor(private readonly directory: FileSystemDirectoryHandle) {}
+  async getDocument(name: string): Promise<Document> {
+    const load = async () => {
+      const fileName = name;
+      let text = '';
+      try {
+        const handle = await this.directory.getFileHandle(fileName);
+        const file = await handle.getFile();
+        const decoder = new TextDecoder();
+        text = decoder.decode(await file.arrayBuffer());
+      } catch (e) {
+        console.error(e);
+      }
+      return parseBlocks(text)!;
+    };
+    const directory = this.directory;
+    const node = await load();
+    const result = new class implements Document {
+      constructor(public tree = new MarkdownTree(node)) {
+        this.tree.observe.add(() => this.markDirty());
+      }
+      dirty = false;
+      observe: Observe<Document> = new Observe<Document>(this);
+      async refresh() {
+        this.tree.root = this.tree.import<MarkdownNode>(await load());
+        this.tree.observe.notify();
+      }
+      async save() {
+        const text = serializeToString(this.tree.root);
+        const fileName = name;
+        const handle = await directory.getFileHandle(fileName, {create: true});
+        const stream = await handle.createWritable();
+        await stream.write(text);
+        await stream.close();
+      }
+      private pendingModifications = 0;
+      async markDirty() {
+        // TODO: The tree could be in an inconsistent state, don't trigger the
+        // the observer until the edit is finished, or wait for normalization.
+        await 0;
+        this.dirty = true;
+        this.observe.notify();
+        if (this.pendingModifications++) return;
+        while (true) {
+          let preSave = this.pendingModifications;
+          // Save immediately on the fist iteration, may help keep tests fast.
+          await this.save();
+          if (this.pendingModifications === preSave) {
+            this.pendingModifications = 0;
+            this.dirty = false;
+            this.observe.notify();
+            return;
+          }
+          // Wait for an idle period with no modifications.
+          let preIdle = NaN;
+          do {
+            preIdle = this.pendingModifications;
+            // TODO: maybe a timeout is better?
+            await new Promise(resolve => requestIdleCallback(resolve));
+          } while (preIdle != this.pendingModifications);
+        }
+      }
+    };
+    return result;
+  }
+}
+
+@customElement('pkm-app')
+export class PkmApp extends LitElement {
+  @state() library?: Library;
+  override render() {
+    if (!this.library) {
+      return html`
+        <button id=opendir @click=${this.ensureDirectory}>
+          Open directory...
+        </button>
+      `;
+    }
+    return html`<test-host .library=${this.library}></test-host>`;
+  }
+  override async connectedCallback() {
+    super.connectedCallback();
+    const url = new URL(location.toString());
+    if (url.searchParams.has('opfs')) {
+      await this.ensureDirectory();
+    }
+  }
+  async ensureDirectory() {
+    if (!this.library) {
+      const url = new URL(location.toString());
+      if (url.searchParams.has('opfs')) {
+        const opfs = await navigator.storage.getDirectory();
+        const path = url.searchParams.get('opfs')!;
+        this.library = new FileSystemLibrary(
+            path == '' ? opfs :
+                         await opfs.getDirectoryHandle(path, {create: true}));
+      } else {
+        this.library = new FileSystemLibrary(
+            await showDirectoryPicker({mode: 'readwrite'}));
+      }
+    }
+    return this.library;
+  }
+}
 
 @customElement('test-host')
 export class TestHost extends LitElement {
@@ -35,12 +154,15 @@ export class TestHost extends LitElement {
   @query('input') fileInput!: HTMLInputElement;
   @property({type: String, reflect: true})
   status: 'loading'|'loaded'|'error'|undefined;
+  @state() document?: Document;
   @property({type: Boolean, reflect: true}) dirty = false;
-  @property({attribute: false}) tree: MarkdownTree|undefined;
-  @property({attribute: false}) directory?: FileSystemDirectoryHandle;
+  @property({attribute: false}) library?: Library;
   @contextProvider({context: hostContext})
   @property({reflect: false})
   hostContext: HostContext = {};
+  private observers = new Observers(new Observer(
+      () => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o),
+      () => this.requestUpdate()));
   static override get styles() {
     return [
       css`
@@ -56,22 +178,17 @@ export class TestHost extends LitElement {
     ];
   }
   override render() {
-    if (!this.directory) {
-      return html`
-        <button id=opendir @click=${this.ensureDirectory}>
-          Open directory...
-        </button>
-      `;
-    }
+    this.observers.update();
+    this.dirty = this.document?.dirty ?? false;
     return html`
     <input type=text value="test.md"></input>
     <button id=load @click=${this.load}>Load</button>
-    <button id=save @click=${this.markDirty}>Save</button>${
-        this.dirty ? '*' : ''}
+    <button id=save @click=${() => this.document?.save()}>Save</button>${
+        this.document?.dirty ? '*' : ''}
     <br>
     <div id=content>
     <md-block-render
-      .block=${this.tree?.root}
+      .block=${this.document?.tree.root}
       @inline-input=${this.onInlineInput}
       @inline-link-click=${this.onInlineLinkClick}
       @inline-keydown=${this.onInlineKeyDown}></md-block-render>
@@ -80,90 +197,24 @@ export class TestHost extends LitElement {
   override async connectedCallback() {
     super.connectedCallback();
     const url = new URL(location.toString());
-    if (url.searchParams.has('opfs')) {
-      await this.ensureDirectory();
-    }
     await this.updateComplete;
     if (url.searchParams.has('path')) {
       this.fileInput.value = url.searchParams.get('path')!;
       await this.load();
     }
   }
-  async ensureDirectory() {
-    if (!this.directory) {
-      const url = new URL(location.toString());
-      if (url.searchParams.has('opfs')) {
-        const opfs = await navigator.storage.getDirectory();
-        const path = url.searchParams.get('opfs')!;
-        this.directory = path == '' ?
-            opfs :
-            await opfs.getDirectoryHandle(path, {create: true});
-      } else {
-        this.directory = await showDirectoryPicker({mode: 'readwrite'});
-      }
-    }
-    return this.directory;
-  }
   async load() {
+    if (!this.library) return;
     this.status = 'loading';
-    this.tree = undefined;
-    const directory = await this.ensureDirectory();
+    this.document = undefined;
     const fileName = this.fileInput.value;
-    let text = '';
     try {
-      const handle = await directory.getFileHandle(fileName);
-      const file = await handle.getFile();
-      const decoder = new TextDecoder();
-      text = decoder.decode(await file.arrayBuffer());
-    } catch (e) {
-      console.warn(e);
-    }
-
-    try {
-      const node = parseBlocks(text);
-      if (node) this.tree = new MarkdownTree(node);
-      this.tree?.observe.add(() => this.markDirty());
+      this.document = await this.library.getDocument(fileName);
       this.status = 'loaded';
     } catch (e) {
       this.status = 'error';
       console.error(e);
     }
-  }
-
-  private pendingModifications = 0;
-  async markDirty() {
-    // TODO: The tree could be in an inconsistent state, don't trigger the
-    // the observer until the edit is finished, or wait for normalization.
-    await 0;
-    this.dirty = true;
-    if (this.pendingModifications++) return;
-    while (true) {
-      let preSave = this.pendingModifications;
-      // Save immediately on the fist iteration, may help keep tests fast.
-      await this.save();
-      if (this.pendingModifications === preSave) {
-        this.pendingModifications = 0;
-        this.dirty = false;
-        return;
-      }
-      // Wait for an idle period with no modifications.
-      let preIdle = NaN;
-      do {
-        preIdle = this.pendingModifications;
-        // TODO: maybe a timeout is better?
-        await new Promise(resolve => requestIdleCallback(resolve));
-      } while (preIdle != this.pendingModifications);
-    }
-  }
-  private async save() {
-    if (!this.tree) return;
-    const text = serializeToString(this.tree.root);
-    const directory = await this.ensureDirectory();
-    const fileName = this.fileInput.value;
-    const handle = await directory.getFileHandle(fileName, {create: true});
-    const stream = await handle.createWritable();
-    await stream.write(text);
-    await stream.close();
   }
   onInlineLinkClick({
     detail: {type, destination},
@@ -780,4 +831,4 @@ function handleInlineInputAsBlockEdit(
 onunhandledrejection = (e) => console.error(e.reason);
 onerror = (event, source, lineno, colno, error) => console.error(event, error);
 
-render(html`<test-host></test-host>`, document.body);
+render(html`<pkm-app></pkm-app>`, document.body);
