@@ -15,16 +15,19 @@
 import './markdown/block-render.js';
 import './editor.js';
 
+import {contextProvider} from './deps/lit-labs-context.js';
 import {customElement, html, LitElement, render, state} from './deps/lit.js';
 import {FileSystemLibrary, Library} from './library.js';
 import {styles} from './style.js';
+import {libraryContext} from './app-context.js';
 
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
 
 @customElement('pkm-app')
 export class PkmApp extends LitElement {
-  @state() library?: Library;
+  @contextProvider({context: libraryContext})
+  @state() library!: Library;
   override render() {
     if (!this.library) {
       return html`
@@ -33,7 +36,7 @@ export class PkmApp extends LitElement {
         </button>
       `;
     }
-    return html`<pkm-editor .library=${this.library}></pkm-editor>`;
+    return html`<pkm-editor></pkm-editor>`;
   }
   override async connectedCallback() {
     super.connectedCallback();
@@ -65,7 +68,6 @@ declare global {
     'pkm-app': PkmApp;
   }
 }
-
 
 onunhandledrejection = (e) => console.error(e.reason);
 onerror = (event, source, lineno, colno, error) => console.error(event, error);
