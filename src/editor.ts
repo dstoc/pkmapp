@@ -16,26 +16,27 @@ import './markdown/block-render.js';
 
 import {assert, cast} from './asserts.js';
 import {contextProvider} from './deps/lit-labs-context.js';
+import {contextProvided} from './deps/lit-labs-context.js';
 import {css, customElement, html, LitElement, property, query, state} from './deps/lit.js';
 import {Document, Library} from './library.js';
-import {MarkdownRenderer} from './markdown/block-render.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
 import {InlineNode, ParagraphNode} from './markdown/node.js';
 import {InlineViewModel, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';
+import {libraryContext} from './app-context.js';
 
 @customElement('pkm-editor')
 export class PkmEditor extends LitElement {
-  @query('md-block-render') blockRender!: MarkdownRenderer;
   @query('input') fileInput!: HTMLInputElement;
   @property({type: String, reflect: true})
   status: 'loading'|'loaded'|'error'|undefined;
   @state() document?: Document;
-  @property({type: Boolean, reflect: true}) dirty = false;
-  @property({attribute: false}) library?: Library;
+  @state() dirty = false;
+  @contextProvided({context: libraryContext, subscribe: true})
+  @state() library!: Library;
   @contextProvider({context: hostContext})
-  @property({reflect: false})
+  @state()
   hostContext: HostContext = {};
   private observers = new Observers(new Observer(
       () => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o),
@@ -53,6 +54,10 @@ export class PkmEditor extends LitElement {
         }
       `,
     ];
+  }
+  constructor() {
+    super();
+    //this.addEventListener('focus', () => this.appContext.activeEditor = this);
   }
   override render() {
     this.observers.update();
