@@ -13,29 +13,8 @@
 // limitations under the License.
 
 import {Main} from '../pages/main';
+import {control, input, removeLeadingWhitespace} from '../util/input';
 import {testState} from '../util/test_state';
-
-interface Input {
-  keys: string[];
-  leading?: string;
-}
-
-function removeLeadingWhitespace(input: string, leading?: string) {
-  if (leading == undefined) {
-    leading = /(\n +)/.exec(input)?.[1];
-  }
-  return leading ? input.replace(new RegExp(leading, 'g'), '\n') : input;
-}
-
-function input(strings: TemplateStringsArray, ...keys: string[][]): string[] {
-  const leading = /(\n +)/.exec(strings.join(''))?.[1];
-  const result: string[] = [];
-  for (let i = 0; i < strings.length; i++) {
-    result.push(...removeLeadingWhitespace(strings[i], leading).split(''));
-    result.push(...keys[i] ?? []);
-  }
-  return result;
-}
 
 describe('input helper', () => {
   it('removes leading whitespace', () => {
@@ -54,13 +33,13 @@ describe('main', () => {
   });
   const state = testState(async () => {
     const main = await new Main().load();
-    return {main, fs: await main.fileSystem};
+    return {main, fs: main.fileSystem};
   });
   function inputOutputTest(keys: string[], output: string) {
     return async () => {
       output = removeLeadingWhitespace(output);
       await state.fs.setFile('test.md', '');
-      await state.main.loadButton.click();
+      await state.main.runCommand('open', 'test');
       await state.main.status('loaded');
       const inline = $('>>>[contenteditable]');
       await inline.click();

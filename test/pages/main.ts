@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {control} from '../util/input';
+
 import {Page} from './page';
 
 type Status = 'loading'|'loaded'|'error';
 export class Main extends Page {
   path = '/?opfs';
   host = $('>>>pkm-editor');
-  fileInput = this.host.shadow$('input');
-  loadButton = this.host.shadow$('#load');
-  saveButton = this.host.shadow$('#save');
   isReady = this.host.shadow$('*').isExisting;
   fileSystem = new FileSystem();
   isClean = async () => (await this.host.getAttribute('dirty')) === null;
@@ -29,6 +28,15 @@ export class Main extends Page {
         async () =>
             status.includes(await this.host.getAttribute('status') as Status));
     return this.host.getAttribute('status') as Promise<Status>;
+  }
+  async runCommand(command: string, argument?: string) {
+    await browser.keys(control('p'));
+    await browser.keys(command.split(''));
+    await browser.keys('\n');
+    if (argument !== undefined) {
+      await browser.keys(argument.split(''));
+      await browser.keys('\n');
+    }
   }
 }
 

@@ -72,7 +72,6 @@ export function runTests(start = 1, limit = 678) {
       expect(tests.length).toEqual(677);
       main = await new Main().load();
       fs = await main.fileSystem;
-      await browser.waitUntil(main.fileInput.isExisting);
     });
     for (let i = start; i < Math.min(limit, 678); i++) {
       it(`can ${
