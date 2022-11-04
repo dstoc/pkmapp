@@ -14,7 +14,7 @@
 
 import './markdown/block-render.js';
 import './editor.js';
-import './component.js';
+import './command-palette.js';
 
 import {libraryContext} from './app-context.js';
 import {CommandPalette} from './command-palette.js';
