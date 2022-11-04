@@ -14,20 +14,37 @@
 
 import './markdown/block-render.js';
 import './editor.js';
+import './component.js';
 
+import {libraryContext} from './app-context.js';
+import {CommandPalette} from './command-palette.js';
 import {contextProvider} from './deps/lit-labs-context.js';
-import {customElement, html, LitElement, render, state} from './deps/lit.js';
+import {customElement, html, LitElement, query, render, state} from './deps/lit.js';
+import {Editor} from './editor.js';
 import {FileSystemLibrary, Library} from './library.js';
 import {styles} from './style.js';
-import {libraryContext} from './app-context.js';
 
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
 
 @customElement('pkm-app')
 export class PkmApp extends LitElement {
+  @query('pkm-editor') editor!: Editor;
+  @query('pkm-command-palette') commandPalette!: CommandPalette;
   @contextProvider({context: libraryContext})
   @state() library!: Library;
+  constructor() {
+    super();
+    document.addEventListener('keydown', e => {
+      if (e.key === 'p' && e.ctrlKey) {
+        e.preventDefault();
+        this.commandPalette.trigger([
+          //...this.getCommands(),
+          ...this.editor.getCommands(),
+        ]);
+      }
+    });
+  }
   override render() {
     if (!this.library) {
       return html`
@@ -36,7 +53,10 @@ export class PkmApp extends LitElement {
         </button>
       `;
     }
-    return html`<pkm-editor></pkm-editor>`;
+    return html`
+      <pkm-editor></pkm-editor>
+      <pkm-command-palette></pkm-command-palette>
+    `;
   }
   override async connectedCallback() {
     super.connectedCallback();

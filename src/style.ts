@@ -19,14 +19,16 @@ export const styles = [
   css`
     :root {
       color: var(--root-color);
+      --root-font: 'Noto Sans';
       background-color: var(--root-background-color);
-      font-family: 'Noto Sans';
+      font-family: var(--root-font);
     }
     :root {
       --md-code-font-family: 'Fira Code VF', 'noto sans mono', monospace;
       --md-block-quote-bgcolor: rgba(0, 0, 0, 0.05);
       --md-code-block-bgcolor: rgba(0, 0, 0, 0.05);
       --md-accent-color: #67f;
+      --pkm-dialog-bgcolor: #f2f2f2;
       --root-color: black;
       --root-background-color: white;
     }
@@ -35,6 +37,7 @@ export const styles = [
         --md-block-quote-bgcolor: rgba(255, 255, 255, 0.10);
         --md-code-block-bgcolor: rgba(255, 255, 255, 0.10);
         --md-accent-color: #56e;
+        --pkm-dialog-bgcolor: #191919;
         --root-color: white;
         --root-background-color: rgb(40, 40, 40);
       }

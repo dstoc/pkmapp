@@ -13,8 +13,6 @@
 // limitations under the License.
 
 import {createContext} from './deps/lit-labs-context.js';
-import type {PkmEditor} from './editor.js';
 import type {Library} from './library.js';
 
 export const libraryContext = createContext<Library>('libraryContext');
-export const activeEditorContext = createContext<PkmEditor>('activeEditorContext');

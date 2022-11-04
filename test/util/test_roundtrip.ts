@@ -18,9 +18,9 @@ export async function testRoundtrip(
     content: string, main: Main, fs: FileSystem, removeWhitespace = false,
     expectedFailure?: string) {
   await fs.setFile('test.md', content);
-  await main.loadButton.click();
+  await main.runCommand('open', 'test');
   expect(await main.status('loaded', 'error')).toEqual('loaded');
-  await main.saveButton.click();
+  await main.runCommand('force save');
   await browser.waitUntil(main.isClean);
   const result = await fs.getFile('test.md');
   const resultv = removeWhitespace ? result.replace(/\s+/g, '') : result;

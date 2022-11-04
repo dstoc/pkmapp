@@ -14,25 +14,24 @@
 
 import './markdown/block-render.js';
 
+import {libraryContext} from './app-context.js';
 import {assert, cast} from './asserts.js';
-import {contextProvider} from './deps/lit-labs-context.js';
-import {contextProvided} from './deps/lit-labs-context.js';
-import {css, customElement, html, LitElement, property, query, state} from './deps/lit.js';
+import {Command} from './command-palette.js';
+import {contextProvided, contextProvider} from './deps/lit-labs-context.js';
+import {css, customElement, html, LitElement, property, state} from './deps/lit.js';
 import {Document, Library} from './library.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
 import {InlineNode, ParagraphNode} from './markdown/node.js';
 import {InlineViewModel, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';
-import {libraryContext} from './app-context.js';
 
 @customElement('pkm-editor')
-export class PkmEditor extends LitElement {
-  @query('input') fileInput!: HTMLInputElement;
+export class Editor extends LitElement {
   @property({type: String, reflect: true})
   status: 'loading'|'loaded'|'error'|undefined;
   @state() document?: Document;
-  @state() dirty = false;
+  @property({type: Boolean, reflect: true}) dirty = false;
   @contextProvided({context: libraryContext, subscribe: true})
   @state() library!: Library;
   @contextProvider({context: hostContext})
@@ -44,6 +43,9 @@ export class PkmEditor extends LitElement {
   static override get styles() {
     return [
       css`
+        #status {
+          position: absolute;
+        }
         #content {
           display: flex;
           justify-content: center;
@@ -63,11 +65,7 @@ export class PkmEditor extends LitElement {
     this.observers.update();
     this.dirty = this.document?.dirty ?? false;
     return html`
-    <input type=text value="test.md"></input>
-    <button id=load @click=${this.load}>Load</button>
-    <button id=save @click=${() => this.document?.save()}>Save</button>${
-        this.document?.dirty ? '*' : ''}
-    <br>
+    <div id=status>${this.document?.dirty ? '💽' : ''}</div>
     <div id=content>
     <md-block-render
       .block=${this.document?.tree.root}
@@ -81,17 +79,19 @@ export class PkmEditor extends LitElement {
     const url = new URL(location.toString());
     await this.updateComplete;
     if (url.searchParams.has('path')) {
-      this.fileInput.value = url.searchParams.get('path')!;
-      await this.load();
+      await this.load(url.searchParams.get('path')!);
     }
   }
-  async load() {
+  async load(name: string) {
     if (!this.library) return;
     this.status = 'loading';
     this.document = undefined;
-    const fileName = this.fileInput.value;
     try {
-      this.document = await this.library.getDocument(fileName);
+      this.document = await this.library.getDocument(name + '.md');
+      const node = findNextEditable(this.document.tree.root);
+      if (node) {
+        focusNode(this.hostContext, node, 0);
+      }
       this.status = 'loaded';
     } catch (e) {
       this.status = 'error';
@@ -101,8 +101,7 @@ export class PkmEditor extends LitElement {
   onInlineLinkClick({
     detail: {type, destination},
   }: CustomEvent<InlineLinkClick>) {
-    this.fileInput.value = destination + '.md';
-    this.load();
+    this.load(destination);
   }
   onInlineKeyDown({
     detail: {inline, node, keyboardEvent},
@@ -121,9 +120,7 @@ export class PkmEditor extends LitElement {
       keyboardEvent.preventDefault();
       const result = inline.moveCaretDown();
       if (result !== true) {
-        const next = findNextDfs(
-            node,
-            ({type}) => ['paragraph', 'code-block', 'heading'].includes(type));
+        const next = findNextEditable(node);
         if (next) focusNode(this.hostContext, next, -result);
       }
     } else if (keyboardEvent.key === 'Tab') {
@@ -189,9 +186,7 @@ export class PkmEditor extends LitElement {
       normalizeTree(inline.node.viewModel.tree);
       const prev = newNodes[0].viewModel.previousSibling ||
           newNodes[0].viewModel.parent!;
-      const next = findNextDfs(
-          prev,
-          ({type}) => ['paragraph', 'code-block', 'heading'].includes(type));
+      const next = findNextEditable(prev);
       // TODO: is the focus offset always 0?
       if (next) focusNode(this.hostContext, next, 0);
     } else {
@@ -210,6 +205,23 @@ export class PkmEditor extends LitElement {
       }
       focusNode(this.hostContext, inline.node, newEndIndex);
     }
+  }
+  getCommands(): Command[] {
+    return [
+      {
+        description: 'Find, Open, Create...',
+        argument: {
+          description: 'Find or create...',
+          suggestions: [],
+          validate: () => true,
+        },
+        execute: (file: string) => this.load(file),
+      },
+      {
+        description: 'Force save',
+        execute: async () => this.document?.save(),
+      }
+    ];
   }
 }
 
@@ -565,6 +577,11 @@ function normalizeSection(node: ViewModelNode) {
   return false;
 }
 
+function findNextEditable(node: ViewModelNode) {
+  return findNextDfs(
+      node, ({type}) => ['paragraph', 'code-block', 'heading'].includes(type));
+}
+
 function findNextDfs(
     node: ViewModelNode, predicate: (node: ViewModelNode) => boolean) {
   for (const next of dfs(node)) {
@@ -712,6 +729,6 @@ function handleInlineInputAsBlockEdit(
 
 declare global {
   interface HTMLElementTagNameMap {
-    'pkm-editor': PkmEditor;
+    'pkm-editor': Editor;
   }
 }
