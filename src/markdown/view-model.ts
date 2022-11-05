@@ -25,6 +25,7 @@ class ViewModel {
       readonly self: ViewModelNode, readonly tree: MarkdownTree,
       public parent?: ViewModelNode, childIndex?: number) {
     this.initialize(parent, childIndex);
+    this.observe = new Observe(this.self);
   }
   private initialize(parent?: ViewModelNode, childIndex?: number) {
     this.parent = parent;
@@ -43,7 +44,7 @@ class ViewModel {
   lastChild?: ViewModelNode;
   nextSibling?: ViewModelNode;
   previousSibling?: ViewModelNode;
-  readonly observe = new Observe(this.self);
+  readonly observe;
   remove() {
     if (this.parent?.viewModel.firstChild === this.self) {
       this.parent.viewModel.firstChild = this.nextSibling;
@@ -107,9 +108,10 @@ export class InlineViewModel extends ViewModel {
       parent?: ViewModelNode, childIndex?: number) {
     super(self, tree, parent, childIndex);
     this.inlineTree = inlineParser.parse(self.content);
+    this.self = self;
   }
   inlineTree: Parser.Tree;
-  override self!: InlineNode&ViewModelNode;
+  override self: InlineNode&ViewModelNode;
   edit({startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit) {
     const oldText = this.self.content.substring(startIndex, oldEndIndex);
     const result = {

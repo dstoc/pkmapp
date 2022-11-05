@@ -213,7 +213,7 @@ export class Editor extends LitElement {
         description: 'Find, Open, Create...',
         argument: {
           description: 'Find or create...',
-          suggestions: [],
+          suggestions: () => this.library.getAllNames(),
           validate: () => true,
         },
         execute: (file: string) => this.load(file),
