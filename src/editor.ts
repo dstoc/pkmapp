@@ -511,8 +511,8 @@ function insertParagraphInSection(
 function finishInsertParagraph(
     node: InlineNode&ViewModelNode, newParagraph: ParagraphNode&ViewModelNode,
     startIndex: number, context: HostContext) {
-  const atStart = startIndex === 0;
-  if (atStart) {
+  const shouldSwap = startIndex === 0 && node.content.length > 0;
+  if (shouldSwap) {
     swapNodes(node, newParagraph);
   } else {
     (newParagraph.viewModel as InlineViewModel).edit({
