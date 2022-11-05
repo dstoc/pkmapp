@@ -6,6 +6,7 @@
     "build": "npm run compile && ./build-wasm.sh && cp index.html build/",
     "build-cached": "npm run compile && cp index.html build/",
     "test": "wdio run test/wdio.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json",
+    "test-extra": "wdio run test/extra.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json",
     "precommit": "npx check-clang-format"
   },
   "license": "Apache-2.0",
