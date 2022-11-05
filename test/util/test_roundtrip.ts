@@ -35,6 +35,6 @@ export async function testRoundtrip(
     expect(resultv).not.toEqual(contentv);
     expect(result).toContain(expectedFailure);
   } else {
-    if (resultv !== contentv) expect(resultv).toEqual(content);
+    if (resultv !== contentv) expect(result).toEqual(content);
   }
 }
