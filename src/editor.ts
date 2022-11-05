@@ -88,6 +88,7 @@ export class Editor extends LitElement {
     this.document = undefined;
     try {
       this.document = await this.library.getDocument(name + '.md');
+      normalizeTree(this.document.tree);
       const node = findNextEditable(this.document.tree.root);
       if (node) {
         focusNode(this.hostContext, node, 0);
