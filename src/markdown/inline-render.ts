@@ -190,6 +190,10 @@ export class MarkdownInline extends LitElement {
           selection.modify('move', 'forward', 'character');
         }
       }
+      this.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+      });
     }
     // TODO: Avoid this by always maintaining accurate values?
     setTimeout(() => {
