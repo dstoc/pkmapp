@@ -93,6 +93,30 @@ describe('main', () => {
           b
           `,
          ));
+  describe('paragraph insertion', () => {
+    it('will split a paragraph',
+       inputOutputTest(
+           input`* ab${['ArrowLeft']}\nc`,
+           `* a
+            * cb
+            `,
+           ));
+    it('will stay on the current line when splitting at start',
+       inputOutputTest(
+           input`* b${['ArrowLeft']}\na`,
+           `* a
+            * b
+            `,
+           ));
+    it('will move to the next line if empty',
+       inputOutputTest(
+           input`* \nb`,
+           `* 
+            * b
+            `,
+           ));
+         
+  });
   describe('indentation', () => {
     it('can indent a top level paragraph',
        inputOutputTest(
