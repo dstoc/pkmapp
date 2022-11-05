@@ -32,7 +32,7 @@ export async function testRoundtrip(
   // contentv = content.replace(/\s*\n\s*/gs, '\n').replace(/[ \t]+/g,
   // ' ');
   if (expectedFailure !== undefined) {
-    expect(resultv).not.toEqual(contentv);
+    if (resultv === contentv) expect(result).not.toEqual(content);
     expect(result).toContain(expectedFailure);
   } else {
     if (resultv !== contentv) expect(result).toEqual(content);
