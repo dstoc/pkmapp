@@ -507,8 +507,8 @@ function insertParagraphInSection(node, startIndex, context) {
     return true;
 }
 function finishInsertParagraph(node, newParagraph, startIndex, context) {
-    const atStart = startIndex === 0;
-    if (atStart) {
+    const shouldSwap = startIndex === 0 && node.content.length > 0;
+    if (shouldSwap) {
         swapNodes(node, newParagraph);
     }
     else {
