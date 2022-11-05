@@ -11,15 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-let used = false;
-window.showDirectoryPicker = async () => {
-    const root = await navigator.storage.getDirectory();
-    if (!used) {
-        used = true;
-        for await (const name of root.keys()) {
-            await root.removeEntry(name, { recursive: true });
-        }
-    }
-    return root.getDirectoryHandle(`tmp`, { create: true });
-};
-//# sourceMappingURL=memory_file_system.js.map
+import { createContext } from './deps/lit-labs-context.js';
+export const libraryContext = createContext('libraryContext');
+//# sourceMappingURL=app-context.js.map

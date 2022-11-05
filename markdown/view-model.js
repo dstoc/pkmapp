@@ -14,23 +14,7 @@
 import { parser as inlineParser } from './inline-parser.js';
 import { parseBlocks } from './block-parser.js';
 import { assert, cast } from '../asserts.js';
-class Observe {
-    constructor(target) {
-        this.target = target;
-        this.observers = new Set();
-    }
-    notify() {
-        for (const observer of this.observers.values()) {
-            observer(this.target);
-        }
-    }
-    add(observer) {
-        this.observers.add(observer);
-    }
-    remove(observer) {
-        this.observers.delete(observer);
-    }
-}
+import { Observe } from '../observe.js';
 class ViewModel {
     constructor(self, tree, parent, childIndex) {
         this.self = self;
