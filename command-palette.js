@@ -78,11 +78,11 @@ let CommandPalette = class CommandPalette extends LitElement {
         if (search != this.activeSearch) {
             this.activeSearch = search;
             this.activeIndex = 0;
-            const pattern = new RegExp(search.replace(/(.)/g, c => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'), 'i');
-            this.activeItems = this.items.filter(item => {
-                return pattern.test(item.description);
-            });
         }
+        const pattern = new RegExp(search.replace(/(.)/g, c => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'), 'i');
+        this.activeItems = this.items.filter(item => {
+            return pattern.test(item.description);
+        });
         this.activeIndex =
             Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
         return html `
@@ -128,17 +128,19 @@ let CommandPalette = class CommandPalette extends LitElement {
         this.activeSearch = undefined;
         this.activeItems = [];
     }
-    commit() {
+    async commit() {
         const selected = this.activeItems[this.activeIndex];
         if (selected?.argument) {
             // Made a selection, need to complete argument.
             const argument = selected.argument;
             this.reset();
             this.pendingCommand = selected;
-            this.items = argument.suggestions.map(description => ({
+            this.items = [];
+            const items = (await argument.suggestions()).map(description => ({
                 description,
                 async execute() { },
             }));
+            this.items = items;
         }
         else if (this.pendingCommand) {
             // Argument completion.

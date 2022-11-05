@@ -207,7 +207,7 @@ let Editor = class Editor extends LitElement {
                 description: 'Find, Open, Create...',
                 argument: {
                     description: 'Find or create...',
-                    suggestions: [],
+                    suggestions: () => this.library.getAllNames(),
                     validate: () => true,
                 },
                 execute: (file) => this.load(file),

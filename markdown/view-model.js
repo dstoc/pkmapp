@@ -20,8 +20,8 @@ class ViewModel {
         this.self = self;
         this.tree = tree;
         this.parent = parent;
-        this.observe = new Observe(this.self);
         this.initialize(parent, childIndex);
+        this.observe = new Observe(this.self);
     }
     initialize(parent, childIndex) {
         this.parent = parent;
@@ -98,6 +98,7 @@ export class InlineViewModel extends ViewModel {
     constructor(self, tree, parent, childIndex) {
         super(self, tree, parent, childIndex);
         this.inlineTree = inlineParser.parse(self.content);
+        this.self = self;
     }
     edit({ startIndex, newEndIndex, oldEndIndex, newText }) {
         const oldText = this.self.content.substring(startIndex, oldEndIndex);

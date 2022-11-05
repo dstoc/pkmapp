@@ -15,16 +15,41 @@ import { parseBlocks } from './markdown/block-parser.js';
 import { serializeToString } from './markdown/block-serializer.js';
 import { MarkdownTree } from './markdown/view-model.js';
 import { Observe } from './observe.js';
+async function* allFiles(prefix, directory) {
+    for await (const entry of directory.values()) {
+        if (entry.kind === 'file' && entry.name.endsWith('.md')) {
+            yield prefix + entry.name.replace(/\.md$/i, '');
+        }
+        else if (entry.kind === 'directory') {
+            yield* allFiles(prefix + entry.name + '/', entry);
+        }
+    }
+}
+async function getFileHandleFromPath(directory, path, create = false) {
+    const parts = path.split('/');
+    const name = parts.pop();
+    for (const part of parts) {
+        directory = await directory.getDirectoryHandle(part, { create });
+    }
+    return directory.getFileHandle(name, { create });
+}
 export class FileSystemLibrary {
     constructor(directory) {
         this.directory = directory;
+    }
+    async getAllNames() {
+        const result = [];
+        for await (const name of allFiles('', this.directory)) {
+            result.push(name);
+        }
+        return result;
     }
     async getDocument(name) {
         const load = async () => {
             const fileName = name;
             let text = '';
             try {
-                const handle = await this.directory.getFileHandle(fileName);
+                const handle = await getFileHandleFromPath(this.directory, fileName);
                 const file = await handle.getFile();
                 const decoder = new TextDecoder();
                 text = decoder.decode(await file.arrayBuffer());
@@ -51,7 +76,7 @@ export class FileSystemLibrary {
             async save() {
                 const text = serializeToString(this.tree.root);
                 const fileName = name;
-                const handle = await directory.getFileHandle(fileName, { create: true });
+                const handle = await getFileHandleFromPath(directory, fileName, true);
                 const stream = await handle.createWritable();
                 await stream.write(text);
                 await stream.close();
