@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "lib": [
-      "es2022",
+      "esnext",
       "dom"
     ],
     "esModuleInterop": true,
@@ -10,10 +10,12 @@
     "moduleResolution": "node",
     "allowJs": true,
     "outDir": "build",
-    "plugins": [{
+    "plugins": [
+      {
         "name": "ts-lit-plugin",
         "strict": true
-    }],
+      }
+    ],
     "allowUnreachableCode": false,
     "experimentalDecorators": true,
     "inlineSources": true,
