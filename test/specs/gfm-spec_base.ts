@@ -54,10 +54,6 @@ const expectedFailures = {
   315: '',  // normalized code block
 };
 
-const expectedWhitespaceVariants = {
-  32: true,
-};
-
 export function runTests(start = 1, limit = 678) {
   describe('github flavored markdown', () => {
     let tests = [];
@@ -71,7 +67,7 @@ export function runTests(start = 1, limit = 678) {
       tests.unshift(null);
       expect(tests.length).toEqual(677);
       main = await new Main().load();
-      fs = await main.fileSystem;
+      fs = main.fileSystem;
     });
     for (let i = start; i < Math.min(limit, 678); i++) {
       it(`can ${
