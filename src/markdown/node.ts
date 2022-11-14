@@ -19,43 +19,43 @@ export type ParentNode = ContainerNode|BlockQuoteNode|ListItemNode|SectionNode;
 
 // TODO: ID, Sequence Number (per tree?)
 interface Node {
-  children?: MarkdownNode[];
+  readonly children?: MarkdownNode[];
 }
 
 export type ContainerNode = Node&{
-  type: 'document'|'list';
+  readonly type: 'document'|'list';
 };
 
 export type SectionNode = Node&{
-  type: 'section';
-  marker: string;
-  content: string;
+  readonly type: 'section';
+  readonly marker: string;
+  readonly content: string;
 };
 
 export type ParagraphNode = Node&{
-  type: 'paragraph';
-  content: string;
+  readonly type: 'paragraph';
+  readonly content: string;
 };
 
 export type BlockQuoteNode = Node&{
-  type: 'block-quote';
-  marker: string;
+  readonly type: 'block-quote';
+  readonly marker: string;
 };
 
 export type ListItemNode = Node&{
-  type: 'list-item';
-  marker: string;
-  checked?: boolean;
+  readonly type: 'list-item';
+  readonly marker: string;
+  readonly checked?: boolean;
 };
 
 export type CodeBlockNode = Node&{
-  type: 'code-block';
-  info: string|null;
-  content: string;
+  readonly type: 'code-block';
+  readonly info: string|null;
+  readonly content: string;
 };
 
 export type UnsupportedNode = Node&{
-  type: 'unsupported';
-  content: string;
-  parser_type: string;
+  readonly type: 'unsupported';
+  readonly content: string;
+  readonly parser_type: string;
 };

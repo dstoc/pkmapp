@@ -47,12 +47,15 @@ class ViewModel {
   nextSibling?: ViewModelNode;
   previousSibling?: ViewModelNode;
   readonly observe;
-  protected increaseVersion() {
+  protected signalMutation(notify=true) {
     this.version = this.tree.root.viewModel.version + 1;
     let parent = this.parent;
     while (parent) {
       parent.viewModel.version = this.version;
       parent = parent.viewModel.parent;
+    }
+    if (notify) {
+      this.observe.notify();
     }
   }
   remove() {
@@ -74,8 +77,7 @@ class ViewModel {
     this.parent!.children!.splice(index, 1);
     const parent = this.parent;
     this.parent = undefined;
-    this.increaseVersion();
-    this.parent = undefined;
+    this.signalMutation(false);
     parent.viewModel.observe.notify();
   }
 
@@ -116,8 +118,33 @@ class ViewModel {
       index = 0;
     }
     parent.children.splice(index, 0, this.self);
-    this.increaseVersion();
+    this.signalMutation(false);
     parent.viewModel.observe.notify();
+  }
+
+  updateMarker(marker: string) {
+    function mutable(node: {readonly marker: string})  {
+      return node as {marker: string};
+    }
+    switch (this.self.type) {
+      case 'list-item':
+      case 'section':
+        mutable(this.self).marker = marker;
+        this.signalMutation();
+        break;
+    }
+  }
+
+  updateChecked(checked: boolean|undefined) {
+    function mutable(node: {readonly checked?: boolean})  {
+      return node as {checked?: boolean};
+    }
+    switch (this.self.type) {
+      case 'list-item':
+        mutable(this.self).checked = checked;
+        this.signalMutation();
+        break;
+    }
   }
 }
 
@@ -144,13 +171,12 @@ export class InlineViewModel extends ViewModel {
       newEndPosition: indexToPosition(this.self.content, newEndIndex),
     };
 
-    this.self.content = apply(this.self.content, result);
+    (this.self as {content: string}).content = apply(this.self.content, result);
     const newNodes = this.maybeReplaceWithBlocks();
     if (newNodes) return newNodes;
-    this.increaseVersion();
     this.inlineTree = this.inlineTree!.edit(result);
     this.inlineTree = inlineParser.parse(this.self.content, this.inlineTree);
-    this.observe.notify();
+    this.signalMutation();
     return null;
   }
   private maybeReplaceWithBlocks() {
