@@ -19,13 +19,14 @@ import {parseBlocks} from './block-parser.js';
 import Parser from 'web-tree-sitter';
 import {assert, cast} from '../asserts.js';
 import {Observe} from '../observe.js';
+import {normalizeTree} from './normalize.js';
 
 class ViewModel {
   constructor(
       readonly self: ViewModelNode, readonly tree: MarkdownTree,
       public parent?: ViewModelNode, childIndex?: number) {
     this.initialize(parent, childIndex);
-    this.observe = new Observe(this.self);
+    this.observe = new Observe(this.self, this.tree.observe);
   }
   private initialize(parent?: ViewModelNode, childIndex?: number) {
     this.parent = parent;
@@ -40,12 +41,23 @@ class ViewModel {
     this.firstChild = this.self.children?.[0];
     this.lastChild = this.self.children?.[this.self.children.length - 1];
   }
+  version: number = 0;
   firstChild?: ViewModelNode;
   lastChild?: ViewModelNode;
   nextSibling?: ViewModelNode;
   previousSibling?: ViewModelNode;
   readonly observe;
+  protected increaseVersion() {
+    this.version = this.tree.root.viewModel.version + 1;
+    let parent = this.parent;
+    while (parent) {
+      parent.viewModel.version = this.version;
+      parent = parent.viewModel.parent;
+    }
+  }
   remove() {
+    assert(this.tree.state === 'editing');
+    assert(this.parent);
     if (this.parent?.viewModel.firstChild === this.self) {
       this.parent.viewModel.firstChild = this.nextSibling;
     }
@@ -60,12 +72,15 @@ class ViewModel {
     }
     const index = this.parent!.children!.indexOf(this.self);
     this.parent!.children!.splice(index, 1);
-    this.parent!.viewModel.observe.notify();
+    const parent = this.parent;
     this.parent = undefined;
-    this.tree.observe.notify();
+    this.increaseVersion();
+    this.parent = undefined;
+    parent.viewModel.observe.notify();
   }
 
   insertBefore(parent: ViewModelNode, nextSibling?: ViewModelNode) {
+    assert(this.tree.state === 'editing');
     if (nextSibling === this.self) {
       assert(parent === this.parent);
       return;
@@ -101,8 +116,8 @@ class ViewModel {
       index = 0;
     }
     parent.children.splice(index, 0, this.self);
+    this.increaseVersion();
     parent.viewModel.observe.notify();
-    this.tree.observe.notify();
   }
 }
 
@@ -132,7 +147,7 @@ export class InlineViewModel extends ViewModel {
     this.self.content = apply(this.self.content, result);
     const newNodes = this.maybeReplaceWithBlocks();
     if (newNodes) return newNodes;
-    this.tree.observe.notify();
+    this.increaseVersion();
     this.inlineTree = this.inlineTree!.edit(result);
     this.inlineTree = inlineParser.parse(this.self.content, this.inlineTree);
     this.observe.notify();
@@ -170,6 +185,8 @@ export class MarkdownTree {
   constructor(root: MarkdownNode) {
     this.root = this.addDom<MarkdownNode>(root);
   }
+
+  state: 'editing'|'idle' = 'idle';
   root: ViewModelNode;
   readonly observe = new Observe(this);
 
@@ -178,6 +195,21 @@ export class MarkdownTree {
     throw new Error('node is already part of a tree');
     }
     return this.addDom(node);
+  }
+
+  edit() {
+    assert(this.state === 'idle');
+    const startVersion = this.root.viewModel.version;
+    const resumeObserve = this.observe.suspend();
+    this.state = 'editing';
+    return () => {
+    normalizeTree(this);
+    this.state = 'idle';
+    if (this.root.viewModel.version > startVersion) {
+      this.observe.notify();
+    }
+    resumeObserve();
+    };
   }
 
   private addDom<T>(
@@ -203,6 +235,8 @@ export class MarkdownTree {
 
   serialize(node?: ViewModelNode): MarkdownNode {
     if (!node) node = this.root;
+    assert(node.viewModel.tree === this);
+    assert(this.state === 'idle');
     const result: MaybeViewModelNode = {...node};
     delete result.viewModel;
     result.children = node.children?.map(this.serialize);
