@@ -456,8 +456,6 @@ function areAncestorAndDescendant(node: ViewModelNode, node2: ViewModelNode) {
 function finishInsertParagraph(
     node: InlineNode&ViewModelNode, newParagraph: ParagraphNode&ViewModelNode,
     startIndex: number, context: HostContext) {
-  // TODO: Parent check is wrong. This was trying to fix insert from section.
-  // Check is probably is one node the ancestor of the other?
   const shouldSwap = startIndex === 0 && node.content.length > 0 &&
       !areAncestorAndDescendant(node, newParagraph);
   if (shouldSwap) {
