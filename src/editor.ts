@@ -283,7 +283,7 @@ function unindent(node: ViewModelNode) {
     while (next) {
       if (listItem.viewModel.lastChild?.type !== 'list') {
         listItem.viewModel.tree
-            .import({
+            .add({
               type: 'list',
             })
             .viewModel.insertBefore(listItem);
@@ -329,7 +329,7 @@ function indent(node: ViewModelNode) {
   if (target.viewModel.parent!.type === 'list-item') {
     listItem = target.viewModel.parent!;
   } else {
-    listItem = target.viewModel.tree.import({
+    listItem = target.viewModel.tree.add({
       type: 'list-item',
       marker: '* ',
     });
@@ -349,7 +349,7 @@ function indent(node: ViewModelNode) {
   }
   // Ensure the list-item we may have created is in a list.
   if (listItem.viewModel.parent!.type !== 'list') {
-    const list = target.viewModel.tree.import({
+    const list = target.viewModel.tree.add({
       type: 'list',
     });
     list.viewModel.insertBefore(cast(listItem.viewModel.parent), listItem);
@@ -360,7 +360,7 @@ function indent(node: ViewModelNode) {
 function insertSiblingParagraph(
     node: InlineNode&ViewModelNode, startIndex: number,
     context: HostContext): boolean {
-  const newParagraph = node.viewModel.tree.import({
+  const newParagraph = node.viewModel.tree.add({
     type: 'paragraph',
     content: '',
   });
@@ -382,7 +382,7 @@ function insertParagraphInList(
       targetList = node.viewModel.nextSibling;
       targetListItemNextSibling = targetList.viewModel.firstChild;
     } else {
-      targetList = node.viewModel.tree.import({
+      targetList = node.viewModel.tree.add({
         type: 'list',
       });
       targetList.viewModel.insertBefore(
@@ -396,7 +396,7 @@ function insertParagraphInList(
 
   const firstListItem = targetList.viewModel.firstChild;
   if (firstListItem && firstListItem.type !== 'list-item') return false;
-  const newListItem = node.viewModel.tree.import({
+  const newListItem = node.viewModel.tree.add({
     type: 'list-item',
     marker: firstListItem?.marker ?? '* ',
   });
@@ -405,7 +405,7 @@ function insertParagraphInList(
       newListItem.viewModel.previousSibling.checked !== undefined) {
     newListItem.checked = false;
   }
-  const newParagraph = node.viewModel.tree.import({
+  const newParagraph = node.viewModel.tree.add({
     type: 'paragraph',
     content: '',
   });
@@ -419,7 +419,7 @@ function insertParagraphInDocument(
     context: HostContext): boolean {
   const {ancestor: section, path} = findAncestor(node, 'document');
   if (!section) return false;
-  const newParagraph = node.viewModel.tree.import({
+  const newParagraph = node.viewModel.tree.add({
     type: 'paragraph',
     content: '',
   });
@@ -440,7 +440,7 @@ function insertParagraphInSection(
     nextSibling = section!.viewModel.firstChild;
   }
   if (!section) return false;
-  const newParagraph = node.viewModel.tree.import({
+  const newParagraph = node.viewModel.tree.add({
     type: 'paragraph',
     content: '',
   });
@@ -495,7 +495,7 @@ function handleInlineInputAsBlockEdit(
     if (node.type === 'section') {
       node.marker = node.marker.substring(0, node.marker.length - 1);
       if (node.marker === '') {
-        const paragraph = node.viewModel.tree.import({
+        const paragraph = node.viewModel.tree.add({
           type: 'paragraph',
           content: node.content,
         });
@@ -511,7 +511,7 @@ function handleInlineInputAsBlockEdit(
       }
       return true;
     } else if (node.type === 'code-block') {
-      const paragraph = node.viewModel.tree.import({
+      const paragraph = node.viewModel.tree.add({
         type: 'paragraph',
         content: node.content,  // TODO: detect new blocks
       });

@@ -85,7 +85,7 @@ export class FileSystemLibrary implements Library {
       dirty = false;
       observe: Observe<Document> = new Observe<Document>(this);
       async refresh() {
-        this.tree.root = this.tree.import<MarkdownNode>(await load());
+        this.tree.root = this.tree.add<MarkdownNode>(await load());
         this.tree.observe.notify();
       }
       async save() {
