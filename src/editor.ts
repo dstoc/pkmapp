@@ -15,15 +15,17 @@
 import './markdown/block-render.js';
 
 import {libraryContext} from './app-context.js';
-import {assert, cast} from './asserts.js';
+import {cast} from './asserts.js';
 import {Command} from './command-palette.js';
 import {contextProvided, contextProvider} from './deps/lit-labs-context.js';
 import {css, customElement, html, LitElement, property, state} from './deps/lit.js';
 import {Document, Library} from './library.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
-import {InlineNode, ParagraphNode, SectionNode} from './markdown/node.js';
-import {InlineViewModel, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
+import {InlineNode, ParagraphNode} from './markdown/node.js';
+import {normalizeTree} from './markdown/normalize.js';
+import {ancestors, children, findAncestor, findNextEditable, findPreviousDfs, reverseDfs, swapNodes} from './markdown/view-model-util.js';
+import {InlineViewModel, ViewModelNode} from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';
 
 @customElement('pkm-editor')
@@ -107,102 +109,111 @@ export class Editor extends LitElement {
   onInlineKeyDown({
     detail: {inline, node, keyboardEvent},
   }: CustomEvent<InlineKeyDown>) {
-    if (!inline.node) return;
-    if (keyboardEvent.key === 'ArrowUp') {
-      keyboardEvent.preventDefault();
-      const result = inline.moveCaretUp();
-      if (result !== true) {
-        const prev = findPreviousDfs(
-            node,
-            ({type}) => ['paragraph', 'code-block', 'section'].includes(type));
-        if (prev) focusNode(this.hostContext, prev, -result);
-      }
-    } else if (keyboardEvent.key === 'ArrowDown') {
-      keyboardEvent.preventDefault();
-      const result = inline.moveCaretDown();
-      if (result !== true) {
-        const next = findNextEditable(node);
-        if (next) focusNode(this.hostContext, next, -result);
-      }
-    } else if (keyboardEvent.key === 'Tab') {
-      keyboardEvent.preventDefault();
-      const {start} = inline.getSelection();
-      focusNode(this.hostContext, node, start.index);
-      if (keyboardEvent.shiftKey) {
-        unindent(node);
+    const finishEditing = node.viewModel.tree.edit();
+    try {
+      if (!inline.node) return;
+      if (keyboardEvent.key === 'ArrowUp') {
+        keyboardEvent.preventDefault();
+        const result = inline.moveCaretUp();
+        if (result !== true) {
+          const prev = findPreviousDfs(
+              node,
+              ({type}) => ['paragraph', 'code-block', 'section'].includes(
+                  type));
+          if (prev) focusNode(this.hostContext, prev, -result);
+        }
+      } else if (keyboardEvent.key === 'ArrowDown') {
+        keyboardEvent.preventDefault();
+        const result = inline.moveCaretDown();
+        if (result !== true) {
+          const next = findNextEditable(node);
+          if (next) focusNode(this.hostContext, next, -result);
+        }
+      } else if (keyboardEvent.key === 'Tab') {
+        keyboardEvent.preventDefault();
+        const {start} = inline.getSelection();
+        focusNode(this.hostContext, node, start.index);
+        if (keyboardEvent.shiftKey) {
+          unindent(node);
+        } else {
+          indent(node);
+        }
       } else {
-        indent(node);
+        return;
       }
-    } else {
-      return;
+    } finally {
+      finishEditing();
     }
-    normalizeTree(node.viewModel.tree);
   }
   onInlineInput(event: CustomEvent<InlineInput>) {
     const {
       detail: {inline, inputEvent, inputStart, inputEnd},
     } = event;
     if (!inline.node) return;
-    if (handleInlineInputAsBlockEdit(event, this.hostContext)) {
-      normalizeTree(inline.node.viewModel.tree);
-      return;
-    }
-    let newText;
-    let startIndex;
-    let oldEndIndex;
-    let newEndIndex: number;
-    if (inputEvent.inputType === 'insertText' ||
-        inputEvent.inputType === 'insertReplacementText' ||
-        inputEvent.inputType === 'insertFromPaste' ||
-        inputEvent.inputType === 'deleteByCut' ||
-        inputEvent.inputType === 'deleteContentBackward') {
-      startIndex = inputStart.index;
-      oldEndIndex = inputEnd.index;
-      if (inputEvent.inputType === 'insertReplacementText' ||
-          inputEvent.inputType === 'insertFromPaste') {
-        newText = inputEvent.dataTransfer!.getData('text');
-      } else if (inputEvent.inputType === 'deleteByCut') {
-        newText = '';
-      } else if (inputEvent.inputType === 'deleteContentBackward') {
-        newText = '';
-        startIndex = Math.max(0, startIndex - 1);
+
+    const finishEditing = inline.node.viewModel.tree.edit();
+    try {
+      if (handleInlineInputAsBlockEdit(event, this.hostContext)) return;
+      let newText;
+      let startIndex;
+      let oldEndIndex;
+      let newEndIndex: number;
+      if (inputEvent.inputType === 'insertText' ||
+          inputEvent.inputType === 'insertReplacementText' ||
+          inputEvent.inputType === 'insertFromPaste' ||
+          inputEvent.inputType === 'deleteByCut' ||
+          inputEvent.inputType === 'deleteContentBackward') {
+        startIndex = inputStart.index;
+        oldEndIndex = inputEnd.index;
+        if (inputEvent.inputType === 'insertReplacementText' ||
+            inputEvent.inputType === 'insertFromPaste') {
+          newText = inputEvent.dataTransfer!.getData('text');
+        } else if (inputEvent.inputType === 'deleteByCut') {
+          newText = '';
+        } else if (inputEvent.inputType === 'deleteContentBackward') {
+          newText = '';
+          startIndex = Math.max(0, startIndex - 1);
+        } else {
+          newText = inputEvent.data ?? '';
+        }
+        newEndIndex = startIndex + newText.length;
       } else {
-        newText = inputEvent.data ?? '';
+        console.log('unsupported inputType:', inputEvent.inputType);
+        return;
       }
-      newEndIndex = startIndex + newText.length;
-    } else {
-      console.log('unsupported inputType:', inputEvent.inputType);
-      return;
-    }
 
-    const edit = {
-      newText,
-      startIndex,
-      oldEndIndex,
-      newEndIndex,
-    };
+      const edit = {
+        newText,
+        startIndex,
+        oldEndIndex,
+        newEndIndex,
+      };
 
-    const newNodes = inline.node.viewModel.edit(edit);
-    if (newNodes) {
-      normalizeTree(inline.node.viewModel.tree);
-      const next = findNextEditable(newNodes[0], true);
-      // TODO: is the focus offset always 0?
-      if (next) focusNode(this.hostContext, next, 0);
-    } else {
-      // TODO: generalize this (inline block mutation)
-      const parent = inline.node.viewModel.parent;
-      if (parent?.type === 'list-item' && parent.checked === undefined &&
-          /^\[( |x)] /.test(inline.node.content)) {
-        parent.checked = inline.node.content[1] === 'x';
-        parent.viewModel.observe.notify();
-        inline.node.viewModel.edit({
-          newText: '',
-          startIndex: 0,
-          newEndIndex: 0,
-          oldEndIndex: 4,
-        });
+      const newNodes = inline.node.viewModel.edit(edit);
+      if (newNodes) {
+        // TODO: is this needed?
+        normalizeTree(inline.node.viewModel.tree);
+        const next = findNextEditable(newNodes[0], true);
+        // TODO: is the focus offset always 0?
+        if (next) focusNode(this.hostContext, next, 0);
+      } else {
+        // TODO: generalize this (inline block mutation)
+        const parent = inline.node.viewModel.parent;
+        if (parent?.type === 'list-item' && parent.checked === undefined &&
+            /^\[( |x)] /.test(inline.node.content)) {
+          parent.checked = inline.node.content[1] === 'x';
+          parent.viewModel.observe.notify();
+          inline.node.viewModel.edit({
+            newText: '',
+            startIndex: 0,
+            newEndIndex: 0,
+            oldEndIndex: 4,
+          });
+        }
+        focusNode(this.hostContext, inline.node, newEndIndex);
       }
-      focusNode(this.hostContext, inline.node, newEndIndex);
+    } finally {
+      finishEditing();
     }
   }
   getCommands(): Command[] {
@@ -246,75 +257,6 @@ function focusNode(context: HostContext, node: ViewModelNode, offset?: number) {
   context.focusNode = node;
   context.focusOffset = offset;
   node.viewModel.observe.notify();
-}
-
-function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
-  if (node1.viewModel.nextSibling === node2) {
-    node2.viewModel.insertBefore(cast(node1.viewModel.parent), node1);
-    return;
-  }
-  if (node2.viewModel.nextSibling === node1) {
-    node1.viewModel.insertBefore(cast(node2.viewModel.parent), node2);
-    return;
-  }
-  const node1Parent = node1.viewModel.parent!;
-  const node1NextSibling = node1.viewModel.nextSibling;
-  node1.viewModel.insertBefore(cast(node2.viewModel.parent), node2);
-  node2.viewModel.insertBefore(node1Parent, node1NextSibling);
-}
-
-function* ancestors(node: ViewModelNode) {
-  while (node.viewModel.parent) {
-    yield node.viewModel.parent;
-    node = node.viewModel.parent;
-  }
-}
-
-function* reverseDfs(node: ViewModelNode, limit?: ViewModelNode) {
-  function next(next?: ViewModelNode) {
-    return next && (node = next);
-  }
-  do {
-    while (next(node.viewModel.previousSibling)) {
-      while (next(node.viewModel.lastChild))
-        ;
-      yield node;
-      if (node === limit) return;
-    }
-    if (next(node.viewModel.parent)) {
-      yield node;
-      if (node === limit) return;
-      continue;
-    }
-    return;
-  } while (true);
-}
-
-function* dfs(node: ViewModelNode) {
-  function next(next?: ViewModelNode) {
-    return next && (node = next);
-  }
-  do {
-    yield node;
-    if (next(node.viewModel.firstChild)) continue;
-    if (next(node.viewModel.nextSibling)) continue;
-    do {
-      if (!next(node.viewModel.parent)) return;
-    } while (!next(node.viewModel.nextSibling))
-  } while (true);
-}
-
-function findAncestor(node: ViewModelNode, type: string) {
-  const path = [node];
-  for (const ancestor of ancestors(node)) {
-    if (ancestor.type === type)
-      return {
-        ancestor,
-        path,
-      };
-    path.unshift(ancestor);
-  }
-  return {};
 }
 
 function unindent(node: ViewModelNode) {
@@ -538,141 +480,11 @@ function finishInsertParagraph(
   focusNode(context, newParagraph);
 }
 
-function findNextEditable(node: ViewModelNode, include = false) {
-  const predicate =
-      (node: ViewModelNode) => ['paragraph', 'code-block', 'section'].includes(
-          node.type);
-  if (include && predicate(node)) return node;
-  return findNextDfs(node, predicate);
-}
-
-function findNextDfs(
-    node: ViewModelNode, predicate: (node: ViewModelNode) => boolean) {
-  for (const next of dfs(node)) {
-    if (next !== node && predicate(next)) return next;
-  }
-  return null;
-}
-
-function findPreviousDfs(
-    node: ViewModelNode, predicate: (node: ViewModelNode) => boolean) {
-  for (const next of reverseDfs(node)) {
-    if (next !== node && predicate(next)) return next;
-  }
-  return null;
-}
-
-function* children(node: ViewModelNode) {
-  let next = node.viewModel.firstChild;
-  while (next) {
-    assert(next.viewModel.parent === node);
-    const child = next;
-    next = child.viewModel.nextSibling;
-    yield child;
-  }
-}
-
-function moveTrailingNodesIntoSections(tree: MarkdownTree) {
-  for (const node of dfs(tree.root)) {
-    let section: SectionNode&ViewModelNode|undefined;
-    for (const child of children(node)) {
-      if (child.type === 'section') {
-        section = child;
-      } else if (section) {
-        child.viewModel.insertBefore(section);
-      }
-    }
-  }
-}
-
-function normalizeContiguousSections(
-    sections: Array<SectionNode&ViewModelNode>) {
-  const activeSections: Array<SectionNode&ViewModelNode> = [];
-  function activeSection() {
-    return activeSections[activeSections.length - 1];
-  }
-  for (const section of sections) {
-    if (activeSections.length) {
-      while (section.marker.length < activeSection().marker.length &&
-             activeSections.length > 1) {
-        activeSections.pop();
-      }
-      if (section.marker.length <= activeSection().marker.length) {
-        if (section.viewModel.previousSibling !== activeSection()) {
-          section.viewModel.insertBefore(
-              activeSection().viewModel.parent!,
-              activeSection().viewModel.nextSibling);
-        }
-        activeSections.pop();
-      } else {
-        assert(section.marker.length > activeSection().marker.length);
-        if (section.viewModel.parent !== activeSection()) {
-          // ensure section is first section child of activeSection
-          let next: ViewModelNode|undefined;
-          for (const child of children(activeSection())) {
-            if (child.type === 'section') {
-              next = child;
-              break;
-            }
-          }
-          section.viewModel.insertBefore(activeSection(), next);
-        }
-      }
-    }
-    activeSections.push(section);
-  }
-}
-
-function normalizeSections(tree: MarkdownTree) {
-  moveTrailingNodesIntoSections(tree);
-  const sections: Array<SectionNode&ViewModelNode> = [];
-  for (const node of dfs(tree.root)) {
-    if (node.type !== 'section') continue;
-    if (node.viewModel.parent?.type !== 'section' &&
-        (!node.viewModel.previousSibling ||
-         node.viewModel.previousSibling.type !== 'section')) {
-      // Finished traversing a contiguous sequence of sections.
-      normalizeContiguousSections(sections);
-      sections.length = 0;
-    }
-    sections.push(node);
-  }
-  normalizeContiguousSections(sections);
-}
-
-function normalizeTree(tree: MarkdownTree) {
-  for (const node of [...dfs(tree.root)]) {
-    // Remove empty nodes.
-    if (node.viewModel.firstChild) continue;
-    switch (node.type) {
-      case 'list-item':
-      case 'list':
-      case 'block-quote':
-        node.viewModel.remove();
-        break;
-    }
-  }
-  normalizeSections(tree);
-
-  for (const node of dfs(tree.root)) {
-    if (node.type === 'list') {
-      while (node.viewModel.nextSibling?.type === 'list') {
-        let next = node.viewModel.nextSibling;
-        while (next.viewModel.firstChild) {
-          next.viewModel.firstChild.viewModel.insertBefore(node);
-        }
-        next.viewModel.remove();
-      }
-    }
-  }
-}
-
 function handleInlineInputAsBlockEdit(
     {
       detail: {inline, inputEvent, inputStart, inputEnd},
     }: CustomEvent<InlineInput>,
     context: HostContext): boolean {
-  // TODO: Call normalizeTree at the right times
   if (!inline.node) return false;
   if (inputEvent.inputType === 'deleteContentBackward') {
     if (inputStart.index !== 0 || inputEnd.index !== 0) return false;

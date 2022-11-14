@@ -18,7 +18,7 @@ export function assert(val: unknown): asserts val {
   }
 }
 
-export function cast<T>(val: unknown): NonNullable<T> {
+export function cast<T>(val: T): NonNullable<T> {
   if (val === null || val === undefined) {
     throw new Error(`cast failed: ${val}`);
   }
