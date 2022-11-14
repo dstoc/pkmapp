@@ -68,20 +68,19 @@ export class MarkdownBlock extends LitElement {
     if (node.type === 'list-item') {
       if (e.target !== this) return;
       e.preventDefault();
+      let newValue;
       switch (node.checked) {
         case true:
-          node.checked = undefined;
+          newValue = undefined;
           break;
         case false:
-          node.checked = true;
+          newValue = true;
           break;
         case undefined:
-          node.checked = false;
+          newValue = false;
           break;
       }
-      // TODO: there should be a helper to do both of these
-      node.viewModel.observe.notify();
-      node.viewModel.tree.observe.notify();
+      node.viewModel.updateChecked(newValue);
     }
   }
   private readonly observer = (node: ViewModelNode) => {

@@ -203,8 +203,7 @@ export class Editor extends LitElement {
         const parent = inline.node.viewModel.parent;
         if (parent?.type === 'list-item' && parent.checked === undefined &&
             /^\[( |x)] /.test(inline.node.content)) {
-          parent.checked = inline.node.content[1] === 'x';
-          parent.viewModel.observe.notify();
+          parent.viewModel.updateChecked(inline.node.content[1] === 'x');
           inline.node.viewModel.edit({
             newText: '',
             startIndex: 0,
@@ -403,7 +402,7 @@ function insertParagraphInList(
   newListItem.viewModel.insertBefore(targetList, targetListItemNextSibling);
   if (newListItem.viewModel.previousSibling?.type === 'list-item' &&
       newListItem.viewModel.previousSibling.checked !== undefined) {
-    newListItem.checked = false;
+    newListItem.viewModel.updateChecked(false);
   }
   const newParagraph = node.viewModel.tree.add({
     type: 'paragraph',
@@ -493,7 +492,7 @@ function handleInlineInputAsBlockEdit(
     const node = inline.node;
     // Turn sections and code-blocks into paragraphs.
     if (node.type === 'section') {
-      node.marker = node.marker.substring(0, node.marker.length - 1);
+      node.viewModel.updateMarker(node.marker.substring(0, node.marker.length - 1));
       if (node.marker === '') {
         const paragraph = node.viewModel.tree.add({
           type: 'paragraph',
