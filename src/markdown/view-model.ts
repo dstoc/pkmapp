@@ -123,25 +123,21 @@ class ViewModel {
   }
 
   updateMarker(marker: string) {
-    function mutable(node: {readonly marker: string})  {
-      return node as {marker: string};
-    }
     switch (this.self.type) {
       case 'list-item':
       case 'section':
-        mutable(this.self).marker = marker;
+        if (this.self.marker === marker) return;
+        (this.self as {marker: string}).marker = marker;
         this.signalMutation();
         break;
     }
   }
 
   updateChecked(checked: boolean|undefined) {
-    function mutable(node: {readonly checked?: boolean})  {
-      return node as {checked?: boolean};
-    }
     switch (this.self.type) {
       case 'list-item':
-        mutable(this.self).checked = checked;
+        if (this.self.checked === checked) return;
+        (this.self as {checked?: boolean}).checked = checked;
         this.signalMutation();
         break;
     }
@@ -171,7 +167,9 @@ export class InlineViewModel extends ViewModel {
       newEndPosition: indexToPosition(this.self.content, newEndIndex),
     };
 
-    (this.self as {content: string}).content = apply(this.self.content, result);
+    const newContent = apply(this.self.content, result);
+    if (this.self.content === newContent) return null;
+    (this.self as {content: string}).content = newContent;
     const newNodes = this.maybeReplaceWithBlocks();
     if (newNodes) return newNodes;
     this.inlineTree = this.inlineTree!.edit(result);
