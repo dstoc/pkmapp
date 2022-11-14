@@ -30,7 +30,7 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
             }
             this.requestUpdate();
         };
-        this.addEventListener('click', e => this.handleClick(e));
+        this.addEventListener('click', (e) => this.handleClick(e));
     }
     connectedCallback() {
         super.connectedCallback();
@@ -57,14 +57,12 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
         if (node.type === 'list-item') {
             this.checked = node.checked;
         }
-        if (node.type === 'paragraph' || node.type === 'code-block' ||
-            node.type === 'heading') {
-            return html `
-        <md-inline .node=${node}></md-inline>`;
-        }
-        else {
-            return node.children?.map(node => html `<md-block .node=${node}></md-block>`);
-        }
+        return html `${(node.type === 'paragraph' || node.type === 'code-block' ||
+            node.type === 'section') ?
+            html `<md-inline .node=${node}></md-inline>` :
+            ''}
+        ${node.children?.map((node) => html `<md-block .node=${node}></md-block>`)}
+    `;
     }
     createRenderRoot() {
         return this;
@@ -77,20 +75,19 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
             if (e.target !== this)
                 return;
             e.preventDefault();
+            let newValue;
             switch (node.checked) {
                 case true:
-                    node.checked = undefined;
+                    newValue = undefined;
                     break;
                 case false:
-                    node.checked = true;
+                    newValue = true;
                     break;
                 case undefined:
-                    node.checked = false;
+                    newValue = false;
                     break;
             }
-            // TODO: there should be a helper to do both of these
-            node.viewModel.observe.notify();
-            node.viewModel.tree.observe.notify();
+            node.viewModel.updateChecked(newValue);
         }
     }
     addObserver(node) {
@@ -142,7 +139,7 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
           font-family: monospace;
           white-space: pre-wrap;
         }
-        md-block[type='heading'] md-inline {
+        md-block[type='section'] > md-inline {
           font-weight: bold;
         }
         md-block + md-block[type='list'] {

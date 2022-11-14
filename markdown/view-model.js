@@ -15,13 +15,15 @@ import { parser as inlineParser } from './inline-parser.js';
 import { parseBlocks } from './block-parser.js';
 import { assert, cast } from '../asserts.js';
 import { Observe } from '../observe.js';
+import { normalizeTree } from './normalize.js';
 class ViewModel {
     constructor(self, tree, parent, childIndex) {
         this.self = self;
         this.tree = tree;
         this.parent = parent;
+        this.version = 0;
         this.initialize(parent, childIndex);
-        this.observe = new Observe(this.self);
+        this.observe = new Observe(this.self, this.tree.observe);
     }
     initialize(parent, childIndex) {
         this.parent = parent;
@@ -36,7 +38,20 @@ class ViewModel {
         this.firstChild = this.self.children?.[0];
         this.lastChild = this.self.children?.[this.self.children.length - 1];
     }
+    signalMutation(notify = true) {
+        this.version = this.tree.root.viewModel.version + 1;
+        let parent = this.parent;
+        while (parent) {
+            parent.viewModel.version = this.version;
+            parent = parent.viewModel.parent;
+        }
+        if (notify) {
+            this.observe.notify();
+        }
+    }
     remove() {
+        assert(this.tree.state === 'editing');
+        assert(this.parent);
         if (this.parent?.viewModel.firstChild === this.self) {
             this.parent.viewModel.firstChild = this.nextSibling;
         }
@@ -51,11 +66,17 @@ class ViewModel {
         }
         const index = this.parent.children.indexOf(this.self);
         this.parent.children.splice(index, 1);
-        this.parent.viewModel.observe.notify();
+        const parent = this.parent;
         this.parent = undefined;
-        this.tree.observe.notify();
+        this.signalMutation(false);
+        parent.viewModel.observe.notify();
     }
     insertBefore(parent, nextSibling) {
+        assert(this.tree.state === 'editing');
+        if (nextSibling === this.self) {
+            assert(parent === this.parent);
+            return;
+        }
         if (this.parent)
             this.remove();
         const previousSibling = nextSibling ?
@@ -90,8 +111,29 @@ class ViewModel {
             index = 0;
         }
         parent.children.splice(index, 0, this.self);
+        this.signalMutation(false);
         parent.viewModel.observe.notify();
-        this.tree.observe.notify();
+    }
+    updateMarker(marker) {
+        switch (this.self.type) {
+            case 'list-item':
+            case 'section':
+                if (this.self.marker === marker)
+                    return;
+                this.self.marker = marker;
+                this.signalMutation();
+                break;
+        }
+    }
+    updateChecked(checked) {
+        switch (this.self.type) {
+            case 'list-item':
+                if (this.self.checked === checked)
+                    return;
+                this.self.checked = checked;
+                this.signalMutation();
+                break;
+        }
     }
 }
 export class InlineViewModel extends ViewModel {
@@ -112,14 +154,16 @@ export class InlineViewModel extends ViewModel {
             newEndIndex,
             newEndPosition: indexToPosition(this.self.content, newEndIndex),
         };
-        this.self.content = apply(this.self.content, result);
+        const newContent = apply(this.self.content, result);
+        if (this.self.content === newContent)
+            return null;
+        this.self.content = newContent;
         const newNodes = this.maybeReplaceWithBlocks();
         if (newNodes)
             return newNodes;
-        this.tree.observe.notify();
         this.inlineTree = this.inlineTree.edit(result);
         this.inlineTree = inlineParser.parse(this.self.content, this.inlineTree);
-        this.observe.notify();
+        this.signalMutation();
         return null;
     }
     maybeReplaceWithBlocks() {
@@ -128,7 +172,7 @@ export class InlineViewModel extends ViewModel {
             return false;
         const newNodes = [];
         for (const child of blocks) {
-            const node = this.tree.import(child);
+            const node = this.tree.add(child);
             node.viewModel.insertBefore(cast(this.parent), this.nextSibling);
             newNodes.push(node);
         }
@@ -140,7 +184,7 @@ export class InlineViewModel extends ViewModel {
         // TODO: Ensure inline does not start with whitespace, or contain tabs or
         // newlines.
         // TODO: Support other block types.
-        if (!/^(\d+[.)] |[\-+*>] |#+ |[`*\-_]{3})/.test(content))
+        if (!/^(\d+[.)] |[-+*>] |#+ |[`*\-_]{3})/.test(content))
             return;
         if (this.self.type !== 'paragraph')
             return;
@@ -148,32 +192,39 @@ export class InlineViewModel extends ViewModel {
         const node = parseBlocks(this.self.content + '\n');
         assert(node);
         assert(node.type === 'document' && node.children);
-        if (node.children.length > 1) {
-            return node.children;
-        }
-        const section = node.children[0];
-        assert(section.type === 'section' && section.children);
-        if (section.children.length > 1 ||
-            section.children[0].type !== this.self.type) {
-            return section.children;
-        }
-        return;
+        return node.children;
     }
 }
 export class MarkdownTree {
     constructor(root) {
+        this.state = 'idle';
         this.observe = new Observe(this);
         this.root = this.addDom(root);
     }
-    import(node) {
+    add(node) {
         if (node.viewModel) {
             throw new Error('node is already part of a tree');
         }
         return this.addDom(node);
     }
+    edit() {
+        assert(this.state === 'idle');
+        const startVersion = this.root.viewModel.version;
+        const resumeObserve = this.observe.suspend();
+        this.state = 'editing';
+        return () => {
+            normalizeTree(this);
+            this.state = 'idle';
+            if (this.root.viewModel.version > startVersion) {
+                this.observe.notify();
+            }
+            resumeObserve();
+        };
+    }
     addDom(node, parent, childIndex) {
         const result = node;
-        if (result.type === 'paragraph' || result.type === 'heading' || result.type === 'code-block') {
+        if (result.type === 'paragraph' || result.type === 'section' ||
+            result.type === 'code-block') {
             assert(!result.viewModel);
             result.viewModel = new InlineViewModel(result, this, parent, childIndex);
         }
@@ -191,6 +242,8 @@ export class MarkdownTree {
     serialize(node) {
         if (!node)
             node = this.root;
+        assert(node.viewModel.tree === this);
+        assert(this.state === 'idle');
         const result = { ...node };
         delete result.viewModel;
         result.children = node.children?.map(this.serialize);

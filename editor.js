@@ -19,10 +19,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import './markdown/block-render.js';
 import { libraryContext } from './app-context.js';
-import { assert, cast } from './asserts.js';
+import { cast } from './asserts.js';
 import { contextProvided, contextProvider } from './deps/lit-labs-context.js';
 import { css, customElement, html, LitElement, property, state } from './deps/lit.js';
 import { hostContext } from './markdown/host-context.js';
+import { normalizeTree } from './markdown/normalize.js';
+import { ancestors, children, findAncestor, findNextEditable, findPreviousDfs, reverseDfs, swapNodes } from './markdown/view-model-util.js';
 import { Observer, Observers } from './observe.js';
 let Editor = class Editor extends LitElement {
     constructor() {
@@ -30,7 +32,8 @@ let Editor = class Editor extends LitElement {
         this.dirty = false;
         this.hostContext = {};
         this.observers = new Observers(new Observer(() => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o), () => this.requestUpdate()));
-        //this.addEventListener('focus', () => this.appContext.activeEditor = this);
+        // this.addEventListener('focus', () => this.appContext.activeEditor =
+        // this);
     }
     static get styles() {
         return [
@@ -89,116 +92,123 @@ let Editor = class Editor extends LitElement {
             console.error(e);
         }
     }
-    onInlineLinkClick({ detail: { type, destination }, }) {
+    onInlineLinkClick({ detail: { destination }, }) {
         this.load(destination);
     }
     onInlineKeyDown({ detail: { inline, node, keyboardEvent }, }) {
-        if (!inline.node)
-            return;
-        if (keyboardEvent.key === 'ArrowUp') {
-            keyboardEvent.preventDefault();
-            const result = inline.moveCaretUp();
-            if (result !== true) {
-                const prev = findPreviousDfs(node, ({ type }) => ['paragraph', 'code-block', 'heading'].includes(type));
-                if (prev)
-                    focusNode(this.hostContext, prev, -result);
+        const finishEditing = node.viewModel.tree.edit();
+        try {
+            if (!inline.node)
+                return;
+            if (keyboardEvent.key === 'ArrowUp') {
+                keyboardEvent.preventDefault();
+                const result = inline.moveCaretUp();
+                if (result !== true) {
+                    const prev = findPreviousDfs(node, ({ type }) => ['paragraph', 'code-block', 'section'].includes(type));
+                    if (prev)
+                        focusNode(this.hostContext, prev, -result);
+                }
             }
-        }
-        else if (keyboardEvent.key === 'ArrowDown') {
-            keyboardEvent.preventDefault();
-            const result = inline.moveCaretDown();
-            if (result !== true) {
-                const next = findNextEditable(node);
-                if (next)
-                    focusNode(this.hostContext, next, -result);
+            else if (keyboardEvent.key === 'ArrowDown') {
+                keyboardEvent.preventDefault();
+                const result = inline.moveCaretDown();
+                if (result !== true) {
+                    const next = findNextEditable(node);
+                    if (next)
+                        focusNode(this.hostContext, next, -result);
+                }
             }
-        }
-        else if (keyboardEvent.key === 'Tab') {
-            keyboardEvent.preventDefault();
-            const { start } = inline.getSelection();
-            focusNode(this.hostContext, node, start.index);
-            if (keyboardEvent.shiftKey) {
-                unindent(node);
+            else if (keyboardEvent.key === 'Tab') {
+                keyboardEvent.preventDefault();
+                const { start } = inline.getSelection();
+                focusNode(this.hostContext, node, start.index);
+                if (keyboardEvent.shiftKey) {
+                    unindent(node);
+                }
+                else {
+                    indent(node);
+                }
             }
             else {
-                indent(node);
+                return;
             }
         }
-        else {
-            return;
+        finally {
+            finishEditing();
         }
-        normalizeTree(node.viewModel.tree);
     }
     onInlineInput(event) {
         const { detail: { inline, inputEvent, inputStart, inputEnd }, } = event;
         if (!inline.node)
             return;
-        if (handleInlineInputAsBlockEdit(event, this.hostContext)) {
-            normalizeTree(inline.node.viewModel.tree);
-            return;
-        }
-        let newText;
-        let startIndex;
-        let oldEndIndex;
-        let newEndIndex;
-        if (inputEvent.inputType === 'insertText' ||
-            inputEvent.inputType === 'insertReplacementText' ||
-            inputEvent.inputType === 'insertFromPaste' ||
-            inputEvent.inputType === 'deleteByCut' ||
-            inputEvent.inputType === 'deleteContentBackward') {
-            startIndex = inputStart.index;
-            oldEndIndex = inputEnd.index;
-            if (inputEvent.inputType === 'insertReplacementText' ||
-                inputEvent.inputType === 'insertFromPaste') {
-                newText = inputEvent.dataTransfer.getData('text');
-            }
-            else if (inputEvent.inputType === 'deleteByCut') {
-                newText = '';
-            }
-            else if (inputEvent.inputType === 'deleteContentBackward') {
-                newText = '';
-                startIndex = Math.max(0, startIndex - 1);
+        const finishEditing = inline.node.viewModel.tree.edit();
+        try {
+            if (handleInlineInputAsBlockEdit(event, this.hostContext))
+                return;
+            let newText;
+            let startIndex;
+            let oldEndIndex;
+            let newEndIndex;
+            if (inputEvent.inputType === 'insertText' ||
+                inputEvent.inputType === 'insertReplacementText' ||
+                inputEvent.inputType === 'insertFromPaste' ||
+                inputEvent.inputType === 'deleteByCut' ||
+                inputEvent.inputType === 'deleteContentBackward') {
+                startIndex = inputStart.index;
+                oldEndIndex = inputEnd.index;
+                if (inputEvent.inputType === 'insertReplacementText' ||
+                    inputEvent.inputType === 'insertFromPaste') {
+                    newText = inputEvent.dataTransfer.getData('text');
+                }
+                else if (inputEvent.inputType === 'deleteByCut') {
+                    newText = '';
+                }
+                else if (inputEvent.inputType === 'deleteContentBackward') {
+                    newText = '';
+                    startIndex = Math.max(0, startIndex - 1);
+                }
+                else {
+                    newText = inputEvent.data ?? '';
+                }
+                newEndIndex = startIndex + newText.length;
             }
             else {
-                newText = inputEvent.data ?? '';
+                console.log('unsupported inputType:', inputEvent.inputType);
+                return;
             }
-            newEndIndex = startIndex + newText.length;
-        }
-        else {
-            console.log('unsupported inputType:', inputEvent.inputType);
-            return;
-        }
-        const edit = {
-            newText,
-            startIndex,
-            oldEndIndex,
-            newEndIndex,
-        };
-        const newNodes = inline.node.viewModel.edit(edit);
-        if (newNodes) {
-            normalizeTree(inline.node.viewModel.tree);
-            const prev = newNodes[0].viewModel.previousSibling ||
-                newNodes[0].viewModel.parent;
-            const next = findNextEditable(prev);
-            // TODO: is the focus offset always 0?
-            if (next)
-                focusNode(this.hostContext, next, 0);
-        }
-        else {
-            // TODO: generalize this (inline block mutation)
-            const parent = inline.node.viewModel.parent;
-            if (parent?.type === 'list-item' && parent.checked === undefined &&
-                /^\[( |x)] /.test(inline.node.content)) {
-                parent.checked = inline.node.content[1] === 'x';
-                parent.viewModel.observe.notify();
-                inline.node.viewModel.edit({
-                    newText: '',
-                    startIndex: 0,
-                    newEndIndex: 0,
-                    oldEndIndex: 4,
-                });
+            const edit = {
+                newText,
+                startIndex,
+                oldEndIndex,
+                newEndIndex,
+            };
+            const newNodes = inline.node.viewModel.edit(edit);
+            if (newNodes) {
+                // TODO: is this needed?
+                normalizeTree(inline.node.viewModel.tree);
+                const next = findNextEditable(newNodes[0], true);
+                // TODO: is the focus offset always 0?
+                if (next)
+                    focusNode(this.hostContext, next, 0);
             }
-            focusNode(this.hostContext, inline.node, newEndIndex);
+            else {
+                // TODO: generalize this (inline block mutation)
+                const parent = inline.node.viewModel.parent;
+                if (parent?.type === 'list-item' && parent.checked === undefined &&
+                    /^\[( |x)] /.test(inline.node.content)) {
+                    parent.viewModel.updateChecked(inline.node.content[1] === 'x');
+                    inline.node.viewModel.edit({
+                        newText: '',
+                        startIndex: 0,
+                        newEndIndex: 0,
+                        oldEndIndex: 4,
+                    });
+                }
+                focusNode(this.hostContext, inline.node, newEndIndex);
+            }
+        }
+        finally {
+            finishEditing();
         }
     }
     getCommands() {
@@ -215,7 +225,7 @@ let Editor = class Editor extends LitElement {
             {
                 description: 'Force save',
                 execute: async () => this.document?.save(),
-            }
+            },
         ];
     }
 };
@@ -242,7 +252,7 @@ Editor = __decorate([
 export { Editor };
 function maybeMergeContentInto(node, target, context) {
     if (target.type === 'code-block' || target.type === 'paragraph' ||
-        target.type === 'heading') {
+        target.type === 'section') {
         focusNode(context, target, target.content.length);
         target.viewModel.edit({
             startIndex: target.content.length,
@@ -250,105 +260,15 @@ function maybeMergeContentInto(node, target, context) {
             newEndIndex: target.content.length + node.content.length,
             newText: node.content,
         });
-        let parent = node.viewModel.parent;
         node.viewModel.remove();
-        cleanupNode(parent);
         return true;
     }
     return false;
-}
-function cleanupNode(node) {
-    if (!node)
-        return;
-    if (node.type === 'block-quote' || node.type === 'heading' ||
-        node.type === 'paragraph') {
-        return;
-    }
-    while (node?.children?.length === 0) {
-        const toRemove = node;
-        node = node.viewModel.parent;
-        toRemove.viewModel.remove();
-    }
 }
 function focusNode(context, node, offset) {
     context.focusNode = node;
     context.focusOffset = offset;
     node.viewModel.observe.notify();
-}
-function swapNodes(node1, node2) {
-    const node1Parent = node1.viewModel.parent;
-    const node1NextSibling = node1.viewModel.nextSibling;
-    node1.viewModel.insertBefore(cast(node2.viewModel.parent), node2);
-    node2.viewModel.insertBefore(node1Parent, node1NextSibling);
-}
-function* ancestors(node) {
-    while (node.viewModel.parent) {
-        yield node.viewModel.parent;
-        node = node.viewModel.parent;
-    }
-}
-function* reverseDfs(node, limit) {
-    function next(next) {
-        return next && (node = next);
-    }
-    do {
-        while (next(node.viewModel.previousSibling)) {
-            while (next(node.viewModel.lastChild))
-                ;
-            yield node;
-            if (node === limit)
-                return;
-        }
-        if (next(node.viewModel.parent)) {
-            yield node;
-            if (node === limit)
-                return;
-            continue;
-        }
-        return;
-    } while (true);
-}
-function* dfs(node) {
-    function next(next) {
-        return next && (node = next);
-    }
-    let parent = false;
-    do {
-        if (!parent) {
-            let moved = false;
-            while (next(node.viewModel.firstChild))
-                moved = true;
-            if (moved) {
-                yield node;
-                continue;
-            }
-        }
-        if (next(node.viewModel.nextSibling)) {
-            parent = false;
-            if (!node.viewModel.firstChild) {
-                yield node;
-            }
-            continue;
-        }
-        if (next(node.viewModel.parent)) {
-            yield node;
-            parent = true;
-            continue;
-        }
-        return;
-    } while (true);
-}
-function findAncestor(node, type) {
-    const path = [node];
-    for (const ancestor of ancestors(node)) {
-        if (ancestor.type === type)
-            return {
-                ancestor,
-                path,
-            };
-        path.unshift(ancestor);
-    }
-    return {};
 }
 function unindent(node) {
     const { ancestor: listItem, path } = findAncestor(node, 'list-item');
@@ -371,7 +291,7 @@ function unindent(node) {
         while (next) {
             if (listItem.viewModel.lastChild?.type !== 'list') {
                 listItem.viewModel.tree
-                    .import({
+                    .add({
                     type: 'list',
                 })
                     .viewModel.insertBefore(listItem);
@@ -398,10 +318,13 @@ function indent(node) {
         if (ancestor.type === 'list-item') {
             break;
         }
+        if (ancestor.type === 'document') {
+            break;
+        }
         // Don't indent a section at the top level, unless we are inside a heading.
         if (ancestor.type === 'section' &&
             ancestor.viewModel.parent.type == 'document') {
-            if (target.type === 'heading') {
+            if (target.type === 'section') {
                 target = ancestor;
             }
             break;
@@ -413,7 +336,7 @@ function indent(node) {
         listItem = target.viewModel.parent;
     }
     else {
-        listItem = target.viewModel.tree.import({
+        listItem = target.viewModel.tree.add({
             type: 'list-item',
             marker: '* ',
         });
@@ -435,7 +358,7 @@ function indent(node) {
     }
     // Ensure the list-item we may have created is in a list.
     if (listItem.viewModel.parent.type !== 'list') {
-        const list = target.viewModel.tree.import({
+        const list = target.viewModel.tree.add({
             type: 'list',
         });
         list.viewModel.insertBefore(cast(listItem.viewModel.parent), listItem);
@@ -443,7 +366,7 @@ function indent(node) {
     }
 }
 function insertSiblingParagraph(node, startIndex, context) {
-    const newParagraph = node.viewModel.tree.import({
+    const newParagraph = node.viewModel.tree.add({
         type: 'paragraph',
         content: '',
     });
@@ -463,7 +386,7 @@ function insertParagraphInList(node, startIndex, context) {
             targetListItemNextSibling = targetList.viewModel.firstChild;
         }
         else {
-            targetList = node.viewModel.tree.import({
+            targetList = node.viewModel.tree.add({
                 type: 'list',
             });
             targetList.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
@@ -477,16 +400,16 @@ function insertParagraphInList(node, startIndex, context) {
     const firstListItem = targetList.viewModel.firstChild;
     if (firstListItem && firstListItem.type !== 'list-item')
         return false;
-    const newListItem = node.viewModel.tree.import({
+    const newListItem = node.viewModel.tree.add({
         type: 'list-item',
         marker: firstListItem?.marker ?? '* ',
     });
     newListItem.viewModel.insertBefore(targetList, targetListItemNextSibling);
     if (newListItem.viewModel.previousSibling?.type === 'list-item' &&
         newListItem.viewModel.previousSibling.checked !== undefined) {
-        newListItem.checked = false;
+        newListItem.viewModel.updateChecked(false);
     }
-    const newParagraph = node.viewModel.tree.import({
+    const newParagraph = node.viewModel.tree.add({
         type: 'paragraph',
         content: '',
     });
@@ -494,11 +417,11 @@ function insertParagraphInList(node, startIndex, context) {
     finishInsertParagraph(node, newParagraph, startIndex, context);
     return true;
 }
-function insertParagraphInSection(node, startIndex, context) {
-    const { ancestor: section, path } = findAncestor(node, 'section');
+function insertParagraphInDocument(node, startIndex, context) {
+    const { ancestor: section, path } = findAncestor(node, 'document');
     if (!section)
         return false;
-    const newParagraph = node.viewModel.tree.import({
+    const newParagraph = node.viewModel.tree.add({
         type: 'paragraph',
         content: '',
     });
@@ -506,8 +429,33 @@ function insertParagraphInSection(node, startIndex, context) {
     finishInsertParagraph(node, newParagraph, startIndex, context);
     return true;
 }
+function insertParagraphInSection(node, startIndex, context) {
+    let { ancestor: section, path } = findAncestor(node, 'section');
+    let nextSibling;
+    if (section) {
+        nextSibling = path[0].viewModel.nextSibling;
+    }
+    else if (node.type === 'section') {
+        section = node;
+        nextSibling = section.viewModel.firstChild;
+    }
+    if (!section)
+        return false;
+    const newParagraph = node.viewModel.tree.add({
+        type: 'paragraph',
+        content: '',
+    });
+    newParagraph.viewModel.insertBefore(section, nextSibling);
+    finishInsertParagraph(node, newParagraph, startIndex, context);
+    return true;
+}
+function areAncestorAndDescendant(node, node2) {
+    return [...ancestors(node)].includes(node2) ||
+        [...ancestors(node2)].includes(node);
+}
 function finishInsertParagraph(node, newParagraph, startIndex, context) {
-    const shouldSwap = startIndex === 0 && node.content.length > 0;
+    const shouldSwap = startIndex === 0 && node.content.length > 0 &&
+        !areAncestorAndDescendant(node, newParagraph);
     if (shouldSwap) {
         swapNodes(node, newParagraph);
     }
@@ -516,7 +464,7 @@ function finishInsertParagraph(node, newParagraph, startIndex, context) {
             startIndex: 0,
             newEndIndex: 0,
             oldEndIndex: 0,
-            newText: node.content.substring(startIndex)
+            newText: node.content.substring(startIndex),
         });
         node.viewModel.edit({
             startIndex,
@@ -527,158 +475,36 @@ function finishInsertParagraph(node, newParagraph, startIndex, context) {
     }
     focusNode(context, newParagraph);
 }
-function normalizeSection(node) {
-    const isFirstDocumentSection = node.viewModel.parent?.type === 'document' &&
-        node.viewModel.parent.viewModel.firstChild === node;
-    let next = node.viewModel.firstChild;
-    const sectionNextSibling = node.viewModel.nextSibling;
-    let hasHeading = false;
-    while (next) {
-        const child = next;
-        next = child.viewModel.nextSibling;
-        if (child.type === 'heading') {
-            if (hasHeading) {
-                // Found a second heading, split out a new sibling section and move
-                // all remaining children there.
-                const newSection = node.viewModel.tree.import({ type: 'section' });
-                newSection.viewModel.insertBefore(child.viewModel.parent, child);
-                child.viewModel.insertBefore(newSection);
-                while (next) {
-                    const child = next;
-                    next = child.viewModel.nextSibling;
-                    child.viewModel.insertBefore(newSection);
-                }
-                break;
-            }
-            hasHeading = true;
-        }
-        else if (child.type === 'section') {
-            // Sections can't contain other sections.
-            child.viewModel.insertBefore(cast(node.viewModel.parent), sectionNextSibling);
-        }
-        else if (isFirstDocumentSection) {
-            // First document section only optionally requires a heading.
-            hasHeading = true;
-        }
-        else if (!hasHeading) {
-            child.viewModel.insertBefore(cast(node.viewModel.parent), sectionNextSibling);
-        }
-    }
-    if (hasHeading) {
-        return true;
-    }
-    // The section did not have a heading, the children have been removed.
-    assert(!node.children || !node.children.length);
-    node.viewModel.remove();
-    return false;
-}
-function findNextEditable(node) {
-    return findNextDfs(node, ({ type }) => ['paragraph', 'code-block', 'heading'].includes(type));
-}
-function findNextDfs(node, predicate) {
-    for (const next of dfs(node)) {
-        if (next !== node && predicate(next))
-            return next;
-    }
-    return null;
-}
-function findPreviousDfs(node, predicate) {
-    for (const next of reverseDfs(node)) {
-        if (next !== node && predicate(next))
-            return next;
-    }
-    return null;
-}
-function findChild(node, predicate) {
-    let next = node.viewModel.firstChild;
-    while (next) {
-        if (next && predicate(next))
-            return next;
-        next = next.viewModel.nextSibling;
-    }
-    return null;
-}
-function* children(node) {
-    let next = node.viewModel.firstChild;
-    while (next) {
-        yield next;
-        next = next.viewModel.nextSibling;
-    }
-}
-function normalizeSections(node) {
-    let section;
-    do {
-        section = findChild(node, ({ type }) => type === 'section');
-        if (!section)
-            return;
-    } while (!normalizeSection(section));
-    while (section && section.viewModel.nextSibling) {
-        const node = section.viewModel.nextSibling;
-        if (node.type === 'section') {
-            if (normalizeSection(node))
-                section = node;
-        }
-        else if (node.type === 'heading') {
-            // Create and advance to a new section to hold the heading.
-            section = node.viewModel.tree.import({
-                type: 'section',
-            });
-            assert(section);
-            section.viewModel.insertBefore(cast(node.viewModel.parent), node);
-            node.viewModel.insertBefore(section);
-        }
-        else {
-            node.viewModel.insertBefore(section);
-        }
-    }
-}
-function normalizeTree(tree) {
-    const document = tree.root;
-    // Remove empty nodes.
-    for (const node of [...dfs(tree.root)]) {
-        if (node.viewModel.firstChild)
-            continue;
-        switch (node.type) {
-            case 'list-item':
-            case 'list':
-            case 'block-quote':
-                node.viewModel.remove();
-                break;
-        }
-    }
-    // ensure first child is a section
-    if (document.viewModel.firstChild?.type !== 'section') {
-        const section = tree.import({
-            type: 'section',
-        });
-        section.viewModel.insertBefore(document, document.viewModel.firstChild);
-    }
-    for (const node of dfs(tree.root)) {
-        normalizeSections(node);
-    }
-    for (const node of dfs(tree.root)) {
-        if (node.type === 'list') {
-            while (node.viewModel.nextSibling?.type === 'list') {
-                let next = node.viewModel.nextSibling;
-                while (next.viewModel.firstChild) {
-                    next.viewModel.firstChild.viewModel.insertBefore(node);
-                }
-                next.viewModel.remove();
-            }
-        }
-    }
-}
 function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart, inputEnd }, }, context) {
-    // TODO: Call normalizeTree at the right times
     if (!inline.node)
         return false;
     if (inputEvent.inputType === 'deleteContentBackward') {
         if (inputStart.index !== 0 || inputEnd.index !== 0)
             return false;
         const node = inline.node;
-        // Turn headings and code-blocks into paragraphs.
-        if (node.type === 'heading' || node.type === 'code-block') {
-            const paragraph = node.viewModel.tree.import({
+        // Turn sections and code-blocks into paragraphs.
+        if (node.type === 'section') {
+            node.viewModel.updateMarker(node.marker.substring(0, node.marker.length - 1));
+            if (node.marker === '') {
+                const paragraph = node.viewModel.tree.add({
+                    type: 'paragraph',
+                    content: node.content,
+                });
+                paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
+                // Move all section content out.
+                for (const child of children(node)) {
+                    child.viewModel.insertBefore(cast(node.viewModel.parent), node);
+                }
+                node.viewModel.remove();
+                focusNode(context, paragraph, 0);
+            }
+            else {
+                focusNode(context, node, 0);
+            }
+            return true;
+        }
+        else if (node.type === 'code-block') {
+            const paragraph = node.viewModel.tree.add({
                 type: 'paragraph',
                 content: node.content, // TODO: detect new blocks
             });
@@ -711,7 +537,8 @@ function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart
     }
     else if (inputEvent.inputType === 'insertParagraph') {
         return insertParagraphInList(inline.node, inputStart.index, context) ||
-            insertParagraphInSection(inline.node, inputStart.index, context);
+            insertParagraphInSection(inline.node, inputStart.index, context) ||
+            insertParagraphInDocument(inline.node, inputStart.index, context);
     }
     else if (inputEvent.inputType === 'insertLineBreak') {
         return insertSiblingParagraph(inline.node, inputStart.index, context);

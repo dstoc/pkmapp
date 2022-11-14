@@ -70,7 +70,7 @@ export class FileSystemLibrary {
                 this.tree.observe.add(() => this.markDirty());
             }
             async refresh() {
-                this.tree.root = this.tree.import(await load());
+                this.tree.root = this.tree.add(await load());
                 this.tree.observe.notify();
             }
             async save() {
@@ -90,7 +90,7 @@ export class FileSystemLibrary {
                 if (this.pendingModifications++)
                     return;
                 while (true) {
-                    let preSave = this.pendingModifications;
+                    const preSave = this.pendingModifications;
                     // Save immediately on the fist iteration, may help keep tests fast.
                     await this.save();
                     if (this.pendingModifications === preSave) {
@@ -104,7 +104,7 @@ export class FileSystemLibrary {
                     do {
                         preIdle = this.pendingModifications;
                         // TODO: maybe a timeout is better?
-                        await new Promise(resolve => requestIdleCallback(resolve));
+                        await new Promise((resolve) => requestIdleCallback(resolve));
                     } while (preIdle != this.pendingModifications);
                 }
             }

@@ -31,8 +31,6 @@ function* onceThenNothing(s) {
     }
 }
 function separator(prev, next) {
-    if (prev.type === 'heading')
-        return '';
     if (next.type === 'list-item')
         return '';
     if (prev.type === 'paragraph' && next.type === 'list')
@@ -58,7 +56,6 @@ function serializeBlocks(blocks, indents, result) {
 export function getPrefix(node) {
     switch (node.type) {
         case 'document':
-        case 'section':
         case 'list':
         case 'paragraph':
             return '';
@@ -66,7 +63,7 @@ export function getPrefix(node) {
             return node.marker;
         case 'block-quote':
             return node.marker;
-        case 'heading':
+        case 'section':
             return node.marker + ' ';
         case 'code-block':
             return '```' + (node.info ?? '');
@@ -85,9 +82,15 @@ function serialize(node, indents, result) {
     }
     switch (node.type) {
         case 'document':
-        case 'section':
         case 'list':
             assert(node.children && node.children.length);
+            break;
+        case 'section':
+            indent();
+            result.push(node.marker);
+            result.push(' ');
+            result.push(node.content.trimStart());
+            result.push('\n');
             break;
         case 'list-item':
             assert(node.children && node.children.length);
@@ -104,13 +107,6 @@ function serialize(node, indents, result) {
         case 'paragraph':
             indent();
             result.push(node.content);
-            result.push('\n');
-            break;
-        case 'heading':
-            indent();
-            result.push(node.marker);
-            result.push(' ');
-            result.push(node.content.trimStart());
             result.push('\n');
             break;
         case 'code-block':

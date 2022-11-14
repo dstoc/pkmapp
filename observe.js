@@ -11,12 +11,31 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+import { assert, cast } from './asserts.js';
 export class Observe {
-    constructor(target) {
+    constructor(target, delegate) {
         this.target = target;
+        this.delegate = delegate;
         this.observers = new Set();
+        this.state = delegate ? 'delegated' : 'active';
+    }
+    suspend() {
+        assert(this.state === 'active');
+        this.state = 'suspended';
+        let result;
+        this.resumed = new Promise((resolve) => result = () => {
+            this.state = 'active';
+            this.resumed = undefined;
+            resolve();
+        });
+        return result;
     }
     notify() {
+        if ((this.delegate?.state ?? this.state) === 'suspended') {
+            // TODO: coalesce
+            cast(this.delegate?.resumed ?? this.resumed).then(() => this.notify());
+            return;
+        }
         for (const observer of this.observers.values()) {
             observer(this.target);
         }
