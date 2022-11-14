@@ -116,8 +116,9 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
     }
     case 'fenced_code_block': {
       const children = node.namedChildren;
-      const info = children.find(node => node.type === 'info_string');
-      const content = children.find(node => node.type === 'code_fence_content');
+      const info = children.find((node) => node.type === 'info_string');
+      const content =
+          children.find((node) => node.type === 'code_fence_content');
       const offset = content?.startPosition.column ?? 0;
       const prefix = new RegExp(`(?<=\n).{${offset}}`, 'g');
       return {

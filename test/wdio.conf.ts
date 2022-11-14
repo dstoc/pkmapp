@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type {Options} from '@wdio/types'
+import type {Options} from '@wdio/types';
 import * as os from 'os';
 
 const instances = Math.max(1, Math.round(os.cpus().length / 2));
 export const config: Options.Testrunner = {
   autoCompileOpts: {
     autoCompile: true,
-    tsNodeOpts: {transpileOnly: true, project: 'test/tsconfig.json'}
+    tsNodeOpts: {transpileOnly: true, project: 'test/tsconfig.json'},
   },
   specs: ['./test/specs/**/*test.ts'],
   exclude: [],
   maxInstances: instances,
   capabilities: [{
-    maxInstances: instances,
-    browserName: 'chrome',
-    acceptInsecureCerts: true,
+    'maxInstances': instances,
+    'browserName': 'chrome',
+    'acceptInsecureCerts': true,
     'goog:chromeOptions': {
       args: ['headless'],
     },
@@ -46,13 +46,5 @@ export const config: Options.Testrunner = {
   jasmineOpts: {
     stopOnSpecFailure: true,
     defaultTimeoutInterval: 60000,
-    //
-    // The Jasmine framework allows interception of each assertion in order to
-    // log the state of the application or website depending on the result. For
-    // example, it is pretty handy to take a screenshot every time an assertion
-    // fails.
-    expectationResultHandler: function(passed, assertion) {
-      // do something
-    }
   },
-}
+};

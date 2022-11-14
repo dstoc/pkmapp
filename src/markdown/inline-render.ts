@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {contextProvided} from '../deps/lit-labs-context.js';
-import {css, customElement, html, LitElement, property, query, queryAll, repeat, TemplateResult,} from '../deps/lit.js';
+import {css, customElement, html, LitElement, property, query, queryAll, repeat, TemplateResult} from '../deps/lit.js';
 import Parser from '../deps/tree-sitter.js';
 
 import {HostContext, hostContext} from './host-context.js';
@@ -331,16 +331,17 @@ export class MarkdownSpan extends LitElement {
 
   constructor() {
     super();
-    this.addEventListener('pointerdown', e => {
+    this.addEventListener('pointerdown', (e) => {
       this.handlePointerDown(e);
     });
-    this.addEventListener('click', e => {
+    this.addEventListener('click', (e) => {
       this.handleClick(e);
     });
   }
   override async performUpdate() {
     await super.performUpdate();
-    await Promise.all(Array.from(this.spans).map(span => span.updateComplete));
+    await Promise.all(
+        Array.from(this.spans).map((span) => span.updateComplete));
   }
 
   override shouldUpdate(changed: Map<string, unknown>) {
@@ -379,9 +380,10 @@ export class MarkdownSpan extends LitElement {
     if (node.type !== 'inline_link' && node.type !== 'shortcut_link') return;
     event.preventDefault();
     const text =
-        node.namedChildren.find(node => node.type === 'link_text')?.text ?? '';
+        node.namedChildren.find((node) => node.type === 'link_text')?.text ??
+        '';
     const destination =
-        node.namedChildren.find(node => node.type === 'link_destination')
+        node.namedChildren.find((node) => node.type === 'link_destination')
             ?.text ??
         text;
     const inlineLinkClick: InlineLinkClick = {
@@ -438,7 +440,7 @@ export class MarkdownSpan extends LitElement {
       if (!result.node) return nextId++;
       return this.nodeIds!.get(result.node);
     };
-    const content = repeat(results, key, item => {
+    const content = repeat(results, key, (item) => {
       return item.result;
     });
     return content;

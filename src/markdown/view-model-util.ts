@@ -68,18 +68,19 @@ export function* dfs(node: ViewModelNode) {
     if (next(node.viewModel.nextSibling)) continue;
     do {
       if (!next(node.viewModel.parent)) return;
-    } while (!next(node.viewModel.nextSibling))
+    } while (!next(node.viewModel.nextSibling));
   } while (true);
 }
 
 export function findAncestor(node: ViewModelNode, type: string) {
   const path = [node];
   for (const ancestor of ancestors(node)) {
-    if (ancestor.type === type)
+    if (ancestor.type === type) {
       return {
         ancestor,
         path,
       };
+    }
     path.unshift(ancestor);
   }
   return {};

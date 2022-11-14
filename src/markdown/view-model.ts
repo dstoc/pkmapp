@@ -41,7 +41,7 @@ class ViewModel {
     this.firstChild = this.self.children?.[0];
     this.lastChild = this.self.children?.[this.self.children.length - 1];
   }
-  version: number = 0;
+  version = 0;
   firstChild?: ViewModelNode;
   lastChild?: ViewModelNode;
   nextSibling?: ViewModelNode;
@@ -170,7 +170,7 @@ export class InlineViewModel extends ViewModel {
     // TODO: Ensure inline does not start with whitespace, or contain tabs or
     // newlines.
     // TODO: Support other block types.
-    if (!/^(\d+[.)] |[\-+*>] |#+ |[`*\-_]{3})/.test(content)) return;
+    if (!/^(\d+[.)] |[-+*>] |#+ |[`*\-_]{3})/.test(content)) return;
     if (this.self.type !== 'paragraph') return;
     // TODO: Ensure there's a trailing new line?
     const node = parseBlocks(this.self.content + '\n');
@@ -213,9 +213,9 @@ export class MarkdownTree {
   }
 
   private addDom<T>(
-    node: T&MarkdownNode,
-    parent?: ViewModelNode,
-    childIndex?: number
+      node: T&MarkdownNode,
+      parent?: ViewModelNode,
+      childIndex?: number
   ) {
     const result = node as T&ViewModelNode;
     if (result.type === 'paragraph' || result.type === 'section' || result.type === 'code-block') {

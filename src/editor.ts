@@ -21,7 +21,7 @@ import {contextProvided, contextProvider} from './deps/lit-labs-context.js';
 import {css, customElement, html, LitElement, property, state} from './deps/lit.js';
 import {Document, Library} from './library.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
-import {InlineInput, InlineKeyDown, InlineLinkClick,} from './markdown/inline-render.js';
+import {InlineInput, InlineKeyDown, InlineLinkClick} from './markdown/inline-render.js';
 import {InlineNode, ParagraphNode} from './markdown/node.js';
 import {normalizeTree} from './markdown/normalize.js';
 import {ancestors, children, findAncestor, findNextEditable, findPreviousDfs, reverseDfs, swapNodes} from './markdown/view-model-util.js';
@@ -35,7 +35,8 @@ export class Editor extends LitElement {
   @state() document?: Document;
   @property({type: Boolean, reflect: true}) dirty = false;
   @contextProvided({context: libraryContext, subscribe: true})
-  @state() library!: Library;
+  @state()
+  library!: Library;
   @contextProvider({context: hostContext})
   @state()
   hostContext: HostContext = {};
@@ -61,7 +62,8 @@ export class Editor extends LitElement {
   }
   constructor() {
     super();
-    //this.addEventListener('focus', () => this.appContext.activeEditor = this);
+    // this.addEventListener('focus', () => this.appContext.activeEditor =
+    // this);
   }
   override render() {
     this.observers.update();
@@ -102,7 +104,7 @@ export class Editor extends LitElement {
     }
   }
   onInlineLinkClick({
-    detail: {type, destination},
+    detail: {destination},
   }: CustomEvent<InlineLinkClick>) {
     this.load(destination);
   }
@@ -230,7 +232,7 @@ export class Editor extends LitElement {
       {
         description: 'Force save',
         execute: async () => this.document?.save(),
-      }
+      },
     ];
   }
 }
@@ -466,7 +468,7 @@ function finishInsertParagraph(
       startIndex: 0,
       newEndIndex: 0,
       oldEndIndex: 0,
-      newText: node.content.substring(startIndex)
+      newText: node.content.substring(startIndex),
     });
 
 

@@ -103,7 +103,7 @@ export function normalizeTree(tree: MarkdownTree) {
   for (const node of dfs(tree.root)) {
     if (node.type === 'list') {
       while (node.viewModel.nextSibling?.type === 'list') {
-        let next = node.viewModel.nextSibling;
+        const next = node.viewModel.nextSibling;
         while (next.viewModel.firstChild) {
           next.viewModel.firstChild.viewModel.insertBefore(node);
         }

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {Main} from '../pages/main';
-import {control, input, removeLeadingWhitespace} from '../util/input';
+import {input, removeLeadingWhitespace} from '../util/input';
 import {testState} from '../util/test_state';
 
 describe('input helper', () => {
@@ -135,7 +135,6 @@ describe('main', () => {
             * b
             `,
            ));
-         
   });
   describe('indentation', () => {
     it('can indent a top level paragraph',
