@@ -79,4 +79,4 @@ export function runTests(start = 1, limit = 678) {
              expectedFailures[i]));
     }
   });
-};
+}

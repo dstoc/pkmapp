@@ -24,7 +24,7 @@ export class MarkdownBlock extends LitElement {
   @property({attribute: false}) node: ViewModelNode|undefined;
   constructor() {
     super();
-    this.addEventListener('click', e => this.handleClick(e));
+    this.addEventListener('click', (e) => this.handleClick(e));
   }
   override connectedCallback(): void {
     super.connectedCallback();
@@ -55,7 +55,8 @@ export class MarkdownBlock extends LitElement {
          node.type === 'section') ?
             html`<md-inline .node=${node}></md-inline>` :
             ''}
-        ${node.children?.map(node => html`<md-block .node=${node}></md-block>`)}
+        ${
+        node.children?.map((node) => html`<md-block .node=${node}></md-block>`)}
     `;
   }
   protected override createRenderRoot() {

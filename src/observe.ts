@@ -25,7 +25,7 @@ export class Observe<T> {
     assert(this.state === 'active');
     this.state = 'suspended';
     let result: () => void;
-    this.resumed = new Promise(resolve => result = () => {
+    this.resumed = new Promise((resolve) => result = () => {
       this.state = 'active';
       this.resumed = undefined;
       resolve();

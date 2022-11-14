@@ -90,9 +90,10 @@ export class CommandPalette extends LitElement {
       this.activeIndex = 0;
     }
     const pattern = new RegExp(
-        search.replace(/(.)/g, c => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'),
+        search.replace(
+            /(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'),
         'i');
-    this.activeItems = this.items.filter(item => {
+    this.activeItems = this.items.filter((item) => {
       return pattern.test(item.description);
     });
 
@@ -153,7 +154,7 @@ export class CommandPalette extends LitElement {
       this.reset();
       this.pendingCommand = selected;
       this.items = [];
-      const items = (await argument.suggestions()).map(description => ({
+      const items = (await argument.suggestions()).map((description) => ({
                                                          description,
                                                          async execute() {},
                                                        }));

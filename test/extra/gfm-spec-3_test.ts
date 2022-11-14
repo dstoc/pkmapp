@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {runTests} from './gfm-spec_base'
+import {runTests} from './gfm-spec_base';
 
 runTests(300, 400);

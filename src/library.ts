@@ -105,7 +105,7 @@ export class FileSystemLibrary implements Library {
         this.observe.notify();
         if (this.pendingModifications++) return;
         while (true) {
-          let preSave = this.pendingModifications;
+          const preSave = this.pendingModifications;
           // Save immediately on the fist iteration, may help keep tests fast.
           await this.save();
           if (this.pendingModifications === preSave) {
@@ -119,7 +119,7 @@ export class FileSystemLibrary implements Library {
           do {
             preIdle = this.pendingModifications;
             // TODO: maybe a timeout is better?
-            await new Promise(resolve => requestIdleCallback(resolve));
+            await new Promise((resolve) => requestIdleCallback(resolve));
           } while (preIdle != this.pendingModifications);
         }
       }

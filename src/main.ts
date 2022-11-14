@@ -31,15 +31,14 @@ document.adoptedStyleSheets = [...styles];
 export class PkmApp extends LitElement {
   @query('pkm-editor') editor!: Editor;
   @query('pkm-command-palette') commandPalette!: CommandPalette;
-  @contextProvider({context: libraryContext})
-  @state() library!: Library;
+  @contextProvider({context: libraryContext}) @state() library!: Library;
   constructor() {
     super();
-    document.addEventListener('keydown', e => {
+    document.addEventListener('keydown', (e) => {
       if (e.key === 'p' && e.ctrlKey) {
         e.preventDefault();
         this.commandPalette.trigger([
-          //...this.getCommands(),
+          // ...this.getCommands(),
           ...this.editor.getCommands(),
         ]);
       }

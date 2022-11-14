@@ -1,6 +1,0 @@
-{
-  "extends": "google",
-  "rules": {
-    "node/no-unsupported-features/node-builtins": "off"
-  }
-}
