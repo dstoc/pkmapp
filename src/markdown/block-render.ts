@@ -50,14 +50,13 @@ export class MarkdownBlock extends LitElement {
     if (node.type === 'list-item') {
       this.checked = node.checked;
     }
-    if (node.type === 'paragraph' || node.type === 'code-block' ||
-        node.type === 'heading') {
-      return html`
-        <md-inline .node=${node}></md-inline>`;
-    } else {
-      return node.children?.map(
-          node => html`<md-block .node=${node}></md-block>`);
-    }
+    return html`${
+        (node.type === 'paragraph' || node.type === 'code-block' ||
+         node.type === 'section') ?
+            html`<md-inline .node=${node}></md-inline>` :
+            ''}
+        ${node.children?.map(node => html`<md-block .node=${node}></md-block>`)}
+    `;
   }
   protected override createRenderRoot() {
     return this;
@@ -129,7 +128,7 @@ export class MarkdownRenderer extends LitElement {
           font-family: monospace;
           white-space: pre-wrap;
         }
-        md-block[type='heading'] md-inline {
+        md-block[type='section'] > md-inline {
           font-weight: bold;
         }
         md-block + md-block[type='list'] {

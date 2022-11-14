@@ -48,19 +48,39 @@ describe('main', () => {
       expect(await state.fs.getFile('test.md')).toEqual(output);
     };
   }
-  it('can generate multiple sections',
-     inputOutputTest(
-         input`# 1
-          a
-          # 2
-          b`,
-         `# 1
-          a
-
-          # 2
-          b
-          `,
-         ));
+  describe('sections', () => {
+    it('can generate multiple sections',
+       inputOutputTest(
+           input`# 1
+            a
+            # 2
+            b`,
+           `# 1
+            a
+            
+            # 2
+            b
+            `,
+           ));
+    it('nest correctly',
+       inputOutputTest(
+           input`a
+            # 1
+            a
+            ## 2
+            b
+            # 3${Array(4).fill('ArrowUp')}${['Tab']}`,
+           `a
+            * # 1
+              a
+              
+              ## 2
+              b
+            
+            # 3
+            `,
+           ));
+  });
   it('can generate a list',
      inputOutputTest(
          input`* a

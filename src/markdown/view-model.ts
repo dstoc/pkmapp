@@ -66,6 +66,10 @@ class ViewModel {
   }
 
   insertBefore(parent: ViewModelNode, nextSibling?: ViewModelNode) {
+    if (nextSibling === this.self) {
+      assert(parent === this.parent);
+      return;
+    }
     if (this.parent) this.remove();
     const previousSibling = nextSibling ?
         nextSibling?.viewModel.previousSibling :
@@ -157,16 +161,7 @@ export class InlineViewModel extends ViewModel {
     const node = parseBlocks(this.self.content + '\n');
     assert(node);
     assert(node.type === 'document' && node.children);
-    if (node.children.length > 1) {
-      return node.children;
-    }
-    const section = node.children[0];
-    assert(section.type === 'section' && section.children);
-    if (section.children.length > 1 ||
-        section.children[0].type !== this.self.type) {
-      return section.children;
-    }
-    return;
+    return node.children;
   }
 }
 
@@ -191,7 +186,7 @@ export class MarkdownTree {
     childIndex?: number
   ) {
     const result = node as T&ViewModelNode;
-    if (result.type === 'paragraph' || result.type === 'heading' || result.type === 'code-block') {
+    if (result.type === 'paragraph' || result.type === 'section' || result.type === 'code-block') {
     assert(!result.viewModel);
     result.viewModel = new InlineViewModel(result, this, parent, childIndex);
     } else {

@@ -41,7 +41,6 @@ type IndentGenerator = Generator<string, string, unknown>;
 type Indents = Generator<string, string, unknown>[];
 
 function separator(prev: MarkdownNode, next: MarkdownNode): string {
-  if (prev.type === 'heading') return '';
   if (next.type === 'list-item') return '';
   if (prev.type === 'paragraph' && next.type === 'list') return '';
   return '\n';
@@ -68,7 +67,6 @@ function serializeBlocks(
 export function getPrefix(node: MarkdownNode): string {
   switch (node.type) {
     case 'document':
-    case 'section':
     case 'list':
     case 'paragraph':
       return '';
@@ -76,7 +74,7 @@ export function getPrefix(node: MarkdownNode): string {
       return node.marker;
     case 'block-quote':
       return node.marker;
-    case 'heading':
+    case 'section':
       return node.marker + ' ';
     case 'code-block':
       return '```' + (node.info ?? '');
@@ -97,9 +95,15 @@ function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
 
   switch (node.type) {
     case 'document':
-    case 'section':
     case 'list':
       assert(node.children && node.children.length);
+      break;
+    case 'section':
+      indent();
+      result.push(node.marker);
+      result.push(' ');
+      result.push(node.content.trimStart());
+      result.push('\n');
       break;
     case 'list-item':
       assert(node.children && node.children.length);
@@ -114,13 +118,6 @@ function serialize(node: MarkdownNode, indents: Indents, result: string[]) {
     case 'paragraph':
       indent();
       result.push(node.content);
-      result.push('\n');
-      break;
-    case 'heading':
-      indent();
-      result.push(node.marker);
-      result.push(' ');
-      result.push(node.content.trimStart());
       result.push('\n');
       break;
     case 'code-block':
