@@ -38,11 +38,6 @@ const emptyParagraph: ParagraphNode = {
   content: '',
 };
 
-const emptySection: MarkdownNode = {
-  type: 'section',
-  children: [{...emptyParagraph}],
-};
-
 function ensureContent(
     children: MarkdownNode[],
     result: MarkdownNode[] = [{...emptyParagraph}]): MarkdownNode[] {
@@ -52,17 +47,38 @@ function ensureContent(
 
 function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
   switch (node.type) {
-    case 'document':
+    case 'document': {
+      let children = node.namedChildren;
+      const section = children[0];
+      if (section?.type === 'section') {
+        const sectionChildren = section.namedChildren;
+        if (!sectionChildren.length) {
+          children = children.slice(1);
+        } else if (sectionChildren[0].type !== 'atx_heading') {
+          children = [
+            ...sectionChildren,
+            ...children.slice(1),
+          ];
+        }
+      }
       return {
         type: 'document',
-        children: ensureContent(
-            [...convertNodes(node.namedChildren)], [{...emptySection}]),
+        children:
+            ensureContent([...convertNodes(children)], [{...emptyParagraph}]),
       };
-    case 'section':
+    }
+    case 'section': {
+      const children = node.namedChildren;
+      const heading = children[0];
+      const marker = heading.children[0].text;
+      const content = heading.children[1]?.text.trimStart() ?? '';
       return {
         type: 'section',
-        children: ensureContent([...convertNodes(node.namedChildren)]),
+        marker,
+        content,
+        children: [...convertNodes(node.namedChildren)],
       };
+    }
     case 'paragraph':
       return {
         type: 'paragraph',
@@ -110,16 +126,7 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
         content: content?.text.replace(prefix, '').trimEnd() ?? '',
       };
     }
-    case 'atx_heading': {
-      const children = node.namedChildren;
-      const marker = children[0].text;
-      const content = children[1]?.text.trimStart() ?? '';
-      return {
-        type: 'heading',
-        marker,
-        content,
-      };
-    }
+    case 'atx_heading':
     case 'block_continuation':
     case 'list_marker_star':
     case 'list_marker_minus':
@@ -140,6 +147,7 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
       return {
         type: 'unsupported',
         content: node.text,
+        parser_type: node.type,
       };
     default:
       console.error(node.type);

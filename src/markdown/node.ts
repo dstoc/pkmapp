@@ -13,9 +13,9 @@
 // limitations under the License.
 
 export type MarkdownNode =|ContainerNode|ParagraphNode|BlockQuoteNode|
-    ListItemNode|HeadingNode|CodeBlockNode|UnsupportedNode;
-export type InlineNode = ParagraphNode|CodeBlockNode|HeadingNode;
-export type ParentNode = ContainerNode|BlockQuoteNode|ListItemNode;
+    ListItemNode|SectionNode|CodeBlockNode|UnsupportedNode;
+export type InlineNode = ParagraphNode|CodeBlockNode|SectionNode;
+export type ParentNode = ContainerNode|BlockQuoteNode|ListItemNode|SectionNode;
 
 // TODO: ID, Sequence Number (per tree?)
 interface Node {
@@ -23,7 +23,13 @@ interface Node {
 }
 
 export type ContainerNode = Node&{
-  type: 'document'|'list'|'section';
+  type: 'document'|'list';
+};
+
+export type SectionNode = Node&{
+  type: 'section';
+  marker: string;
+  content: string;
 };
 
 export type ParagraphNode = Node&{
@@ -42,12 +48,6 @@ export type ListItemNode = Node&{
   checked?: boolean;
 };
 
-export type HeadingNode = Node&{
-  type: 'heading';
-  marker: string;
-  content: string;
-};
-
 export type CodeBlockNode = Node&{
   type: 'code-block';
   info: string|null;
@@ -57,4 +57,5 @@ export type CodeBlockNode = Node&{
 export type UnsupportedNode = Node&{
   type: 'unsupported';
   content: string;
+  parser_type: string;
 };
