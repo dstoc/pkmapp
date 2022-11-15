@@ -15,17 +15,20 @@
 import './markdown/block-render.js';
 
 import {libraryContext} from './app-context.js';
-import {cast} from './asserts.js';
+import {assert, cast} from './asserts.js';
 import {Command} from './command-palette.js';
 import {contextProvided, contextProvider} from './deps/lit-labs-context.js';
-import {css, customElement, html, LitElement, property, state} from './deps/lit.js';
+import {css, customElement, html, LitElement, property, query, state} from './deps/lit.js';
 import {Document, Library} from './library.js';
+import {parseBlocks} from './markdown/block-parser.js';
+import {MarkdownRenderer} from './markdown/block-render.js';
+import {serializeToString} from './markdown/block-serializer.js';
 import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick} from './markdown/inline-render.js';
-import {InlineNode, ParagraphNode} from './markdown/node.js';
+import {InlineNode, MarkdownNode, ParagraphNode} from './markdown/node.js';
 import {normalizeTree} from './markdown/normalize.js';
 import {ancestors, children, findAncestor, findNextEditable, findPreviousDfs, reverseDfs, swapNodes} from './markdown/view-model-util.js';
-import {InlineViewModel, ViewModelNode} from './markdown/view-model.js';
+import {InlineEdit, InlineViewModel, InlineViewModelNode, ViewModelNode} from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';
 
 @customElement('pkm-editor')
@@ -40,6 +43,7 @@ export class Editor extends LitElement {
   @contextProvider({context: hostContext})
   @state()
   hostContext: HostContext = {};
+  @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
   private observers = new Observers(new Observer(
       () => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o),
       () => this.requestUpdate()));
@@ -113,7 +117,7 @@ export class Editor extends LitElement {
   }: CustomEvent<InlineKeyDown>) {
     const finishEditing = node.viewModel.tree.edit();
     try {
-      if (!inline.node) return;
+      assert(inline.node);
       if (keyboardEvent.key === 'ArrowUp') {
         keyboardEvent.preventDefault();
         const result = inline.moveCaretUp();
@@ -191,33 +195,37 @@ export class Editor extends LitElement {
         newEndIndex,
       };
 
-      const newNodes = inline.node.viewModel.edit(edit);
-      if (newNodes) {
-        // TODO: is this needed?
-        normalizeTree(inline.node.viewModel.tree);
-        const next = findNextEditable(newNodes[0], true);
-        // TODO: is the focus offset always 0?
-        if (next) focusNode(this.hostContext, next, 0);
-      } else {
-        // TODO: generalize this (inline block mutation)
-        const parent = inline.node.viewModel.parent;
-        if (parent?.type === 'list-item' && parent.checked === undefined &&
-            /^\[( |x)] /.test(inline.node.content)) {
-          parent.viewModel.updateChecked(inline.node.content[1] === 'x');
-          inline.node.viewModel.edit({
-            newText: '',
-            startIndex: 0,
-            newEndIndex: 0,
-            oldEndIndex: 4,
-          });
-        }
-        focusNode(this.hostContext, inline.node, newEndIndex);
-      }
+      this.editInlineNode(inline.node, edit);
     } finally {
       finishEditing();
     }
   }
+  private editInlineNode(node: InlineViewModelNode, edit: InlineEdit) {
+    const newNodes = node.viewModel.edit(edit);
+    if (newNodes) {
+      // TODO: is this needed?
+      normalizeTree(node.viewModel.tree);
+      const next = findNextEditable(newNodes[0], true);
+      // TODO: is the focus offset always 0?
+      if (next) focusNode(this.hostContext, next, 0);
+    } else {
+      // TODO: generalize this (inline block mutation)
+      const parent = node.viewModel.parent;
+      if (parent?.type === 'list-item' && parent.checked === undefined &&
+          /^\[( |x)] /.test(node.content)) {
+        parent.viewModel.updateChecked(node.content[1] === 'x');
+        node.viewModel.edit({
+          newText: '',
+          startIndex: 0,
+          newEndIndex: 0,
+          oldEndIndex: 4,
+        });
+      }
+      focusNode(this.hostContext, node, edit.newEndIndex);
+    }
+  }
   getCommands(): Command[] {
+    const {node: activeInline} = this.markdownRenderer.getInlineSelection();
     return [
       {
         description: 'Find, Open, Create...',
@@ -232,8 +240,81 @@ export class Editor extends LitElement {
         description: 'Force save',
         execute: async () => this.document?.save(),
       },
+      {
+        description: 'Copy all as markdown',
+        execute: async () => {
+          const markdown = serializeToString(this.document!.tree.root);
+          const type = 'application/x-markdown';
+          navigator.clipboard.write([
+            new ClipboardItem({[type]: new Blob([markdown], {type})}),
+          ]);
+        },
+      },
+      {
+        description: 'Paste as markdown',
+        execute: async () => {
+          if (!activeInline) return;
+          const target = activeInline;
+          const text = await navigator.clipboard.readText();
+          const root = parseBlocks(text + '\n');
+          if (!root) return;
+          assert(root.type === 'document' && root.children);
+          const finishEditing = target.viewModel.tree.edit();
+          try {
+            const newNodes = root.children.map(
+                node => target.viewModel.tree.add<MarkdownNode>(node));
+            performLogicalInsertion(activeInline, newNodes);
+          } finally {
+            finishEditing();
+          }
+          // TODO: focus the last inline node
+        },
+      },
     ];
   }
+}
+
+function performLogicalInsertion(
+    context: ViewModelNode, nodes: ViewModelNode[]) {
+  const {parent, nextSibling} = nextLogicalInsertionPoint(context);
+  if (parent.type == 'list') {
+    if (nodes.length === 1 && nodes[0].type === 'list') {
+      const [node] = nodes;
+      for (const child of children(node)) {
+        assert(child.type === 'list-item');
+        child.viewModel.insertBefore(parent, nextSibling);
+      }
+    } else {
+      const listItem = parent.viewModel.tree.add({
+        type: 'list-item',
+        // TODO: infer from list
+        marker: '*',
+      });
+      listItem.viewModel.insertBefore(parent, nextSibling);
+      for (const node of nodes) {
+        node.viewModel.insertBefore(listItem, undefined);
+      }
+    }
+  } else {
+    for (const node of nodes) {
+      node.viewModel.insertBefore(parent, nextSibling);
+    }
+  }
+}
+
+function nextLogicalInsertionPoint(node: ViewModelNode) {
+  if (!node.viewModel.nextSibling &&
+      node.viewModel.parent?.type === 'list-item') {
+    const listItem = node.viewModel.parent;
+    return {
+      parent: cast(listItem.viewModel.parent),
+      nextSibling: listItem.viewModel.nextSibling,
+    };
+  }
+  return {
+    parent: cast(node.viewModel.parent),
+    nextSibling: node.viewModel.nextSibling,
+  };
 }
 
 function maybeMergeContentInto(

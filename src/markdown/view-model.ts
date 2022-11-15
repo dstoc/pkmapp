@@ -316,7 +316,7 @@ function apply(text: string, edit: Edit) {
       text.substring(edit.oldEndIndex));
 }
 
-interface InlineEdit {
+export interface InlineEdit {
   newText: string;
   startIndex: number;
   oldEndIndex: number;
