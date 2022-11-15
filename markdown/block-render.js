@@ -17,6 +17,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+import { assert } from '../asserts.js';
 import { css, customElement, html, LitElement, property } from '../deps/lit.js';
 import { MarkdownInline } from './inline-render.js';
 let MarkdownBlock = class MarkdownBlock extends LitElement {
@@ -193,6 +194,16 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
         if (!this.block)
             return html ``;
         return html `<md-block .node=${this.block}></md-block>`;
+    }
+    getInlineSelection() {
+        const inline = this.shadowRoot.activeElement;
+        assert(!inline || inline instanceof MarkdownInline);
+        const selection = inline?.getSelection();
+        return {
+            node: inline?.node,
+            startIndex: selection?.start.index,
+            endIndex: selection?.end.index,
+        };
     }
 };
 __decorate([
