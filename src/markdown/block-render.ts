@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {assert} from '../asserts.js';
 import {css, customElement, html, LitElement, property} from '../deps/lit.js';
 
 import {MarkdownInline} from './inline-render.js';
@@ -183,6 +184,16 @@ export class MarkdownRenderer extends LitElement {
   override render() {
     if (!this.block) return html``;
     return html`<md-block .node=${this.block}></md-block>`;
+  }
+  getInlineSelection() {
+    const inline = this.shadowRoot!.activeElement;
+    assert(!inline || inline instanceof MarkdownInline);
+    const selection = inline?.getSelection();
+    return {
+      node: inline?.node,
+      startIndex: selection?.start.index,
+      endIndex: selection?.end.index,
+    };
   }
 }
 
