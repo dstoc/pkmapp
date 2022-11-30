@@ -88,6 +88,17 @@ export function findNextEditable(node, include = false) {
         return node;
     return findNextDfs(node, predicate);
 }
+export function findFinalEditable(node, include = false) {
+    const predicate = (node) => ['paragraph', 'code-block', 'section'].includes(node.type);
+    let result = null;
+    if (include && predicate(node))
+        result = node;
+    for (const next of dfs(node)) {
+        if (predicate(next))
+            result = next;
+    }
+    return result;
+}
 export function findNextDfs(node, predicate) {
     for (const next of dfs(node)) {
         if (next !== node && predicate(next))
