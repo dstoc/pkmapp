@@ -123,7 +123,7 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
         }
         md-block[type='list'] {
           list-style-type: disc;
-          padding-inline-start: 16px;
+          padding-inline-start: 20px;
         }
         md-block[type='list-item'] {
           display: list-item;
@@ -144,15 +144,16 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
           font-weight: bold;
         }
         md-block + md-block[type='list'] {
-          margin-block-start: -1em !important;
+          margin-block-start: -0.5em !important;
+        }
+        md-block[type='section'] > md-block:nth-child(2) {
+          margin-block-start: 0.5em !important;
         }
         md-block > md-block:first-child {
           margin-block-start: 0em;
         }
         md-block > md-block:last-child {
           margin-block-end: 0em;
-        }
-        md-block[type='block-quote'] {
         }
         md-block[type='list'] + md-block {
           margin-block-start: 0em;
