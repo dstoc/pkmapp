@@ -27,7 +27,7 @@ import {hostContext, HostContext} from './markdown/host-context.js';
 import {InlineInput, InlineKeyDown, InlineLinkClick} from './markdown/inline-render.js';
 import {InlineNode, MarkdownNode, ParagraphNode} from './markdown/node.js';
 import {normalizeTree} from './markdown/normalize.js';
-import {ancestors, children, findAncestor, findNextEditable, findPreviousDfs, reverseDfs, swapNodes} from './markdown/view-model-util.js';
+import {ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousDfs, reverseDfs, swapNodes} from './markdown/view-model-util.js';
 import {InlineEdit, InlineViewModel, InlineViewModelNode, ViewModelNode} from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';
 
@@ -151,6 +151,53 @@ export class Editor extends LitElement {
       finishEditing();
     }
   }
+  async triggerPaste(
+      node: InlineViewModelNode,
+      edit: {startIndex: number, oldEndIndex: number}, forceMarkdown = false) {
+    const content = await navigator.clipboard.read();
+    const mdItem =
+        content.find(item => item.types.includes('web text/markdown'));
+    let mdText;
+    if (mdItem) {
+      const blob = await mdItem.getType('web text/markdown');
+      mdText = await blob.text();
+      // TODO: Drop this hack for broken custom formats.
+      if (mdText.length === 0) {
+        mdText = await navigator.clipboard.readText();
+      }
+    } else if (forceMarkdown) {
+      mdText = await navigator.clipboard.readText();
+    }
+    if (mdText) {
+      const root = parseBlocks(mdText + '\n');
+      if (!root) return;
+      assert(root.type === 'document' && root.children);
+      const finishEditing = node.viewModel.tree.edit();
+      try {
+        const newNodes = root.children.map(
+            newNode => node.viewModel.tree.add<MarkdownNode>(newNode));
+        let newFocus = findFinalEditable(newNodes[0]);
+        performLogicalInsertion(node, newNodes);
+        if (newFocus) focusNode(this.hostContext, newFocus, Infinity);
+      } finally {
+        finishEditing();
+      }
+    } else {
+      let text = await navigator.clipboard.readText();
+      // TODO: Escape block creation.
+      text = text.replace(/\n/g, ' ');
+      const finishEditing = node.viewModel.tree.edit();
+      try {
+        this.editInlineNode(node, {
+          ...edit,
+          newText: text,
+          newEndIndex: edit.oldEndIndex + text.length,
+        });
+      } finally {
+        finishEditing();
+      }
+    }
+  }
   onInlineInput(event: CustomEvent<InlineInput>) {
     const {
       detail: {inline, inputEvent, inputStart, inputEnd},
@@ -173,7 +220,8 @@ export class Editor extends LitElement {
         oldEndIndex = inputEnd.index;
         if (inputEvent.inputType === 'insertReplacementText' ||
             inputEvent.inputType === 'insertFromPaste') {
-          newText = inputEvent.dataTransfer!.getData('text');
+          this.triggerPaste(inline.node, {startIndex, oldEndIndex});
+          return;
         } else if (inputEvent.inputType === 'deleteByCut') {
           newText = '';
         } else if (inputEvent.inputType === 'deleteContentBackward') {
@@ -225,7 +273,8 @@ export class Editor extends LitElement {
     }
   }
   getCommands(): Command[] {
-    const {node: activeInline} = this.markdownRenderer.getInlineSelection();
+    const {node: activeInline, startIndex, endIndex} =
+        this.markdownRenderer.getInlineSelection();
     return [
       {
         description: 'Find, Open, Create...',
@@ -244,30 +293,24 @@ export class Editor extends LitElement {
         description: 'Copy all as markdown',
         execute: async () => {
           const markdown = serializeToString(this.document!.tree.root);
-          const type = 'application/x-markdown';
+          const textType = 'text/plain';
+          const mdType = 'web text/markdown';
           navigator.clipboard.write([
-            new ClipboardItem({[type]: new Blob([markdown], {type})}),
+            new ClipboardItem({
+              [textType]: new Blob([markdown], {type: textType}),
+              [mdType]: new Blob([markdown], {type: mdType}),
+            }),
           ]);
         },
       },
       {
         description: 'Paste as markdown',
         execute: async () => {
-          if (!activeInline) return;
-          const target = activeInline;
-          const text = await navigator.clipboard.readText();
-          const root = parseBlocks(text + '\n');
-          if (!root) return;
-          assert(root.type === 'document' && root.children);
-          const finishEditing = target.viewModel.tree.edit();
-          try {
-            const newNodes = root.children.map(
-                node => target.viewModel.tree.add<MarkdownNode>(node));
-            performLogicalInsertion(activeInline, newNodes);
-          } finally {
-            finishEditing();
-          }
-          // TODO: focus the last inline node
+          if (!activeInline || startIndex === undefined ||
+              endIndex === undefined)
+            return;
+          this.triggerPaste(
+              activeInline, {startIndex, oldEndIndex: endIndex}, true);
         },
       },
     ];

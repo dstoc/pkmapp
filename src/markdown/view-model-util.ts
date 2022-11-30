@@ -94,6 +94,18 @@ export function findNextEditable(node: ViewModelNode, include = false) {
   return findNextDfs(node, predicate);
 }
 
+export function findFinalEditable(node: ViewModelNode, include = false) {
+  const predicate =
+      (node: ViewModelNode) => ['paragraph', 'code-block', 'section'].includes(
+          node.type);
+  let result: ViewModelNode|null = null;
+  if (include && predicate(node)) result = node;
+  for (const next of dfs(node)) {
+    if (predicate(next)) result = next;
+  }
+  return result;
+}
+
 export function findNextDfs(
     node: ViewModelNode, predicate: (node: ViewModelNode) => boolean) {
   for (const next of dfs(node)) {
