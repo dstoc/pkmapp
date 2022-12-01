@@ -31,10 +31,11 @@ export function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
   node2.viewModel.insertBefore(node1Parent, node1NextSibling);
 }
 
-export function* ancestors(node: ViewModelNode) {
+export function* ancestors(node: ViewModelNode, root: ViewModelNode) {
   while (node.viewModel.parent) {
     yield node.viewModel.parent;
     node = node.viewModel.parent;
+    if (node === root) return;
   }
 }
 
@@ -58,9 +59,9 @@ export function* reverseDfs(node: ViewModelNode, limit?: ViewModelNode) {
   } while (true);
 }
 
-export function* dfs(node: ViewModelNode) {
+export function* dfs(node: ViewModelNode, root = node.viewModel.tree.root) {
   function next(next?: ViewModelNode) {
-    return next && (node = next);
+    return next && next !== root.viewModel.parent && (node = next);
   }
   do {
     yield node;
@@ -72,9 +73,9 @@ export function* dfs(node: ViewModelNode) {
   } while (true);
 }
 
-export function findAncestor(node: ViewModelNode, type: string) {
+export function findAncestor(node: ViewModelNode, root: ViewModelNode, type: string) {
   const path = [node];
-  for (const ancestor of ancestors(node)) {
+  for (const ancestor of ancestors(node, root)) {
     if (ancestor.type === type) {
       return {
         ancestor,
@@ -86,12 +87,12 @@ export function findAncestor(node: ViewModelNode, type: string) {
   return {};
 }
 
-export function findNextEditable(node: ViewModelNode, include = false) {
+export function findNextEditable(node: ViewModelNode, root: ViewModelNode, include = false) {
   const predicate =
       (node: ViewModelNode) => ['paragraph', 'code-block', 'section'].includes(
           node.type);
   if (include && predicate(node)) return node;
-  return findNextDfs(node, predicate);
+  return findNextDfs(node, root, predicate);
 }
 
 export function findFinalEditable(node: ViewModelNode, include = false) {
@@ -107,8 +108,8 @@ export function findFinalEditable(node: ViewModelNode, include = false) {
 }
 
 export function findNextDfs(
-    node: ViewModelNode, predicate: (node: ViewModelNode) => boolean) {
-  for (const next of dfs(node)) {
+    node: ViewModelNode, root: ViewModelNode, predicate: (node: ViewModelNode) => boolean) {
+  for (const next of dfs(node, root)) {
     if (next !== node && predicate(next)) return next;
   }
   return null;

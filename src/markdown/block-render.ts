@@ -21,6 +21,7 @@ import {ViewModelNode} from './view-model.js';
 @customElement('md-block')
 export class MarkdownBlock extends LitElement {
   @property({type: String, reflect: true}) checked?: boolean;
+  @property({type: Boolean, reflect: true}) root?: boolean;
   @property({type: String, reflect: true}) type = '';
   @property({attribute: false}) node: ViewModelNode|undefined;
   constructor() {
@@ -114,7 +115,7 @@ export class MarkdownRenderer extends LitElement {
           list-style-type: disc;
           padding-inline-start: 20px;
         }
-        md-block[type='list-item'] {
+        md-block[type='list-item']:not([root]) {
           display: list-item;
           white-space: initial;
           margin-block: 0;
@@ -184,7 +185,7 @@ export class MarkdownRenderer extends LitElement {
   @property({type: Object, reflect: false}) block!: ViewModelNode;
   override render() {
     if (!this.block) return html``;
-    return html`<md-block .node=${this.block}></md-block>`;
+    return html`<md-block .node=${this.block} ?root=${true}></md-block>`;
   }
   getInlineSelection() {
     const inline = this.shadowRoot!.activeElement;
