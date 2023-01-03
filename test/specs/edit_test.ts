@@ -37,17 +37,55 @@ describe('main', () => {
   });
   function inputOutputTest(keys: string[], output: string) {
     return async () => {
-      output = removeLeadingWhitespace(output);
-      await state.fs.setFile('test.md', '');
-      await state.main.runCommand('open', 'test');
-      await state.main.status('loaded');
-      const inline = $('>>>[contenteditable]');
-      await inline.click();
       await browser.keys(keys);
-      await browser.waitUntil(state.main.isClean);
-      expect(await state.fs.getFile('test.md')).toEqual(output);
+      await checkFileContent('test.md', output);
     };
   }
+  async function checkFileContent(file: string, output: string) {
+    output = removeLeadingWhitespace(output);
+    await browser.waitUntil(state.main.isClean);
+    expect(await state.fs.getFile(file)).toEqual(output);
+  }
+  beforeEach(async () => {
+    await state.fs.setFile('test.md', '');
+    await state.main.runCommand('force open', 'test');
+    await state.main.status('loaded');
+    const inline = $('>>>[contenteditable]');
+    await inline.click();
+  });
+  describe('transclusions', () => {
+    it('can be inserted and edited', async () => {
+      await browser.keys(input`test`);
+      await state.fs.setFile('transclusion.md', '');
+      await state.main.runCommand('insert transclusion', 'transclusion');
+      await browser.waitUntil(state.main.host.$('>>>md-transclusion').isExisting);
+      // TODO: shouldn't be required
+      await browser.keys(['ArrowDown']);
+      await browser.keys(input`content`);
+      await checkFileContent(
+          'test.md',
+          `test
+
+           \`\`\`tc
+           transclusion
+           \`\`\`
+           `);
+      // TODO: does not wait for save
+      await checkFileContent('transclusion.md', 'content\n');
+    });
+    it('can be inserted and deleted', async () => {
+      await browser.keys(input`test`);
+      await state.fs.setFile('transclusion.md', '');
+      await state.main.runCommand('insert transclusion', 'transclusion');
+      await browser.waitUntil(state.main.host.$('>>>md-transclusion').isExisting);
+      // TODO: shouldn't be required
+      await browser.keys(['ArrowDown']);
+      await state.main.runCommand('delete transclusion');
+      await checkFileContent(
+          'test.md',
+          `test\n`);
+    });
+  });
   describe('sections', () => {
     it('can generate multiple sections',
        inputOutputTest(

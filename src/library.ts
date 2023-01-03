@@ -27,7 +27,7 @@ export interface Document {
 }
 
 export interface Library {
-  getDocument(name: string): Promise<Document>;
+  getDocument(name: string, forceRefresh?: boolean): Promise<Document>;
   getAllNames(): Promise<string[]>;
 }
 
@@ -62,7 +62,8 @@ export class FileSystemLibrary implements Library {
     }
     return result;
   }
-  async getDocument(name: string): Promise<Document> {
+  cache: Map<string, Document> = new Map();
+  async getDocument(name: string, forceRefresh = false): Promise<Document> {
     const load = async () => {
       const fileName = name;
       let text = '';
@@ -78,6 +79,13 @@ export class FileSystemLibrary implements Library {
     };
     const directory = this.directory;
     const node = await load();
+    const cached = this.cache.get(name);
+    if (cached) {
+      if (forceRefresh) {
+        await cached.refresh();
+      }
+      return cached;
+    }
     const result = new class implements Document {
       constructor(public tree = new MarkdownTree(node)) {
         this.tree.observe.add(() => this.markDirty());
@@ -85,6 +93,7 @@ export class FileSystemLibrary implements Library {
       dirty = false;
       observe: Observe<Document> = new Observe<Document>(this);
       async refresh() {
+        // this.tree.root.viewModel.remove();
         this.tree.root = this.tree.add<MarkdownNode>(await load());
         this.tree.observe.notify();
       }
@@ -124,6 +133,7 @@ export class FileSystemLibrary implements Library {
         }
       }
     };
+    this.cache.set(name, result);
     return result;
   }
 }
