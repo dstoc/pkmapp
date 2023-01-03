@@ -17,19 +17,20 @@ import './markdown/block-render.js';
 import {libraryContext} from './app-context.js';
 import {assert, cast} from './asserts.js';
 import {Command} from './command-palette.js';
-import {contextProvided, contextProvider} from './deps/lit-labs-context.js';
+import {contextProvided} from './deps/lit-labs-context.js';
 import {css, customElement, html, LitElement, property, query, state} from './deps/lit.js';
 import {Document, Library} from './library.js';
 import {parseBlocks} from './markdown/block-parser.js';
 import {MarkdownRenderer} from './markdown/block-render.js';
 import {serializeToString} from './markdown/block-serializer.js';
-import {hostContext, HostContext} from './markdown/host-context.js';
-import {InlineInput, InlineKeyDown, InlineLinkClick} from './markdown/inline-render.js';
+import {HostContext} from './markdown/host-context.js';
+import {MarkdownInline, InlineInput, InlineKeyDown, InlineLinkClick} from './markdown/inline-render.js';
 import {InlineNode, MarkdownNode, ParagraphNode} from './markdown/node.js';
 import {normalizeTree} from './markdown/normalize.js';
-import {ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousDfs, reverseDfs, swapNodes} from './markdown/view-model-util.js';
+import {ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousEditable, reverseDfs, swapNodes} from './markdown/view-model-util.js';
 import {InlineEdit, InlineViewModel, InlineViewModelNode, ViewModelNode} from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';
+import {getContainingTransclusion} from './markdown/transclusion.js';
 
 @customElement('pkm-editor')
 export class Editor extends LitElement {
@@ -41,9 +42,6 @@ export class Editor extends LitElement {
   @contextProvided({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
-  @contextProvider({context: hostContext})
-  @state()
-  hostContext: HostContext = {};
   @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
   private observers = new Observers(new Observer(
       () => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o),
@@ -91,17 +89,17 @@ export class Editor extends LitElement {
       await this.load(url.searchParams.get('path')!);
     }
   }
-  async load(name: string) {
+  async load(name: string, forceRefresh = false) {
     if (!this.library) return;
     this.status = 'loading';
     this.document = undefined;
     try {
-      this.document = await this.library.getDocument(name + '.md');
+      this.document = await this.library.getDocument(name + '.md', forceRefresh);
       this.root = this.document.tree.root;
       normalizeTree(this.document.tree);
       const node = findNextEditable(this.root, this.root);
       if (node) {
-        focusNode(this.hostContext, node, 0);
+        focusNode(this.markdownRenderer.hostContext, node, 0);
       }
       this.status = 'loaded';
     } catch (e) {
@@ -124,27 +122,50 @@ export class Editor extends LitElement {
         keyboardEvent.preventDefault();
         const result = inline.moveCaretUp();
         if (result !== true) {
-          const prev = findPreviousDfs(
-              node,
-              ({type}) => ['paragraph', 'code-block', 'section'].includes(
-                  type));
-          if (prev) focusNode(this.hostContext, prev, -result);
+          function focusPrevious(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
+            while (true) {
+              const prev = findPreviousEditable(node, cast(cast(element.hostContext).root));
+              if (prev) {
+                focusNode(cast(element.hostContext), prev, -offset);
+                break;
+              } else {
+                const transclusion = getContainingTransclusion(element);
+                if (!transclusion) return;
+                element = transclusion;
+                node = cast(transclusion.node);
+              }
+            }
+          }
+          focusPrevious(inline, node, result);
         }
       } else if (keyboardEvent.key === 'ArrowDown') {
         keyboardEvent.preventDefault();
         const result = inline.moveCaretDown();
         if (result !== true) {
-          const next = findNextEditable(node, cast(this.root));
-          if (next) focusNode(this.hostContext, next, -result);
+          function focusNext(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
+            while (true) {
+              const next = findNextEditable(node, cast(cast(element.hostContext).root));
+              if (next) {
+                focusNode(cast(element.hostContext), next, offset);
+                break;
+              } else {
+                const transclusion = getContainingTransclusion(element);
+                if (!transclusion) return;
+                element = transclusion;
+                node = cast(transclusion.node);
+              }
+            }
+          }
+          focusNext(inline, node, result);
         }
       } else if (keyboardEvent.key === 'Tab') {
         keyboardEvent.preventDefault();
         const {start} = inline.getSelection();
-        focusNode(this.hostContext, node, start.index);
+        focusNode(cast(inline.hostContext), node, start.index);
         if (keyboardEvent.shiftKey) {
-          unindent(node, cast(this.root));
+          unindent(node, cast(cast(inline.hostContext).root));
         } else {
-          indent(node, cast(this.root));
+          indent(node, cast(cast(inline.hostContext).root));
         }
       } else {
         return;
@@ -154,6 +175,7 @@ export class Editor extends LitElement {
     }
   }
   async triggerPaste(
+      inline: MarkdownInline,
       node: InlineViewModelNode,
       edit: {startIndex: number, oldEndIndex: number}, forceMarkdown = false) {
     const content = await navigator.clipboard.read();
@@ -180,7 +202,7 @@ export class Editor extends LitElement {
             newNode => node.viewModel.tree.add<MarkdownNode>(newNode));
         let newFocus = findFinalEditable(newNodes[0]);
         performLogicalInsertion(node, newNodes);
-        if (newFocus) focusNode(this.hostContext, newFocus, Infinity);
+        if (newFocus) focusNode(cast(inline.hostContext), newFocus, Infinity);
       } finally {
         finishEditing();
       }
@@ -194,7 +216,7 @@ export class Editor extends LitElement {
           ...edit,
           newText: text,
           newEndIndex: edit.oldEndIndex + text.length,
-        });
+        }, cast(inline.hostContext)); // TODO: wrong context
       } finally {
         finishEditing();
       }
@@ -208,7 +230,7 @@ export class Editor extends LitElement {
 
     const finishEditing = inline.node.viewModel.tree.edit();
     try {
-      if (handleInlineInputAsBlockEdit(event, cast(this.root), this.hostContext)) return;
+      if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) return;
       let newText;
       let startIndex;
       let oldEndIndex;
@@ -222,7 +244,7 @@ export class Editor extends LitElement {
         oldEndIndex = inputEnd.index;
         if (inputEvent.inputType === 'insertReplacementText' ||
             inputEvent.inputType === 'insertFromPaste') {
-          this.triggerPaste(inline.node, {startIndex, oldEndIndex});
+          this.triggerPaste(inline, inline.node, {startIndex, oldEndIndex});
           return;
         } else if (inputEvent.inputType === 'deleteByCut') {
           newText = '';
@@ -245,19 +267,19 @@ export class Editor extends LitElement {
         newEndIndex,
       };
 
-      this.editInlineNode(inline.node, edit);
+      this.editInlineNode(inline.node, edit, cast(inline.hostContext));
     } finally {
       finishEditing();
     }
   }
-  private editInlineNode(node: InlineViewModelNode, edit: InlineEdit) {
+  private editInlineNode(node: InlineViewModelNode, edit: InlineEdit, hostContext: HostContext) {
     const newNodes = node.viewModel.edit(edit);
     if (newNodes) {
       // TODO: is this needed?
       normalizeTree(node.viewModel.tree);
-      const next = findNextEditable(newNodes[0], cast(this.root), true);
+      const next = findNextEditable(newNodes[0], cast(hostContext.root), true);
       // TODO: is the focus offset always 0?
-      if (next) focusNode(this.hostContext, next, 0);
+      if (next) focusNode(hostContext, next, 0);
     } else {
       // TODO: generalize this (inline block mutation)
       const parent = node.viewModel.parent;
@@ -271,12 +293,15 @@ export class Editor extends LitElement {
           oldEndIndex: 4,
         });
       }
-      focusNode(this.hostContext, node, edit.newEndIndex);
+      focusNode(hostContext, node, edit.newEndIndex);
     }
   }
   getCommands(): Command[] {
-    const {node: activeInline, startIndex, endIndex} =
+    const {inline: activeInline, startIndex, endIndex} =
         this.markdownRenderer.getInlineSelection();
+    const activeNode = activeInline?.node;
+    const inTopLevelDocument = activeNode?.viewModel.tree === this.root?.viewModel.tree ?? false;
+    const transclusion = activeInline && getContainingTransclusion(activeInline);
     return [
       {
         description: 'Find, Open, Create...',
@@ -286,6 +311,15 @@ export class Editor extends LitElement {
           validate: () => true,
         },
         execute: (file: string) => this.load(file),
+      },
+      {
+        description: 'Force open',
+        argument: {
+          description: 'Find or create...',
+          suggestions: () => this.library.getAllNames(),
+          validate: () => true,
+        },
+        execute: (file: string) => this.load(file, true),
       },
       {
         description: 'Force save',
@@ -305,38 +339,94 @@ export class Editor extends LitElement {
           ]);
         },
       },
-      {
+      ...activeNode && startIndex !== undefined && endIndex !== undefined ? [{
         description: 'Paste as markdown',
         execute: async () => {
-          if (!activeInline || startIndex === undefined ||
-              endIndex === undefined)
-            return;
           this.triggerPaste(
-              activeInline, {startIndex, oldEndIndex: endIndex}, true);
+              activeInline, activeNode, {startIndex, oldEndIndex: endIndex}, true);
         },
-      },
-      {
+      }] : [],
+      ...inTopLevelDocument && activeNode && activeInline ? [{
         description: 'Focus on block',
         execute: async () => {
-          if (!activeInline) return;
-          this.root = logicalContainingBlock(activeInline);
-          focusNode(this.hostContext, activeInline, startIndex);
+          this.root = logicalContainingBlock(activeNode);
+          focusNode(cast(activeInline.hostContext), activeNode, startIndex);
         },
-      },
-      {
+      }] : [],
+      ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
         description: 'Focus on containing block',
         execute: async () => {
           if (this.root?.viewModel.parent) this.root = logicalContainingBlock(this.root.viewModel.parent);
-          if (activeInline) focusNode(this.hostContext, activeInline, startIndex);
+          if (activeNode && activeInline) focusNode(cast(activeInline.hostContext), activeNode, startIndex);
         },
-      },
-      {
+      }] : [],
+      ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
         description: 'Focus on document',
         execute: async () => {
           this.root = this.document?.tree.root;
-          if (activeInline) focusNode(this.hostContext, activeInline, startIndex);
+          if (activeNode) focusNode(cast(activeInline.hostContext), activeNode, startIndex);
         },
-      },
+      }] : [],
+      ...transclusion ? [{
+        description: 'Delete transclusion',
+        execute: async () => {
+          const finished = transclusion.node!.viewModel.tree.edit();
+          transclusion.node!.viewModel.remove();
+          finished();
+          // TODO: focus
+        },
+      }] : [],
+      ...activeNode ? [{
+        description: 'Insert transclusion',
+        argument: {
+          description: 'Find or create...',
+          suggestions: () => this.library.getAllNames(),
+          validate: () => true,
+        },
+        execute: async (target: string) => {
+          const finished = activeNode.viewModel.tree.edit();
+          const newParagraph = activeNode.viewModel.tree.add({
+            type: 'code-block',
+            info: 'tc',
+            content: target,
+          });
+          newParagraph.viewModel.insertBefore(
+              cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
+          finished();
+          focusNode(activeInline.hostContext!, newParagraph);
+          // TODO: focus
+        },
+      }] : [],
+      ...transclusion ? [{
+        description: 'Insert before transclusion',
+        execute: async () => {
+          const node = transclusion.node!;
+          const finished = node.viewModel.tree.edit();
+          const newParagraph = node.viewModel.tree.add({
+            type: 'paragraph',
+            content: '',
+          });
+          newParagraph.viewModel.insertBefore(
+              cast(node.viewModel.parent), node);
+          finished();
+          focusNode(cast(transclusion.hostContext), newParagraph, 0);
+        },
+      }] : [],
+      ...transclusion ? [{
+        description: 'Insert after transclusion',
+        execute: async () => {
+          const node = transclusion.node!;
+          const finished = node.viewModel.tree.edit();
+          const newParagraph = node.viewModel.tree.add({
+            type: 'paragraph',
+            content: '',
+          });
+          newParagraph.viewModel.insertBefore(
+              cast(node.viewModel.parent), node.viewModel.nextSibling);
+          finished();
+          focusNode(cast(transclusion.hostContext), newParagraph, 0);
+        },
+      }] : [],
     ];
   }
 }
@@ -668,9 +758,9 @@ function handleInlineInputAsBlockEdit(
     {
       detail: {inline, inputEvent, inputStart, inputEnd},
     }: CustomEvent<InlineInput>,
-    root: ViewModelNode,
     context: HostContext): boolean {
   if (!inline.node) return false;
+  const root = cast(context.root);
   if (inputEvent.inputType === 'deleteContentBackward') {
     if (inputStart.index !== 0 || inputEnd.index !== 0) return false;
     const node = inline.node;

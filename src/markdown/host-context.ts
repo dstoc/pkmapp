@@ -19,5 +19,6 @@ import {ViewModelNode} from './view-model.js';
 export type HostContext = {
   focusNode?: ViewModelNode;
   focusOffset?: number;
+  root?: ViewModelNode;
 };
 export const hostContext = createContext<HostContext|undefined>('hostContext');

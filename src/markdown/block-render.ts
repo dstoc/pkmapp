@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {assert} from '../asserts.js';
-import {css, customElement, html, LitElement, property} from '../deps/lit.js';
+import {state, css, customElement, html, LitElement, property} from '../deps/lit.js';
 
 import {MarkdownInline} from './inline-render.js';
 import {ViewModelNode} from './view-model.js';
+import './transclusion.js';
+import {hostContext, HostContext} from './host-context.js';
+import {contextProvider} from '../deps/lit-labs-context.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement {
@@ -51,6 +53,9 @@ export class MarkdownBlock extends LitElement {
     this.type = node.type;
     if (node.type === 'list-item') {
       this.checked = node.checked;
+    }
+    if (node.type === 'code-block' && node.info === 'tc') {
+      return html`<md-transclusion .node=${node}></md-transclusion>`;
     }
     return html`${
         (node.type === 'paragraph' || node.type === 'code-block' ||
@@ -110,6 +115,9 @@ export class MarkdownRenderer extends LitElement {
           display: block;
           margin-block-start: 1em;
           margin-block-end: 1em;
+        }
+        md-block[root] {
+          margin-block: 0;
         }
         md-block[type='list'] {
           list-style-type: disc;
@@ -182,20 +190,30 @@ export class MarkdownRenderer extends LitElement {
     ];
   }
 
+  @contextProvider({context: hostContext})
+  @state()
+  hostContext: HostContext = {};
+
   @property({type: Object, reflect: false}) block!: ViewModelNode;
   override render() {
+    this.hostContext.root = this.block;
     if (!this.block) return html``;
     return html`<md-block .node=${this.block} ?root=${true}></md-block>`;
   }
-  getInlineSelection() {
-    const inline = this.shadowRoot!.activeElement;
-    assert(!inline || inline instanceof MarkdownInline);
-    const selection = inline?.getSelection();
-    return {
-      node: inline?.node,
-      startIndex: selection?.start.index,
-      endIndex: selection?.end.index,
-    };
+  getInlineSelection(): {inline?: MarkdownInline, startIndex?: number, endIndex?: number} {
+    let active = this.shadowRoot!.activeElement;
+    while (true) {
+      if (!active || active instanceof MarkdownInline) {
+        const selection = active?.getSelection();
+        return {
+          inline: active || undefined,
+          startIndex: selection?.start.index,
+          endIndex: selection?.end.index,
+        };
+      } else {
+        active = active.shadowRoot?.activeElement ?? null;
+      }
+    }
   }
 }
 
