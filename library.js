@@ -36,6 +36,7 @@ async function getFileHandleFromPath(directory, path, create = false) {
 export class FileSystemLibrary {
     constructor(directory) {
         this.directory = directory;
+        this.cache = new Map();
     }
     async getAllNames() {
         const result = [];
@@ -44,7 +45,7 @@ export class FileSystemLibrary {
         }
         return result;
     }
-    async getDocument(name) {
+    async getDocument(name, forceRefresh = false) {
         const load = async () => {
             const fileName = name;
             let text = '';
@@ -61,6 +62,13 @@ export class FileSystemLibrary {
         };
         const directory = this.directory;
         const node = await load();
+        const cached = this.cache.get(name);
+        if (cached) {
+            if (forceRefresh) {
+                await cached.refresh();
+            }
+            return cached;
+        }
         const result = new class {
             constructor(tree = new MarkdownTree(node)) {
                 this.tree = tree;
@@ -70,6 +78,7 @@ export class FileSystemLibrary {
                 this.tree.observe.add(() => this.markDirty());
             }
             async refresh() {
+                // this.tree.root.viewModel.remove();
                 this.tree.root = this.tree.add(await load());
                 this.tree.observe.notify();
             }
@@ -109,6 +118,7 @@ export class FileSystemLibrary {
                 }
             }
         };
+        this.cache.set(name, result);
         return result;
     }
 }

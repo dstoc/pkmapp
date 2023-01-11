@@ -67,8 +67,8 @@ class ViewModel {
         const index = this.parent.children.indexOf(this.self);
         this.parent.children.splice(index, 1);
         const parent = this.parent;
-        this.parent = undefined;
         this.signalMutation(false);
+        this.parent = undefined;
         parent.viewModel.observe.notify();
     }
     insertBefore(parent, nextSibling) {
@@ -115,6 +115,7 @@ class ViewModel {
         parent.viewModel.observe.notify();
     }
     updateMarker(marker) {
+        // TODO: assert tree editing
         switch (this.self.type) {
             case 'list-item':
             case 'section':
@@ -126,6 +127,7 @@ class ViewModel {
         }
     }
     updateChecked(checked) {
+        // TODO: assert tree editing
         switch (this.self.type) {
             case 'list-item':
                 if (this.self.checked === checked)

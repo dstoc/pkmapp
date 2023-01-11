@@ -26,10 +26,12 @@ export function swapNodes(node1, node2) {
     node1.viewModel.insertBefore(cast(node2.viewModel.parent), node2);
     node2.viewModel.insertBefore(node1Parent, node1NextSibling);
 }
-export function* ancestors(node) {
+export function* ancestors(node, root) {
     while (node.viewModel.parent) {
         yield node.viewModel.parent;
         node = node.viewModel.parent;
+        if (node === root)
+            return;
     }
 }
 export function* reverseDfs(node, limit) {
@@ -53,9 +55,9 @@ export function* reverseDfs(node, limit) {
         return;
     } while (true);
 }
-export function* dfs(node) {
+export function* dfs(node, root = node.viewModel.tree.root) {
     function next(next) {
-        return next && (node = next);
+        return next && next !== root.viewModel.parent && (node = next);
     }
     do {
         yield node;
@@ -69,9 +71,9 @@ export function* dfs(node) {
         } while (!next(node.viewModel.nextSibling));
     } while (true);
 }
-export function findAncestor(node, type) {
+export function findAncestor(node, root, type) {
     const path = [node];
-    for (const ancestor of ancestors(node)) {
+    for (const ancestor of ancestors(node, root)) {
         if (ancestor.type === type) {
             return {
                 ancestor,
@@ -82,32 +84,38 @@ export function findAncestor(node, type) {
     }
     return {};
 }
-export function findNextEditable(node, include = false) {
-    const predicate = (node) => ['paragraph', 'code-block', 'section'].includes(node.type);
-    if (include && predicate(node))
+function editable(node) {
+    return ['paragraph', 'code-block', 'section'].includes(node.type);
+}
+export function findPreviousEditable(node, root, include = false) {
+    if (include && editable(node))
         return node;
-    return findNextDfs(node, predicate);
+    return findPreviousDfs(node, root, editable);
+}
+export function findNextEditable(node, root, include = false) {
+    if (include && editable(node))
+        return node;
+    return findNextDfs(node, root, editable);
 }
 export function findFinalEditable(node, include = false) {
-    const predicate = (node) => ['paragraph', 'code-block', 'section'].includes(node.type);
     let result = null;
-    if (include && predicate(node))
+    if (include && editable(node))
         result = node;
     for (const next of dfs(node)) {
-        if (predicate(next))
+        if (editable(next))
             result = next;
     }
     return result;
 }
-export function findNextDfs(node, predicate) {
-    for (const next of dfs(node)) {
+export function findNextDfs(node, root, predicate) {
+    for (const next of dfs(node, root)) {
         if (next !== node && predicate(next))
             return next;
     }
     return null;
 }
-export function findPreviousDfs(node, predicate) {
-    for (const next of reverseDfs(node)) {
+export function findPreviousDfs(node, root, predicate) {
+    for (const next of reverseDfs(node, root)) {
         if (next !== node && predicate(next))
             return next;
     }

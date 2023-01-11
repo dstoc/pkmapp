@@ -20,19 +20,18 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 import './markdown/block-render.js';
 import { libraryContext } from './app-context.js';
 import { assert, cast } from './asserts.js';
-import { contextProvided, contextProvider } from './deps/lit-labs-context.js';
+import { contextProvided } from './deps/lit-labs-context.js';
 import { css, customElement, html, LitElement, property, query, state } from './deps/lit.js';
 import { parseBlocks } from './markdown/block-parser.js';
 import { serializeToString } from './markdown/block-serializer.js';
-import { hostContext } from './markdown/host-context.js';
 import { normalizeTree } from './markdown/normalize.js';
-import { ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousDfs, reverseDfs, swapNodes } from './markdown/view-model-util.js';
+import { ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousEditable, reverseDfs, swapNodes } from './markdown/view-model-util.js';
 import { Observer, Observers } from './observe.js';
+import { getContainingTransclusion } from './markdown/transclusion.js';
 let Editor = class Editor extends LitElement {
     constructor() {
         super();
         this.dirty = false;
-        this.hostContext = {};
         this.observers = new Observers(new Observer(() => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o), () => this.requestUpdate()));
         // this.addEventListener('focus', () => this.appContext.activeEditor =
         // this);
@@ -61,7 +60,7 @@ let Editor = class Editor extends LitElement {
     <div id=status>${this.document?.dirty ? '💽' : ''}</div>
     <div id=content>
     <md-block-render
-      .block=${this.document?.tree.root}
+      .block=${this.root}
       @inline-input=${this.onInlineInput}
       @inline-link-click=${this.onInlineLinkClick}
       @inline-keydown=${this.onInlineKeyDown}></md-block-render>
@@ -75,17 +74,18 @@ let Editor = class Editor extends LitElement {
             await this.load(url.searchParams.get('path'));
         }
     }
-    async load(name) {
+    async load(name, forceRefresh = false) {
         if (!this.library)
             return;
         this.status = 'loading';
         this.document = undefined;
         try {
-            this.document = await this.library.getDocument(name + '.md');
+            this.document = await this.library.getDocument(name + '.md', forceRefresh);
+            this.root = this.document.tree.root;
             normalizeTree(this.document.tree);
-            const node = findNextEditable(this.document.tree.root);
+            const node = findNextEditable(this.root, this.root);
             if (node) {
-                focusNode(this.hostContext, node, 0);
+                focusNode(this.markdownRenderer.hostContext, node, 0);
             }
             this.status = 'loaded';
         }
@@ -105,29 +105,57 @@ let Editor = class Editor extends LitElement {
                 keyboardEvent.preventDefault();
                 const result = inline.moveCaretUp();
                 if (result !== true) {
-                    const prev = findPreviousDfs(node, ({ type }) => ['paragraph', 'code-block', 'section'].includes(type));
-                    if (prev)
-                        focusNode(this.hostContext, prev, -result);
+                    function focusPrevious(element, node, offset) {
+                        while (true) {
+                            const prev = findPreviousEditable(node, cast(cast(element.hostContext).root));
+                            if (prev) {
+                                focusNode(cast(element.hostContext), prev, -offset);
+                                break;
+                            }
+                            else {
+                                const transclusion = getContainingTransclusion(element);
+                                if (!transclusion)
+                                    return;
+                                element = transclusion;
+                                node = cast(transclusion.node);
+                            }
+                        }
+                    }
+                    focusPrevious(inline, node, result);
                 }
             }
             else if (keyboardEvent.key === 'ArrowDown') {
                 keyboardEvent.preventDefault();
                 const result = inline.moveCaretDown();
                 if (result !== true) {
-                    const next = findNextEditable(node);
-                    if (next)
-                        focusNode(this.hostContext, next, -result);
+                    function focusNext(element, node, offset) {
+                        while (true) {
+                            const next = findNextEditable(node, cast(cast(element.hostContext).root));
+                            if (next) {
+                                focusNode(cast(element.hostContext), next, offset);
+                                break;
+                            }
+                            else {
+                                const transclusion = getContainingTransclusion(element);
+                                if (!transclusion)
+                                    return;
+                                element = transclusion;
+                                node = cast(transclusion.node);
+                            }
+                        }
+                    }
+                    focusNext(inline, node, result);
                 }
             }
             else if (keyboardEvent.key === 'Tab') {
                 keyboardEvent.preventDefault();
                 const { start } = inline.getSelection();
-                focusNode(this.hostContext, node, start.index);
+                focusNode(cast(inline.hostContext), node, start.index);
                 if (keyboardEvent.shiftKey) {
-                    unindent(node);
+                    unindent(node, cast(cast(inline.hostContext).root));
                 }
                 else {
-                    indent(node);
+                    indent(node, cast(cast(inline.hostContext).root));
                 }
             }
             else {
@@ -138,7 +166,7 @@ let Editor = class Editor extends LitElement {
             finishEditing();
         }
     }
-    async triggerPaste(node, edit, forceMarkdown = false) {
+    async triggerPaste(inline, node, edit, forceMarkdown = false) {
         const content = await navigator.clipboard.read();
         const mdItem = content.find(item => item.types.includes('web text/markdown'));
         let mdText;
@@ -164,7 +192,7 @@ let Editor = class Editor extends LitElement {
                 let newFocus = findFinalEditable(newNodes[0]);
                 performLogicalInsertion(node, newNodes);
                 if (newFocus)
-                    focusNode(this.hostContext, newFocus, Infinity);
+                    focusNode(cast(inline.hostContext), newFocus, Infinity);
             }
             finally {
                 finishEditing();
@@ -180,7 +208,7 @@ let Editor = class Editor extends LitElement {
                     ...edit,
                     newText: text,
                     newEndIndex: edit.oldEndIndex + text.length,
-                });
+                }, cast(inline.hostContext)); // TODO: wrong context
             }
             finally {
                 finishEditing();
@@ -193,7 +221,7 @@ let Editor = class Editor extends LitElement {
             return;
         const finishEditing = inline.node.viewModel.tree.edit();
         try {
-            if (handleInlineInputAsBlockEdit(event, this.hostContext))
+            if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext)))
                 return;
             let newText;
             let startIndex;
@@ -208,7 +236,7 @@ let Editor = class Editor extends LitElement {
                 oldEndIndex = inputEnd.index;
                 if (inputEvent.inputType === 'insertReplacementText' ||
                     inputEvent.inputType === 'insertFromPaste') {
-                    this.triggerPaste(inline.node, { startIndex, oldEndIndex });
+                    this.triggerPaste(inline, inline.node, { startIndex, oldEndIndex });
                     return;
                 }
                 else if (inputEvent.inputType === 'deleteByCut') {
@@ -233,21 +261,21 @@ let Editor = class Editor extends LitElement {
                 oldEndIndex,
                 newEndIndex,
             };
-            this.editInlineNode(inline.node, edit);
+            this.editInlineNode(inline.node, edit, cast(inline.hostContext));
         }
         finally {
             finishEditing();
         }
     }
-    editInlineNode(node, edit) {
+    editInlineNode(node, edit, hostContext) {
         const newNodes = node.viewModel.edit(edit);
         if (newNodes) {
             // TODO: is this needed?
             normalizeTree(node.viewModel.tree);
-            const next = findNextEditable(newNodes[0], true);
+            const next = findNextEditable(newNodes[0], cast(hostContext.root), true);
             // TODO: is the focus offset always 0?
             if (next)
-                focusNode(this.hostContext, next, 0);
+                focusNode(hostContext, next, 0);
         }
         else {
             // TODO: generalize this (inline block mutation)
@@ -262,11 +290,14 @@ let Editor = class Editor extends LitElement {
                     oldEndIndex: 4,
                 });
             }
-            focusNode(this.hostContext, node, edit.newEndIndex);
+            focusNode(hostContext, node, edit.newEndIndex);
         }
     }
     getCommands() {
-        const { node: activeInline, startIndex, endIndex } = this.markdownRenderer.getInlineSelection();
+        const { inline: activeInline, startIndex, endIndex } = this.markdownRenderer.getInlineSelection();
+        const activeNode = activeInline?.node;
+        const inTopLevelDocument = activeNode?.viewModel.tree === this.root?.viewModel.tree ?? false;
+        const transclusion = activeInline && getContainingTransclusion(activeInline);
         return [
             {
                 description: 'Find, Open, Create...',
@@ -276,6 +307,15 @@ let Editor = class Editor extends LitElement {
                     validate: () => true,
                 },
                 execute: (file) => this.load(file),
+            },
+            {
+                description: 'Force open',
+                argument: {
+                    description: 'Find or create...',
+                    suggestions: () => this.library.getAllNames(),
+                    validate: () => true,
+                },
+                execute: (file) => this.load(file, true),
             },
             {
                 description: 'Force save',
@@ -295,15 +335,93 @@ let Editor = class Editor extends LitElement {
                     ]);
                 },
             },
-            {
-                description: 'Paste as markdown',
-                execute: async () => {
-                    if (!activeInline || startIndex === undefined ||
-                        endIndex === undefined)
-                        return;
-                    this.triggerPaste(activeInline, { startIndex, oldEndIndex: endIndex }, true);
-                },
-            },
+            ...activeNode && startIndex !== undefined && endIndex !== undefined ? [{
+                    description: 'Paste as markdown',
+                    execute: async () => {
+                        this.triggerPaste(activeInline, activeNode, { startIndex, oldEndIndex: endIndex }, true);
+                    },
+                }] : [],
+            ...inTopLevelDocument && activeNode && activeInline ? [{
+                    description: 'Focus on block',
+                    execute: async () => {
+                        this.root = logicalContainingBlock(activeNode);
+                        focusNode(cast(activeInline.hostContext), activeNode, startIndex);
+                    },
+                }] : [],
+            ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
+                    description: 'Focus on containing block',
+                    execute: async () => {
+                        if (this.root?.viewModel.parent)
+                            this.root = logicalContainingBlock(this.root.viewModel.parent);
+                        if (activeNode && activeInline)
+                            focusNode(cast(activeInline.hostContext), activeNode, startIndex);
+                    },
+                }] : [],
+            ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
+                    description: 'Focus on document',
+                    execute: async () => {
+                        this.root = this.document?.tree.root;
+                        if (activeNode)
+                            focusNode(cast(activeInline.hostContext), activeNode, startIndex);
+                    },
+                }] : [],
+            ...transclusion ? [{
+                    description: 'Delete transclusion',
+                    execute: async () => {
+                        const finished = transclusion.node.viewModel.tree.edit();
+                        transclusion.node.viewModel.remove();
+                        finished();
+                        // TODO: focus
+                    },
+                }] : [],
+            ...activeNode ? [{
+                    description: 'Insert transclusion',
+                    argument: {
+                        description: 'Find or create...',
+                        suggestions: () => this.library.getAllNames(),
+                        validate: () => true,
+                    },
+                    execute: async (target) => {
+                        const finished = activeNode.viewModel.tree.edit();
+                        const newParagraph = activeNode.viewModel.tree.add({
+                            type: 'code-block',
+                            info: 'tc',
+                            content: target,
+                        });
+                        newParagraph.viewModel.insertBefore(cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
+                        finished();
+                        focusNode(activeInline.hostContext, newParagraph);
+                        // TODO: focus
+                    },
+                }] : [],
+            ...transclusion ? [{
+                    description: 'Insert before transclusion',
+                    execute: async () => {
+                        const node = transclusion.node;
+                        const finished = node.viewModel.tree.edit();
+                        const newParagraph = node.viewModel.tree.add({
+                            type: 'paragraph',
+                            content: '',
+                        });
+                        newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
+                        finished();
+                        focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                    },
+                }] : [],
+            ...transclusion ? [{
+                    description: 'Insert after transclusion',
+                    execute: async () => {
+                        const node = transclusion.node;
+                        const finished = node.viewModel.tree.edit();
+                        const newParagraph = node.viewModel.tree.add({
+                            type: 'paragraph',
+                            content: '',
+                        });
+                        newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
+                        finished();
+                        focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                    },
+                }] : [],
         ];
     }
 };
@@ -314,6 +432,9 @@ __decorate([
     state()
 ], Editor.prototype, "document", void 0);
 __decorate([
+    state()
+], Editor.prototype, "root", void 0);
+__decorate([
     property({ type: Boolean, reflect: true })
 ], Editor.prototype, "dirty", void 0);
 __decorate([
@@ -321,16 +442,21 @@ __decorate([
     state()
 ], Editor.prototype, "library", void 0);
 __decorate([
-    contextProvider({ context: hostContext }),
-    state()
-], Editor.prototype, "hostContext", void 0);
-__decorate([
     query('md-block-render')
 ], Editor.prototype, "markdownRenderer", void 0);
 Editor = __decorate([
     customElement('pkm-editor')
 ], Editor);
 export { Editor };
+function logicalContainingBlock(context) {
+    let next = context;
+    while (next) {
+        if (next.type === 'section' || next.type === 'list-item' || next.type === 'document')
+            return next;
+        next = next.viewModel.parent;
+    }
+    return context;
+}
 function performLogicalInsertion(context, nodes) {
     const { parent, nextSibling } = nextLogicalInsertionPoint(context);
     if (parent.type == 'list') {
@@ -393,8 +519,8 @@ function focusNode(context, node, offset) {
     context.focusOffset = offset;
     node.viewModel.observe.notify();
 }
-function unindent(node) {
-    const { ancestor: listItem, path } = findAncestor(node, 'list-item');
+function unindent(node, root) {
+    const { ancestor: listItem, path } = findAncestor(node, root, 'list-item');
     if (!listItem || !path)
         return;
     const target = path[0];
@@ -435,9 +561,9 @@ function unindent(node) {
         list.viewModel.remove();
     }
 }
-function indent(node) {
+function indent(node, root) {
     let target = node;
-    for (const ancestor of ancestors(node)) {
+    for (const ancestor of ancestors(node, root)) {
         if (ancestor.type === 'list-item') {
             break;
         }
@@ -488,17 +614,17 @@ function indent(node) {
         listItem.viewModel.insertBefore(list);
     }
 }
-function insertSiblingParagraph(node, startIndex, context) {
+function insertSiblingParagraph(node, root, startIndex, context) {
     const newParagraph = node.viewModel.tree.add({
         type: 'paragraph',
         content: '',
     });
     newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
-    finishInsertParagraph(node, newParagraph, startIndex, context);
+    finishInsertParagraph(node, newParagraph, root, startIndex, context);
     return true;
 }
-function insertParagraphInList(node, startIndex, context) {
-    const { ancestor, path } = findAncestor(node, 'list');
+function insertParagraphInList(node, root, startIndex, context) {
+    const { ancestor, path } = findAncestor(node, root, 'list');
     if (!ancestor)
         return false;
     let targetList;
@@ -537,11 +663,27 @@ function insertParagraphInList(node, startIndex, context) {
         content: '',
     });
     newParagraph.viewModel.insertBefore(newListItem);
-    finishInsertParagraph(node, newParagraph, startIndex, context);
+    finishInsertParagraph(node, newParagraph, root, startIndex, context);
     return true;
 }
-function insertParagraphInDocument(node, startIndex, context) {
-    const { ancestor: section, path } = findAncestor(node, 'document');
+/**
+ * Special case where we have a list-item that is not contained by a list
+ * (because it is the root).
+ */
+function insertParagraphInListItem(node, root, startIndex, context) {
+    const { ancestor: listItem, path } = findAncestor(node, root, 'list-item');
+    if (!listItem)
+        return false;
+    const newParagraph = node.viewModel.tree.add({
+        type: 'paragraph',
+        content: '',
+    });
+    newParagraph.viewModel.insertBefore(listItem, path[0].viewModel.nextSibling);
+    finishInsertParagraph(node, newParagraph, root, startIndex, context);
+    return true;
+}
+function insertParagraphInDocument(node, root, startIndex, context) {
+    const { ancestor: section, path } = findAncestor(node, root, 'document');
     if (!section)
         return false;
     const newParagraph = node.viewModel.tree.add({
@@ -549,11 +691,11 @@ function insertParagraphInDocument(node, startIndex, context) {
         content: '',
     });
     newParagraph.viewModel.insertBefore(section, path[0].viewModel.nextSibling);
-    finishInsertParagraph(node, newParagraph, startIndex, context);
+    finishInsertParagraph(node, newParagraph, root, startIndex, context);
     return true;
 }
-function insertParagraphInSection(node, startIndex, context) {
-    let { ancestor: section, path } = findAncestor(node, 'section');
+function insertParagraphInSection(node, root, startIndex, context) {
+    let { ancestor: section, path } = findAncestor(node, root, 'section');
     let nextSibling;
     if (section) {
         nextSibling = path[0].viewModel.nextSibling;
@@ -569,16 +711,16 @@ function insertParagraphInSection(node, startIndex, context) {
         content: '',
     });
     newParagraph.viewModel.insertBefore(section, nextSibling);
-    finishInsertParagraph(node, newParagraph, startIndex, context);
+    finishInsertParagraph(node, newParagraph, root, startIndex, context);
     return true;
 }
-function areAncestorAndDescendant(node, node2) {
-    return [...ancestors(node)].includes(node2) ||
-        [...ancestors(node2)].includes(node);
+function areAncestorAndDescendant(node, node2, root) {
+    return [...ancestors(node, root)].includes(node2) ||
+        [...ancestors(node2, root)].includes(node);
 }
-function finishInsertParagraph(node, newParagraph, startIndex, context) {
+function finishInsertParagraph(node, newParagraph, root, startIndex, context) {
     const shouldSwap = startIndex === 0 && node.content.length > 0 &&
-        !areAncestorAndDescendant(node, newParagraph);
+        !areAncestorAndDescendant(node, newParagraph, root);
     if (shouldSwap) {
         swapNodes(node, newParagraph);
     }
@@ -601,6 +743,7 @@ function finishInsertParagraph(node, newParagraph, startIndex, context) {
 function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart, inputEnd }, }, context) {
     if (!inline.node)
         return false;
+    const root = cast(context.root);
     if (inputEvent.inputType === 'deleteContentBackward') {
         if (inputStart.index !== 0 || inputEnd.index !== 0)
             return false;
@@ -637,7 +780,7 @@ function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart
             return true;
         }
         // Remove a surrounding block-quote.
-        const { ancestor } = findAncestor(node, 'block-quote');
+        const { ancestor } = findAncestor(node, root, 'block-quote');
         if (ancestor) {
             // Unless there's an earlier opportunity to merge into a previous
             // content node.
@@ -659,12 +802,13 @@ function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart
         }
     }
     else if (inputEvent.inputType === 'insertParagraph') {
-        return insertParagraphInList(inline.node, inputStart.index, context) ||
-            insertParagraphInSection(inline.node, inputStart.index, context) ||
-            insertParagraphInDocument(inline.node, inputStart.index, context);
+        return insertParagraphInList(inline.node, root, inputStart.index, context) ||
+            insertParagraphInListItem(inline.node, root, inputStart.index, context) ||
+            insertParagraphInSection(inline.node, root, inputStart.index, context) ||
+            insertParagraphInDocument(inline.node, root, inputStart.index, context);
     }
     else if (inputEvent.inputType === 'insertLineBreak') {
-        return insertSiblingParagraph(inline.node, inputStart.index, context);
+        return insertSiblingParagraph(inline.node, root, inputStart.index, context);
     }
     return false;
 }

@@ -17,9 +17,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { assert } from '../asserts.js';
-import { css, customElement, html, LitElement, property } from '../deps/lit.js';
+import { state, css, customElement, html, LitElement, property } from '../deps/lit.js';
 import { MarkdownInline } from './inline-render.js';
+import './transclusion.js';
+import { hostContext } from './host-context.js';
+import { contextProvider } from '../deps/lit-labs-context.js';
 let MarkdownBlock = class MarkdownBlock extends LitElement {
     constructor() {
         super();
@@ -57,6 +59,9 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
         this.type = node.type;
         if (node.type === 'list-item') {
             this.checked = node.checked;
+        }
+        if (node.type === 'code-block' && node.info === 'tc') {
+            return html `<md-transclusion .node=${node}></md-transclusion>`;
         }
         return html `${(node.type === 'paragraph' || node.type === 'code-block' ||
             node.type === 'section') ?
@@ -102,6 +107,9 @@ __decorate([
     property({ type: String, reflect: true })
 ], MarkdownBlock.prototype, "checked", void 0);
 __decorate([
+    property({ type: Boolean, reflect: true })
+], MarkdownBlock.prototype, "root", void 0);
+__decorate([
     property({ type: String, reflect: true })
 ], MarkdownBlock.prototype, "type", void 0);
 __decorate([
@@ -112,6 +120,10 @@ MarkdownBlock = __decorate([
 ], MarkdownBlock);
 export { MarkdownBlock };
 let MarkdownRenderer = class MarkdownRenderer extends LitElement {
+    constructor() {
+        super(...arguments);
+        this.hostContext = {};
+    }
     static get styles() {
         return [
             ...MarkdownInline.styles,
@@ -121,11 +133,14 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
           margin-block-start: 1em;
           margin-block-end: 1em;
         }
+        md-block[root] {
+          margin-block: 0;
+        }
         md-block[type='list'] {
           list-style-type: disc;
           padding-inline-start: 20px;
         }
-        md-block[type='list-item'] {
+        md-block[type='list-item']:not([root]) {
           display: list-item;
           white-space: initial;
           margin-block: 0;
@@ -192,21 +207,32 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
         ];
     }
     render() {
+        this.hostContext.root = this.block;
         if (!this.block)
             return html ``;
-        return html `<md-block .node=${this.block}></md-block>`;
+        return html `<md-block .node=${this.block} ?root=${true}></md-block>`;
     }
     getInlineSelection() {
-        const inline = this.shadowRoot.activeElement;
-        assert(!inline || inline instanceof MarkdownInline);
-        const selection = inline?.getSelection();
-        return {
-            node: inline?.node,
-            startIndex: selection?.start.index,
-            endIndex: selection?.end.index,
-        };
+        let active = this.shadowRoot.activeElement;
+        while (true) {
+            if (!active || active instanceof MarkdownInline) {
+                const selection = active?.getSelection();
+                return {
+                    inline: active || undefined,
+                    startIndex: selection?.start.index,
+                    endIndex: selection?.end.index,
+                };
+            }
+            else {
+                active = active.shadowRoot?.activeElement ?? null;
+            }
+        }
     }
 };
+__decorate([
+    contextProvider({ context: hostContext }),
+    state()
+], MarkdownRenderer.prototype, "hostContext", void 0);
 __decorate([
     property({ type: Object, reflect: false })
 ], MarkdownRenderer.prototype, "block", void 0);
