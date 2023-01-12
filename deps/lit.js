@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-export * from 'https://unpkg.com/lit?module';
-export * from 'https://unpkg.com/lit/decorators?module';
-export * from 'https://unpkg.com/lit/directives/repeat?module';
+export * from 'lit';
+export * from 'lit/decorators.js';
+export * from 'lit/directives/repeat.js';
 //# sourceMappingURL=lit.js.map
