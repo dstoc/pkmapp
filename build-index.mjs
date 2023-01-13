@@ -13,19 +13,37 @@
 // limitations under the License.
 
 import {Generator} from '@jspm/generator';
-import {readFileSync, writeFileSync} from 'fs';
+import {existsSync, rmSync, copyFileSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
+import {pathToFileURL} from 'url';
+import {join, dirname} from 'path';
 
 const generator = new Generator({
+  defaultProvider: 'nodemodules',
   mapUrl: import.meta.url,
   env: ['production', 'browser', 'module'],
 });
 
-await generator.install('lit');
-await generator.install('lit/decorators.js');
-await generator.install('lit/directives/repeat.js');
-await generator.install('@lit-labs/context');
+const packages = [
+  'lit',
+  'lit/decorators.js',
+  'lit/directives/repeat.js',
+  '@lit-labs/context',
+];
+
+await generator.install(packages);
+
+const base = pathToFileURL('.').href;
+const deps = (await generator.extractMap(packages)).staticDeps;
+if (existsSync('build/node_modules')) {
+  rmSync('build/node_modules', {recursive: true});
+}
+for (const dep of deps) {
+  const file = dep.substring(base.length + 1);
+  const target = join('build', file);
+  mkdirSync(dirname(target), {recursive: true});
+  copyFileSync(file, target);
+}
 
 const inputHtml = readFileSync('index.html').toString();
 const outputHtml = await generator.htmlInject(inputHtml, {esModuleShims: false});
-
 writeFileSync('build/index.html', outputHtml);
