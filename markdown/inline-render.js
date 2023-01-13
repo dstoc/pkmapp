@@ -22,33 +22,6 @@ import { contextProvided } from '../deps/lit-labs-context.js';
 import { css, customElement, html, LitElement, property, query, queryAll, repeat } from '../deps/lit.js';
 import { hostContext } from './host-context.js';
 let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement {
-    constructor() {
-        super();
-        this.contenteditable = true;
-        this.active = false;
-        this.hasFocus = false;
-        this.observer = (node) => {
-            if (node !== this.node) {
-                this.removeObserver(node);
-                return;
-            }
-            this.requestUpdate();
-        };
-        this.addEventListener('beforeinput', this.onBeforeInput, { capture: true });
-        this.addEventListener('keydown', this.onKeyDown, { capture: true });
-        this.addEventListener('pointerup', () => {
-            if (this.hasFocus) {
-                this.active = true;
-            }
-        });
-        this.addEventListener('focus', () => {
-            this.hasFocus = true;
-        });
-        this.addEventListener('blur', () => {
-            this.active = false;
-            this.hasFocus = false;
-        });
-    }
     static get styles() {
         return [
             css `
@@ -103,6 +76,33 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         }
       `,
         ];
+    }
+    constructor() {
+        super();
+        this.contenteditable = true;
+        this.active = false;
+        this.hasFocus = false;
+        this.observer = (node) => {
+            if (node !== this.node) {
+                this.removeObserver(node);
+                return;
+            }
+            this.requestUpdate();
+        };
+        this.addEventListener('beforeinput', this.onBeforeInput, { capture: true });
+        this.addEventListener('keydown', this.onKeyDown, { capture: true });
+        this.addEventListener('pointerup', () => {
+            if (this.hasFocus) {
+                this.active = true;
+            }
+        });
+        this.addEventListener('focus', () => {
+            this.hasFocus = true;
+        });
+        this.addEventListener('blur', () => {
+            this.active = false;
+            this.hasFocus = false;
+        });
     }
     render() {
         if (!this.node)

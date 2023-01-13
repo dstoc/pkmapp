@@ -29,13 +29,6 @@ import { ancestors, children, findAncestor, findFinalEditable, findNextEditable,
 import { Observer, Observers } from './observe.js';
 import { getContainingTransclusion } from './markdown/transclusion.js';
 let Editor = class Editor extends LitElement {
-    constructor() {
-        super();
-        this.dirty = false;
-        this.observers = new Observers(new Observer(() => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o), () => this.requestUpdate()));
-        // this.addEventListener('focus', () => this.appContext.activeEditor =
-        // this);
-    }
     static get styles() {
         return [
             css `
@@ -52,6 +45,13 @@ let Editor = class Editor extends LitElement {
         }
       `,
         ];
+    }
+    constructor() {
+        super();
+        this.dirty = false;
+        this.observers = new Observers(new Observer(() => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o), () => this.requestUpdate()));
+        // this.addEventListener('focus', () => this.appContext.activeEditor =
+        // this);
     }
     render() {
         this.observers.update();
