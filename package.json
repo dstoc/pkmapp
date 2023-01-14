@@ -5,7 +5,7 @@
     "compile": "tsc",
     "build": "npm run compile && ./build-wasm.sh && npm run build-index",
     "build-index": "node build-index.mjs",
-    "build-cached": "npm run compile && num run build-index",
+    "build-cached": "npm run compile && npm run build-index",
     "test": "wdio run test/wdio.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json",
     "test-extra": "wdio run test/extra.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json",
     "precommit": "npx check-clang-format"
