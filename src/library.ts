@@ -15,12 +15,14 @@
 import {parseBlocks} from './markdown/block-parser.js';
 import {serializeToString} from './markdown/block-serializer.js';
 import {MarkdownNode} from './markdown/node.js';
-import {MarkdownTree} from './markdown/view-model.js';
+import {InlineViewModelNode, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 import {Observe} from './observe.js';
+import {BackLinks} from './backlinks.js';
 
 export interface Document {
   refresh(): Promise<void>;
   save(): Promise<void>;
+  readonly aliases: string[];
   readonly tree: MarkdownTree;
   readonly dirty: boolean;
   readonly observe: Observe<Document>;
@@ -28,7 +30,9 @@ export interface Document {
 
 export interface Library {
   getDocument(name: string, forceRefresh?: boolean): Promise<Document>;
+  getDocumentByTree(tree: MarkdownTree): Document|undefined;
   getAllNames(): Promise<string[]>;
+  readonly backLinks: BackLinks;
 }
 
 async function*
@@ -62,7 +66,16 @@ export class FileSystemLibrary implements Library {
     }
     return result;
   }
-  cache: Map<string, Document> = new Map();
+  private cache: Map<string, Document> = new Map();
+  backLinks = new BackLinks();
+  getDocumentByTree(tree: MarkdownTree): Document|undefined {
+    for (const document of this.cache.values()) {
+      if (document.tree === tree) {
+        return document;
+      }
+    }
+    return undefined;
+  }
   async getDocument(name: string, forceRefresh = false): Promise<Document> {
     const load = async () => {
       const fileName = name;
@@ -77,8 +90,6 @@ export class FileSystemLibrary implements Library {
       }
       return parseBlocks(text)!;
     };
-    const directory = this.directory;
-    const node = await load();
     const cached = this.cache.get(name);
     if (cached) {
       if (forceRefresh) {
@@ -86,12 +97,22 @@ export class FileSystemLibrary implements Library {
       }
       return cached;
     }
+    const node = await load();
+    const library = this;
     const result = new class implements Document {
-      constructor(public tree = new MarkdownTree(node)) {
+      constructor() {
+        this.tree = new MarkdownTree(node, this);
         this.tree.observe.add(() => this.markDirty());
       }
+      readonly tree: MarkdownTree;
       dirty = false;
       observe: Observe<Document> = new Observe<Document>(this);
+      get aliases() { return [name.substring(0, name.length - 3)]; }
+      postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed') {
+        if (node.type === 'paragraph') {
+          library.backLinks.postEditUpdate(node as InlineViewModelNode);
+        }
+      }
       async refresh() {
         // this.tree.root.viewModel.remove();
         this.tree.root = this.tree.add<MarkdownNode>(await load());
@@ -100,7 +121,7 @@ export class FileSystemLibrary implements Library {
       async save() {
         const text = serializeToString(this.tree.root);
         const fileName = name;
-        const handle = await getFileHandleFromPath(directory, fileName, true);
+        const handle = await getFileHandleFromPath(library.directory, fileName, true);
         const stream = await handle.createWritable();
         await stream.write(text);
         await stream.close();
