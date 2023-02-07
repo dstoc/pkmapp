@@ -20,11 +20,13 @@ import Parser from 'web-tree-sitter';
 import {assert, cast} from '../asserts.js';
 import {Observe} from '../observe.js';
 import {normalizeTree} from './normalize.js';
+import {dfs} from './view-model-util.js';
 
 class ViewModel {
   constructor(
       readonly self: ViewModelNode, readonly tree: MarkdownTree,
-      public parent?: ViewModelNode, childIndex?: number) {
+      public parent?: ViewModelNode, childIndex?: number,
+      public connected = false) {
     this.initialize(parent, childIndex);
     this.observe = new Observe(this.self, this.tree.observe);
   }
@@ -75,9 +77,14 @@ class ViewModel {
     }
     const index = this.parent!.children!.indexOf(this.self);
     this.parent!.children!.splice(index, 1);
+    if (!this.previousSibling) this.parent.viewModel.firstChild = this.nextSibling;
+    if (!this.nextSibling) this.parent.viewModel.lastChild = this.previousSibling;
     const parent = this.parent;
     this.signalMutation(false);
     this.parent = undefined;
+    this.nextSibling = undefined;
+    this.previousSibling = undefined;
+    this.tree.removed.add(this.self);
     parent.viewModel.observe.notify();
   }
 
@@ -206,15 +213,19 @@ export class InlineViewModel extends ViewModel {
   }
 }
 
+export interface MarkdownTreeDelegate {
+  postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed'): void;
+}
 
 export class MarkdownTree {
-  constructor(root: MarkdownNode) {
+  constructor(root: MarkdownNode, private readonly delegate?: MarkdownTreeDelegate) {
     this.root = this.addDom<MarkdownNode>(root);
   }
 
-  state: 'editing'|'idle' = 'idle';
+  state: 'editing'|'post-edit'|'idle' = 'idle';
   root: ViewModelNode;
   readonly observe = new Observe(this);
+  removed: Set<ViewModelNode> = new Set();
 
   add<T>(node: T&MarkdownNode) {
     if ((node as MaybeViewModelNode).viewModel) {
@@ -228,8 +239,30 @@ export class MarkdownTree {
     const startVersion = this.root.viewModel.version;
     const resumeObserve = this.observe.suspend();
     this.state = 'editing';
+    this.removed.clear();
     return () => {
       normalizeTree(this);
+      const removedRoots = new Set<ViewModelNode>();
+      for (const node of this.removed.values()) {
+        if (!node.viewModel.parent) {
+          removedRoots.add(node);
+        }
+      }
+      this.state = 'post-edit';
+      for (const root of removedRoots.values()) {
+        for (const node of dfs(root)) {
+          node.viewModel.connected = false;
+          this.delegate?.postEditUpdate(node, 'disconnected');
+        }
+      }
+      for (const node of dfs(this.root)) {
+        if (!node.viewModel.connected) {
+          node.viewModel.connected = true;
+          this.delegate?.postEditUpdate(node, 'connected');
+        } else if (node.viewModel.version > startVersion) {
+          this.delegate?.postEditUpdate(node, 'changed');
+        }
+      }
       this.state = 'idle';
       if (this.root.viewModel.version > startVersion) {
         this.observe.notify();

@@ -339,6 +339,17 @@ export class Editor extends LitElement {
           ]);
         },
       },
+      {
+        description: 'Backlinks',
+        argument: {
+          description: 'Open...',
+          suggestions: async () => {
+            return this.library.backLinks.getBacklinksByDocument(this.document!, this.library);
+          },
+          validate: () => true,
+        },
+        execute: (file: string) => this.load(file),
+      },
       ...activeNode && startIndex !== undefined && endIndex !== undefined ? [{
         description: 'Paste as markdown',
         execute: async () => {
