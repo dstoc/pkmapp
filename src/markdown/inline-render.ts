@@ -270,6 +270,13 @@ export class MarkdownInline extends LitElement {
         (this.getRootNode()! as Document).getSelection()!;
     return MarkdownInline.getSelectionRange(selection);
   }
+  getCaretPosition() {
+    let {x, y, height} = (this.getRootNode()! as Document).getSelection()!.getRangeAt(0).getBoundingClientRect();
+    if (x === 0 && y === 0) {
+      ({x, y, height} = this.getBoundingClientRect());
+    }
+    return {x, y: y + height};
+  }
   onKeyDown(e: KeyboardEvent) {
     const inlineKeydown = {
       inline: this,

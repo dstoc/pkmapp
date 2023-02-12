@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import './markdown/block-render.js';
+import './autocomplete.js';
 
 import {libraryContext} from './app-context.js';
 import {assert, cast} from './asserts.js';
@@ -23,7 +24,7 @@ import {Document, Library} from './library.js';
 import {parseBlocks} from './markdown/block-parser.js';
 import {MarkdownRenderer} from './markdown/block-render.js';
 import {serializeToString} from './markdown/block-serializer.js';
-import {HostContext} from './markdown/host-context.js';
+import {HostContext, focusNode} from './markdown/host-context.js';
 import {MarkdownInline, InlineInput, InlineKeyDown, InlineLinkClick} from './markdown/inline-render.js';
 import {InlineNode, MarkdownNode, ParagraphNode} from './markdown/node.js';
 import {normalizeTree} from './markdown/normalize.js';
@@ -31,6 +32,7 @@ import {ancestors, children, findAncestor, findFinalEditable, findNextEditable, 
 import {InlineEdit, InlineViewModel, InlineViewModelNode, ViewModelNode} from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
+import {Autocomplete} from './autocomplete.js';
 
 @customElement('pkm-editor')
 export class Editor extends LitElement {
@@ -43,6 +45,7 @@ export class Editor extends LitElement {
   @state()
   library!: Library;
   @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
+  @query('pkm-autocomplete') private autocomplete!: Autocomplete;
   private observers = new Observers(new Observer(
       () => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o),
       () => this.requestUpdate()));
@@ -79,7 +82,8 @@ export class Editor extends LitElement {
       @inline-input=${this.onInlineInput}
       @inline-link-click=${this.onInlineLinkClick}
       @inline-keydown=${this.onInlineKeyDown}></md-block-render>
-    </div>`;
+    </div>
+    <pkm-autocomplete></pkm-autocomplete>`;
   }
   override async connectedCallback() {
     super.connectedCallback();
@@ -112,13 +116,14 @@ export class Editor extends LitElement {
   }: CustomEvent<InlineLinkClick>) {
     this.load(destination);
   }
-  onInlineKeyDown({
-    detail: {inline, node, keyboardEvent},
-  }: CustomEvent<InlineKeyDown>) {
+  onInlineKeyDown(event: CustomEvent<InlineKeyDown>) {
+    const {detail: {inline, node, keyboardEvent}} = event;
     const finishEditing = node.viewModel.tree.edit();
     try {
       assert(inline.node);
-      if (keyboardEvent.key === 'ArrowUp') {
+      if (this.autocomplete.onInlineKeyDown(event)) {
+        return;
+      } else if (keyboardEvent.key === 'ArrowUp') {
         keyboardEvent.preventDefault();
         const result = inline.moveCaretUp();
         if (result !== true) {
@@ -230,7 +235,10 @@ export class Editor extends LitElement {
 
     const finishEditing = inline.node.viewModel.tree.edit();
     try {
-      if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) return;
+      if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
+        this.autocomplete.abort();
+        return;
+      }
       let newText;
       let startIndex;
       let oldEndIndex;
@@ -245,6 +253,7 @@ export class Editor extends LitElement {
         if (inputEvent.inputType === 'insertReplacementText' ||
             inputEvent.inputType === 'insertFromPaste') {
           this.triggerPaste(inline, inline.node, {startIndex, oldEndIndex});
+          this.autocomplete.abort();
           return;
         } else if (inputEvent.inputType === 'deleteByCut') {
           newText = '';
@@ -268,6 +277,7 @@ export class Editor extends LitElement {
       };
 
       this.editInlineNode(inline.node, edit, cast(inline.hostContext));
+      this.autocomplete.onInlineEdit(inline, newText, newEndIndex);
     } finally {
       finishEditing();
     }
@@ -510,12 +520,6 @@ function maybeMergeContentInto(
     return true;
   }
   return false;
-}
-
-function focusNode(context: HostContext, node: ViewModelNode, offset?: number) {
-  context.focusNode = node;
-  context.focusOffset = offset;
-  node.viewModel.observe.notify();
 }
 
 function unindent(node: ViewModelNode, root: ViewModelNode) {

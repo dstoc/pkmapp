@@ -22,3 +22,9 @@ export type HostContext = {
   root?: ViewModelNode;
 };
 export const hostContext = createContext<HostContext|undefined>('hostContext');
+
+export function focusNode(context: HostContext, node: ViewModelNode, offset?: number) {
+  context.focusNode = node;
+  context.focusOffset = offset;
+  node.viewModel.observe.notify();
+}
