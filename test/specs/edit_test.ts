@@ -187,4 +187,30 @@ describe('main', () => {
            `* a\n`,
            ));
   });
+  describe('links', () => {
+    it('automatically inserts closing `]`',
+       inputOutputTest(
+           input`[test`,
+           `[test]
+            `,
+           ));
+    it('doesn\'t insert duplicate `]`',
+       inputOutputTest(
+           input`[]`,
+           `[]
+            `,
+           ));
+    it('completes suggestions with <Tab>',
+       inputOutputTest(
+           input`[te${['Tab']}`,
+           `[test]
+            `,
+           ));
+    it('accepts freeform links',
+       inputOutputTest(
+           input`[doesnt exist${['Tab']}`,
+           `[doesnt exist]
+            `,
+           ));
+  });
 });

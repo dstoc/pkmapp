@@ -14,10 +14,10 @@
 
 import './markdown/block-render.js';
 import './editor.js';
-import './command-palette.js';
+import './command-palette-dialog.js';
 
 import {libraryContext} from './app-context.js';
-import {CommandPalette} from './command-palette.js';
+import {CommandPaletteDialog} from './command-palette-dialog.js';
 import {contextProvider} from './deps/lit-labs-context.js';
 import {customElement, html, LitElement, query, render, state} from './deps/lit.js';
 import {Editor} from './editor.js';
@@ -30,7 +30,7 @@ document.adoptedStyleSheets = [...styles];
 @customElement('pkm-app')
 export class PkmApp extends LitElement {
   @query('pkm-editor') editor!: Editor;
-  @query('pkm-command-palette') commandPalette!: CommandPalette;
+  @query('pkm-command-palette-dialog') commandPalette!: CommandPaletteDialog;
   @contextProvider({context: libraryContext}) @state() library!: Library;
   constructor() {
     super();
@@ -54,7 +54,7 @@ export class PkmApp extends LitElement {
     }
     return html`
       <pkm-editor></pkm-editor>
-      <pkm-command-palette></pkm-command-palette>
+      <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
   }
   override async connectedCallback() {

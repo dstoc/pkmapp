@@ -223,6 +223,9 @@ export class MarkdownTree {
   }
 
   state: 'editing'|'post-edit'|'idle' = 'idle';
+  private editCount = 0;
+  private editStartVersion = 0;
+  private editResumeObserve: () => void = () => void 0;
   root: ViewModelNode;
   readonly observe = new Observe(this);
   removed: Set<ViewModelNode> = new Set();
@@ -235,40 +238,46 @@ export class MarkdownTree {
   }
 
   edit() {
-    assert(this.state === 'idle');
-    const startVersion = this.root.viewModel.version;
-    const resumeObserve = this.observe.suspend();
-    this.state = 'editing';
-    this.removed.clear();
-    return () => {
-      normalizeTree(this);
-      const removedRoots = new Set<ViewModelNode>();
-      for (const node of this.removed.values()) {
-        if (!node.viewModel.parent) {
-          removedRoots.add(node);
-        }
+    if (this.state === 'idle') { 
+      this.editStartVersion = this.root.viewModel.version;
+      this.editResumeObserve = this.observe.suspend();
+      this.state = 'editing';
+      this.removed.clear();
+    }
+    this.editCount++;
+    return () => this.finishEdit();
+  }
+  private finishEdit() {
+    assert(this.state === 'editing');
+    this.editCount--;
+    if (this.editCount > 0) return;
+    normalizeTree(this);
+    const removedRoots = new Set<ViewModelNode>();
+    for (const node of this.removed.values()) {
+      if (!node.viewModel.parent) {
+        removedRoots.add(node);
       }
-      this.state = 'post-edit';
-      for (const root of removedRoots.values()) {
-        for (const node of dfs(root)) {
-          node.viewModel.connected = false;
-          this.delegate?.postEditUpdate(node, 'disconnected');
-        }
+    }
+    this.state = 'post-edit';
+    for (const root of removedRoots.values()) {
+      for (const node of dfs(root)) {
+        node.viewModel.connected = false;
+        this.delegate?.postEditUpdate(node, 'disconnected');
       }
-      for (const node of dfs(this.root)) {
-        if (!node.viewModel.connected) {
-          node.viewModel.connected = true;
-          this.delegate?.postEditUpdate(node, 'connected');
-        } else if (node.viewModel.version > startVersion) {
-          this.delegate?.postEditUpdate(node, 'changed');
-        }
+    }
+    for (const node of dfs(this.root)) {
+      if (!node.viewModel.connected) {
+        node.viewModel.connected = true;
+        this.delegate?.postEditUpdate(node, 'connected');
+      } else if (node.viewModel.version > this.editStartVersion) {
+        this.delegate?.postEditUpdate(node, 'changed');
       }
-      this.state = 'idle';
-      if (this.root.viewModel.version > startVersion) {
-        this.observe.notify();
-      }
-      resumeObserve();
-    };
+    }
+    this.state = 'idle';
+    if (this.root.viewModel.version > this.editStartVersion) {
+      this.observe.notify();
+    }
+    this.editResumeObserve();
   }
 
   private addDom<T>(

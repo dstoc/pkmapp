@@ -110,7 +110,7 @@ export class FileSystemLibrary implements Library {
       get aliases() { return [name.substring(0, name.length - 3)]; }
       postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed') {
         if (node.type === 'paragraph') {
-          library.backLinks.postEditUpdate(node as InlineViewModelNode);
+          library.backLinks.postEditUpdate(node as InlineViewModelNode, change);
         }
       }
       async refresh() {

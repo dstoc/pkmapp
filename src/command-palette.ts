@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {css, customElement, html, LitElement, query, state} from './deps/lit.js';
+import {css, customElement, html, LitElement, query, state, property} from './deps/lit.js';
 
 export interface Argument {
   readonly description: string;
+  // TODO: Replace with commands+freeform command.
   suggestions(): Promise<string[]>;
   validate(argument: string): boolean;
 }
@@ -28,26 +29,11 @@ export interface Command {
 
 @customElement('pkm-command-palette')
 export class CommandPalette extends LitElement {
+  @property({attribute: true}) noHeader = false;
   @state() activeIndex = 0;
-  @query('dialog') dialog!: HTMLDialogElement;
   @query('input') input!: HTMLInputElement;
   static override get styles() {
     return css`
-      dialog[open] {
-        color: var(--root-color);
-        margin-top: 50px;
-        background: red;
-        background: var(--pkm-dialog-bgcolor);
-        border: 3px solid var(--md-accent-color);
-        border-radius: 10px;
-        width: 700px;
-        display: grid;
-        padding: 0;
-      }
-      dialog::backdrop {
-        backdrop-filter: blur(3px);
-        background: rgba(128,128,128,0.2);
-      }
       input, .item {
         border: none;
         color: var(--root-color);
@@ -64,6 +50,12 @@ export class CommandPalette extends LitElement {
         height: 1px;
         background: var(--md-accent-color);
         opacity: 0.25;
+      }
+      :host-context([no-header]) input {
+        display: none;
+      }
+      :host-context([no-header]) #separator {
+        display: none;
       }
       .item {
         padding-top: 5px;
@@ -100,38 +92,36 @@ export class CommandPalette extends LitElement {
     this.activeIndex =
         Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
     return html`
-      <dialog>
-        <input
-            type=text
-            @keydown=${this.handleInputKeyDown}
-            @input=${() => this.requestUpdate()}
-            placeholder=${
-        this.pendingCommand?.description ?? 'Search commands...'}></input>
-        <div id=separator></div>
-        <div id=items>
-          ${
-        this.activeItems.map(
-            (item, idx) => html`
-          <div
-              class=item
-              ?data-active=${idx === this.activeIndex}
-              @click=${this.handleItemClick}
-              @pointermove=${() => this.activeIndex = idx}>${
-                item.description}</div>
-          `)}
-        </div>
-      </dialog>
+      <input
+          type=text
+          @keydown=${this.handleInputKeyDown}
+          @input=${() => this.requestUpdate()}
+          placeholder=${
+      this.pendingCommand?.description ?? 'Search commands...'}></input>
+      <div id=separator></div>
+      <div id=items>
+        ${
+      this.activeItems.map(
+          (item, idx) => html`
+        <div
+            class=item
+            ?data-active=${idx === this.activeIndex}
+            @click=${this.handleItemClick}
+            @pointermove=${() => this.activeIndex = idx}>${
+              item.description}</div>
+        `)}
+      </div>
     `;
   }
   private handleInputKeyDown(e: KeyboardEvent) {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        this.activeIndex++;
+        this.next();
         return;
       case 'ArrowUp':
         e.preventDefault();
-        this.activeIndex--;
+        this.previous();
         return;
       case 'Enter':
         e.preventDefault();
@@ -146,39 +136,52 @@ export class CommandPalette extends LitElement {
     this.activeSearch = undefined;
     this.activeItems = [];
   }
-  private async commit() {
+  private handleItemClick() {
+    this.commit();
+  }
+  setInput(input: string) {
+    this.input.value = input;
+    this.requestUpdate();
+  }
+  async commit() {
     const selected = this.activeItems[this.activeIndex];
     if (selected?.argument) {
       // Made a selection, need to complete argument.
-      const argument = selected.argument;
-      this.reset();
-      this.pendingCommand = selected;
-      this.items = [];
-      const items = (await argument.suggestions()).map((description) => ({
-                                                         description,
-                                                         async execute() {},
-                                                       }));
-      this.items = items;
+      this.triggerArgument(selected);
     } else if (this.pendingCommand) {
       // Argument completion.
       const argument = selected ? selected.description : this.activeSearch;
       if (!this.pendingCommand.argument!.validate(argument ?? '')) return;
       this.pendingCommand.execute(argument);
-      this.dialog.close();
+      this.dispatchEvent(new CustomEvent('commit'))
     } else if (selected) {
       // Made a selection, no argument needed.
       selected.execute();
-      this.dialog.close();
+      this.dispatchEvent(new CustomEvent('commit'))
     }
   }
-  private handleItemClick() {
-    this.commit();
-  }
-  trigger(commands: Command[]) {
-    this.dialog.showModal();
+  async triggerArgument(selected: Command) {
+    const argument = selected.argument!;
     this.reset();
+    this.pendingCommand = selected;
+    this.items = [];
+    const items = (await argument.suggestions()).map((description) => ({
+                                                       description,
+                                                       async execute() {},
+                                                     }));
+    this.items = items;
+  }
+  trigger(commands: Command[], pending?: Command) {
+    this.reset();
+    this.pendingCommand = pending;
     this.items = commands;
     this.requestUpdate();
+  }
+  next() {
+    this.activeIndex++;
+  }
+  previous() {
+    this.activeIndex--;
   }
 }
 
