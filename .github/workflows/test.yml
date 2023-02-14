@@ -58,3 +58,10 @@ jobs:
           npm run serve &
           sleep 5 &&
           npm run test
+      - name: 'Upload test logs'
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-logs
+          path: test/logs/*
+          retention-days: 5
