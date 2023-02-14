@@ -18,12 +18,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 import './markdown/block-render.js';
+import './autocomplete.js';
 import { libraryContext } from './app-context.js';
 import { assert, cast } from './asserts.js';
 import { contextProvided } from './deps/lit-labs-context.js';
 import { css, customElement, html, LitElement, property, query, state } from './deps/lit.js';
 import { parseBlocks } from './markdown/block-parser.js';
 import { serializeToString } from './markdown/block-serializer.js';
+import { focusNode } from './markdown/host-context.js';
 import { normalizeTree } from './markdown/normalize.js';
 import { ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousEditable, reverseDfs, swapNodes } from './markdown/view-model-util.js';
 import { Observer, Observers } from './observe.js';
@@ -64,7 +66,8 @@ let Editor = class Editor extends LitElement {
       @inline-input=${this.onInlineInput}
       @inline-link-click=${this.onInlineLinkClick}
       @inline-keydown=${this.onInlineKeyDown}></md-block-render>
-    </div>`;
+    </div>
+    <pkm-autocomplete></pkm-autocomplete>`;
     }
     async connectedCallback() {
         super.connectedCallback();
@@ -97,11 +100,15 @@ let Editor = class Editor extends LitElement {
     onInlineLinkClick({ detail: { destination }, }) {
         this.load(destination);
     }
-    onInlineKeyDown({ detail: { inline, node, keyboardEvent }, }) {
+    onInlineKeyDown(event) {
+        const { detail: { inline, node, keyboardEvent } } = event;
         const finishEditing = node.viewModel.tree.edit();
         try {
             assert(inline.node);
-            if (keyboardEvent.key === 'ArrowUp') {
+            if (this.autocomplete.onInlineKeyDown(event)) {
+                return;
+            }
+            else if (keyboardEvent.key === 'ArrowUp') {
                 keyboardEvent.preventDefault();
                 const result = inline.moveCaretUp();
                 if (result !== true) {
@@ -221,8 +228,10 @@ let Editor = class Editor extends LitElement {
             return;
         const finishEditing = inline.node.viewModel.tree.edit();
         try {
-            if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext)))
+            if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
+                this.autocomplete.abort();
                 return;
+            }
             let newText;
             let startIndex;
             let oldEndIndex;
@@ -237,6 +246,7 @@ let Editor = class Editor extends LitElement {
                 if (inputEvent.inputType === 'insertReplacementText' ||
                     inputEvent.inputType === 'insertFromPaste') {
                     this.triggerPaste(inline, inline.node, { startIndex, oldEndIndex });
+                    this.autocomplete.abort();
                     return;
                 }
                 else if (inputEvent.inputType === 'deleteByCut') {
@@ -262,6 +272,7 @@ let Editor = class Editor extends LitElement {
                 newEndIndex,
             };
             this.editInlineNode(inline.node, edit, cast(inline.hostContext));
+            this.autocomplete.onInlineEdit(inline, newText, newEndIndex);
         }
         finally {
             finishEditing();
@@ -334,6 +345,17 @@ let Editor = class Editor extends LitElement {
                         }),
                     ]);
                 },
+            },
+            {
+                description: 'Backlinks',
+                argument: {
+                    description: 'Open...',
+                    suggestions: async () => {
+                        return this.library.backLinks.getBacklinksByDocument(this.document, this.library);
+                    },
+                    validate: () => true,
+                },
+                execute: (file) => this.load(file),
             },
             ...activeNode && startIndex !== undefined && endIndex !== undefined ? [{
                     description: 'Paste as markdown',
@@ -444,6 +466,9 @@ __decorate([
 __decorate([
     query('md-block-render')
 ], Editor.prototype, "markdownRenderer", void 0);
+__decorate([
+    query('pkm-autocomplete')
+], Editor.prototype, "autocomplete", void 0);
 Editor = __decorate([
     customElement('pkm-editor')
 ], Editor);
@@ -513,11 +538,6 @@ function maybeMergeContentInto(node, target, context) {
         return true;
     }
     return false;
-}
-function focusNode(context, node, offset) {
-    context.focusNode = node;
-    context.focusOffset = offset;
-    node.viewModel.observe.notify();
 }
 function unindent(node, root) {
     const { ancestor: listItem, path } = findAncestor(node, root, 'list-item');

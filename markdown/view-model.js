@@ -16,11 +16,13 @@ import { parseBlocks } from './block-parser.js';
 import { assert, cast } from '../asserts.js';
 import { Observe } from '../observe.js';
 import { normalizeTree } from './normalize.js';
+import { dfs } from './view-model-util.js';
 class ViewModel {
-    constructor(self, tree, parent, childIndex) {
+    constructor(self, tree, parent, childIndex, connected = false) {
         this.self = self;
         this.tree = tree;
         this.parent = parent;
+        this.connected = connected;
         this.version = 0;
         this.initialize(parent, childIndex);
         this.observe = new Observe(this.self, this.tree.observe);
@@ -66,9 +68,16 @@ class ViewModel {
         }
         const index = this.parent.children.indexOf(this.self);
         this.parent.children.splice(index, 1);
+        if (!this.previousSibling)
+            this.parent.viewModel.firstChild = this.nextSibling;
+        if (!this.nextSibling)
+            this.parent.viewModel.lastChild = this.previousSibling;
         const parent = this.parent;
         this.signalMutation(false);
         this.parent = undefined;
+        this.nextSibling = undefined;
+        this.previousSibling = undefined;
+        this.tree.removed.add(this.self);
         parent.viewModel.observe.notify();
     }
     insertBefore(parent, nextSibling) {
@@ -198,9 +207,14 @@ export class InlineViewModel extends ViewModel {
     }
 }
 export class MarkdownTree {
-    constructor(root) {
+    constructor(root, delegate) {
+        this.delegate = delegate;
         this.state = 'idle';
+        this.editCount = 0;
+        this.editStartVersion = 0;
+        this.editResumeObserve = () => void 0;
         this.observe = new Observe(this);
+        this.removed = new Set();
         this.root = this.addDom(root);
     }
     add(node) {
@@ -210,18 +224,48 @@ export class MarkdownTree {
         return this.addDom(node);
     }
     edit() {
-        assert(this.state === 'idle');
-        const startVersion = this.root.viewModel.version;
-        const resumeObserve = this.observe.suspend();
-        this.state = 'editing';
-        return () => {
-            normalizeTree(this);
-            this.state = 'idle';
-            if (this.root.viewModel.version > startVersion) {
-                this.observe.notify();
+        if (this.state === 'idle') {
+            this.editStartVersion = this.root.viewModel.version;
+            this.editResumeObserve = this.observe.suspend();
+            this.state = 'editing';
+            this.removed.clear();
+        }
+        this.editCount++;
+        return () => this.finishEdit();
+    }
+    finishEdit() {
+        assert(this.state === 'editing');
+        this.editCount--;
+        if (this.editCount > 0)
+            return;
+        normalizeTree(this);
+        const removedRoots = new Set();
+        for (const node of this.removed.values()) {
+            if (!node.viewModel.parent) {
+                removedRoots.add(node);
             }
-            resumeObserve();
-        };
+        }
+        this.state = 'post-edit';
+        for (const root of removedRoots.values()) {
+            for (const node of dfs(root)) {
+                node.viewModel.connected = false;
+                this.delegate?.postEditUpdate(node, 'disconnected');
+            }
+        }
+        for (const node of dfs(this.root)) {
+            if (!node.viewModel.connected) {
+                node.viewModel.connected = true;
+                this.delegate?.postEditUpdate(node, 'connected');
+            }
+            else if (node.viewModel.version > this.editStartVersion) {
+                this.delegate?.postEditUpdate(node, 'changed');
+            }
+        }
+        this.state = 'idle';
+        if (this.root.viewModel.version > this.editStartVersion) {
+            this.observe.notify();
+        }
+        this.editResumeObserve();
     }
     addDom(node, parent, childIndex) {
         const result = node;

@@ -16,4 +16,20 @@ await Parser.init();
 const inline = await Parser.Language.load('tree-sitter-markdown_inline.wasm');
 export const parser = new Parser();
 parser.setLanguage(inline);
+export function* dfs(node) {
+    function next(next) {
+        return next && (node = next);
+    }
+    do {
+        yield node;
+        if (next(node.firstChild))
+            continue;
+        if (next(node.nextSibling))
+            continue;
+        do {
+            if (!next(node.parent))
+                return;
+        } while (!next(node.nextSibling));
+    } while (true);
+}
 //# sourceMappingURL=inline-parser.js.map

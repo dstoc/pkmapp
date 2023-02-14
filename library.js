@@ -15,6 +15,7 @@ import { parseBlocks } from './markdown/block-parser.js';
 import { serializeToString } from './markdown/block-serializer.js';
 import { MarkdownTree } from './markdown/view-model.js';
 import { Observe } from './observe.js';
+import { BackLinks } from './backlinks.js';
 async function* allFiles(prefix, directory) {
     for await (const entry of directory.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
@@ -37,6 +38,7 @@ export class FileSystemLibrary {
     constructor(directory) {
         this.directory = directory;
         this.cache = new Map();
+        this.backLinks = new BackLinks();
     }
     async getAllNames() {
         const result = [];
@@ -44,6 +46,14 @@ export class FileSystemLibrary {
             result.push(name);
         }
         return result;
+    }
+    getDocumentByTree(tree) {
+        for (const document of this.cache.values()) {
+            if (document.tree === tree) {
+                return document;
+            }
+        }
+        return undefined;
     }
     async getDocument(name, forceRefresh = false) {
         const load = async () => {
@@ -60,8 +70,6 @@ export class FileSystemLibrary {
             }
             return parseBlocks(text);
         };
-        const directory = this.directory;
-        const node = await load();
         const cached = this.cache.get(name);
         if (cached) {
             if (forceRefresh) {
@@ -69,13 +77,21 @@ export class FileSystemLibrary {
             }
             return cached;
         }
+        const node = await load();
+        const library = this;
         const result = new class {
-            constructor(tree = new MarkdownTree(node)) {
-                this.tree = tree;
+            constructor() {
                 this.dirty = false;
                 this.observe = new Observe(this);
                 this.pendingModifications = 0;
+                this.tree = new MarkdownTree(node, this);
                 this.tree.observe.add(() => this.markDirty());
+            }
+            get aliases() { return [name.substring(0, name.length - 3)]; }
+            postEditUpdate(node, change) {
+                if (node.type === 'paragraph') {
+                    library.backLinks.postEditUpdate(node, change);
+                }
             }
             async refresh() {
                 // this.tree.root.viewModel.remove();
@@ -85,7 +101,7 @@ export class FileSystemLibrary {
             async save() {
                 const text = serializeToString(this.tree.root);
                 const fileName = name;
-                const handle = await getFileHandleFromPath(directory, fileName, true);
+                const handle = await getFileHandleFromPath(library.directory, fileName, true);
                 const stream = await handle.createWritable();
                 await stream.write(text);
                 await stream.close();

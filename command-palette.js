@@ -17,31 +17,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { css, customElement, html, LitElement, query, state } from './deps/lit.js';
+import { css, customElement, html, LitElement, query, state, property } from './deps/lit.js';
 let CommandPalette = class CommandPalette extends LitElement {
     constructor() {
         super(...arguments);
+        this.noHeader = false;
         this.activeIndex = 0;
         this.items = [];
         this.activeItems = [];
     }
     static get styles() {
         return css `
-      dialog[open] {
-        color: var(--root-color);
-        margin-top: 50px;
-        background: red;
-        background: var(--pkm-dialog-bgcolor);
-        border: 3px solid var(--md-accent-color);
-        border-radius: 10px;
-        width: 700px;
-        display: grid;
-        padding: 0;
-      }
-      dialog::backdrop {
-        backdrop-filter: blur(3px);
-        background: rgba(128,128,128,0.2);
-      }
       input, .item {
         border: none;
         color: var(--root-color);
@@ -58,6 +44,12 @@ let CommandPalette = class CommandPalette extends LitElement {
         height: 1px;
         background: var(--md-accent-color);
         opacity: 0.25;
+      }
+      :host-context([no-header]) input {
+        display: none;
+      }
+      :host-context([no-header]) #separator {
+        display: none;
       }
       .item {
         padding-top: 5px;
@@ -86,34 +78,32 @@ let CommandPalette = class CommandPalette extends LitElement {
         this.activeIndex =
             Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
         return html `
-      <dialog>
-        <input
-            type=text
-            @keydown=${this.handleInputKeyDown}
-            @input=${() => this.requestUpdate()}
-            placeholder=${this.pendingCommand?.description ?? 'Search commands...'}></input>
-        <div id=separator></div>
-        <div id=items>
-          ${this.activeItems.map((item, idx) => html `
-          <div
-              class=item
-              ?data-active=${idx === this.activeIndex}
-              @click=${this.handleItemClick}
-              @pointermove=${() => this.activeIndex = idx}>${item.description}</div>
-          `)}
-        </div>
-      </dialog>
+      <input
+          type=text
+          @keydown=${this.handleInputKeyDown}
+          @input=${() => this.requestUpdate()}
+          placeholder=${this.pendingCommand?.description ?? 'Search commands...'}></input>
+      <div id=separator></div>
+      <div id=items>
+        ${this.activeItems.map((item, idx) => html `
+        <div
+            class=item
+            ?data-active=${idx === this.activeIndex}
+            @click=${this.handleItemClick}
+            @pointermove=${() => this.activeIndex = idx}>${item.description}</div>
+        `)}
+      </div>
     `;
     }
     handleInputKeyDown(e) {
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
-                this.activeIndex++;
+                this.next();
                 return;
             case 'ArrowUp':
                 e.preventDefault();
-                this.activeIndex--;
+                this.previous();
                 return;
             case 'Enter':
                 e.preventDefault();
@@ -128,19 +118,18 @@ let CommandPalette = class CommandPalette extends LitElement {
         this.activeSearch = undefined;
         this.activeItems = [];
     }
+    handleItemClick() {
+        this.commit();
+    }
+    setInput(input) {
+        this.input.value = input;
+        this.requestUpdate();
+    }
     async commit() {
         const selected = this.activeItems[this.activeIndex];
         if (selected?.argument) {
             // Made a selection, need to complete argument.
-            const argument = selected.argument;
-            this.reset();
-            this.pendingCommand = selected;
-            this.items = [];
-            const items = (await argument.suggestions()).map((description) => ({
-                description,
-                async execute() { },
-            }));
-            this.items = items;
+            this.triggerArgument(selected);
         }
         else if (this.pendingCommand) {
             // Argument completion.
@@ -148,30 +137,44 @@ let CommandPalette = class CommandPalette extends LitElement {
             if (!this.pendingCommand.argument.validate(argument ?? ''))
                 return;
             this.pendingCommand.execute(argument);
-            this.dialog.close();
+            this.dispatchEvent(new CustomEvent('commit'));
         }
         else if (selected) {
             // Made a selection, no argument needed.
             selected.execute();
-            this.dialog.close();
+            this.dispatchEvent(new CustomEvent('commit'));
         }
     }
-    handleItemClick() {
-        this.commit();
-    }
-    trigger(commands) {
-        this.dialog.showModal();
+    async triggerArgument(selected) {
+        const argument = selected.argument;
         this.reset();
+        this.pendingCommand = selected;
+        this.items = [];
+        const items = (await argument.suggestions()).map((description) => ({
+            description,
+            async execute() { },
+        }));
+        this.items = items;
+    }
+    trigger(commands, pending) {
+        this.reset();
+        this.pendingCommand = pending;
         this.items = commands;
         this.requestUpdate();
     }
+    next() {
+        this.activeIndex++;
+    }
+    previous() {
+        this.activeIndex--;
+    }
 };
+__decorate([
+    property({ attribute: true })
+], CommandPalette.prototype, "noHeader", void 0);
 __decorate([
     state()
 ], CommandPalette.prototype, "activeIndex", void 0);
-__decorate([
-    query('dialog')
-], CommandPalette.prototype, "dialog", void 0);
 __decorate([
     query('input')
 ], CommandPalette.prototype, "input", void 0);

@@ -13,4 +13,9 @@
 // limitations under the License.
 import { createContext } from '../deps/lit-labs-context.js';
 export const hostContext = createContext('hostContext');
+export function focusNode(context, node, offset) {
+    context.focusNode = node;
+    context.focusOffset = offset;
+    node.viewModel.observe.notify();
+}
 //# sourceMappingURL=host-context.js.map

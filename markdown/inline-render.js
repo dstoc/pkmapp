@@ -240,6 +240,13 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         const selection = this.getRootNode().getSelection();
         return MarkdownInline_1.getSelectionRange(selection);
     }
+    getCaretPosition() {
+        let { x, y, height } = this.getRootNode().getSelection().getRangeAt(0).getBoundingClientRect();
+        if (x === 0 && y === 0) {
+            ({ x, y, height } = this.getBoundingClientRect());
+        }
+        return { x, y: y + height };
+    }
     onKeyDown(e) {
         const inlineKeydown = {
             inline: this,

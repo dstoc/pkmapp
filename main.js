@@ -19,7 +19,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import './markdown/block-render.js';
 import './editor.js';
-import './command-palette.js';
+import './command-palette-dialog.js';
 import { libraryContext } from './app-context.js';
 import { contextProvider } from './deps/lit-labs-context.js';
 import { customElement, html, LitElement, query, render, state } from './deps/lit.js';
@@ -50,7 +50,7 @@ let PkmApp = class PkmApp extends LitElement {
         }
         return html `
       <pkm-editor></pkm-editor>
-      <pkm-command-palette></pkm-command-palette>
+      <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
     }
     async connectedCallback() {
@@ -80,7 +80,7 @@ __decorate([
     query('pkm-editor')
 ], PkmApp.prototype, "editor", void 0);
 __decorate([
-    query('pkm-command-palette')
+    query('pkm-command-palette-dialog')
 ], PkmApp.prototype, "commandPalette", void 0);
 __decorate([
     contextProvider({ context: libraryContext }),
