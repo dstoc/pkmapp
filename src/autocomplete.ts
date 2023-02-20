@@ -21,7 +21,7 @@ import {css, query, customElement, html, LitElement, property, state} from './de
 import {InlineKeyDown} from './markdown/inline-render.js';
 import {InlineViewModelNode} from './markdown/view-model.js';
 import {MarkdownInline} from './markdown/inline-render.js';
-import {CommandPalette} from './command-palette';
+import {Command, CommandPalette} from './command-palette';
 import {focusNode} from './markdown/host-context.js';
 import {Library} from './library.js';
 
@@ -100,6 +100,52 @@ export class Autocomplete extends LitElement {
     this.endIndex = index;
     document.addEventListener('pointerdown', () => this.abort(), {capture: true, once: true});
   }
+  private getLinkInsertionCommand(inline: MarkdownInline) {
+    const node = inline.node!;
+    const execute = async (arg?: string): Promise<Command[]> => {
+      const finish = node.viewModel.tree.edit();
+      try {
+        const newEndIndex = this.startIndex + arg!.length;
+        node.viewModel.edit({
+          startIndex: this.startIndex,
+          newEndIndex,
+          oldEndIndex: this.endIndex,
+          newText: arg!,
+        });
+        focusNode(inline.hostContext!, inline.node!, newEndIndex + 1);
+      } finally {
+        finish();
+      }
+      return [];
+    };
+    return {
+      execute: async () => (await this.library!.getAllNames()).map(name => ({
+        description: name,
+        execute: () => execute(name), 
+      })),
+      executeFreeform: execute,
+      description: 'Link',
+    };
+  }
+  getSlashCommandWrapper(inline: MarkdownInline, command: Command) {
+    const node = inline.node!;
+    return {
+      execute: async () => {
+        node.viewModel.edit({
+          // TODO: numbers are too contextual
+          startIndex: this.startIndex - 1,
+          newEndIndex: this.startIndex + 2,
+          oldEndIndex: this.endIndex,
+          newText: '[]',
+        });
+        this.endIndex = this.startIndex;
+        focusNode(inline.hostContext!, node!, this.startIndex);
+        return command.execute();
+      },
+      description: command.description,
+    };
+  }
+
   onInlineEdit(inline: MarkdownInline, newText: string, cursorIndex: number) {
     const node = inline.node;
     if (!node) return;
@@ -115,31 +161,10 @@ export class Autocomplete extends LitElement {
           oldEndIndex: cursorIndex,
           newText: ']',
         });
-        this.palette.triggerArgument({
-          description: '',
-          argument: {
-            description: '',
-            suggestions: async () => this.library!.getAllNames(),
-            validate: () => true,
-          },
-          execute: async (arg?: string) => {
-            const finish = node.viewModel.tree.edit();
-            try {
-              const newEndIndex = this.startIndex + arg!.length;
-              node.viewModel.edit({
-                startIndex: this.startIndex,
-                newEndIndex,
-                oldEndIndex: this.endIndex,
-                newText: arg!,
-              });
-              focusNode(inline.hostContext!, inline.node!, newEndIndex + 1);
-            } finally {
-              finish();
-            }
-          },
-        });
+        this.palette.triggerArgument(this.getLinkInsertionCommand(inline));
       } else if (newText === '/') {
-        // TODO: activate.
+        this.palette.trigger([this.getSlashCommandWrapper(inline, this.getLinkInsertionCommand(inline))]);
+        this.activate(inline, cursorIndex);
       }
     } else if (newText === ']') {
       const finish = node.viewModel.tree.edit();

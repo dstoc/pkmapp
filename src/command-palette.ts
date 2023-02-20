@@ -14,17 +14,10 @@
 
 import {css, customElement, html, LitElement, query, state, property} from './deps/lit.js';
 
-export interface Argument {
-  readonly description: string;
-  // TODO: Replace with commands+freeform command.
-  suggestions(): Promise<string[]>;
-  validate(argument: string): boolean;
-}
-
 export interface Command {
   readonly description: string;
-  readonly argument?: Argument;
-  execute(argument?: string): Promise<void>;
+  execute(): Promise<Command[]>;
+  readonly executeFreeform?: (argument: string) => Promise<Command[]>;
 }
 
 @customElement('pkm-command-palette')
@@ -145,31 +138,21 @@ export class CommandPalette extends LitElement {
   }
   async commit() {
     const selected = this.activeItems[this.activeIndex];
-    if (selected?.argument) {
-      // Made a selection, need to complete argument.
-      this.triggerArgument(selected);
-    } else if (this.pendingCommand) {
-      // Argument completion.
-      const argument = selected ? selected.description : this.activeSearch;
-      if (!this.pendingCommand.argument!.validate(argument ?? '')) return;
-      this.pendingCommand.execute(argument);
-      this.dispatchEvent(new CustomEvent('commit'))
-    } else if (selected) {
-      // Made a selection, no argument needed.
-      selected.execute();
+    let next: Command[] = [];
+    
+    if (selected) {
+      next = await selected.execute();
+    } else if (this.pendingCommand?.executeFreeform && this.activeSearch !== undefined) {
+      next = await this.pendingCommand.executeFreeform(this.activeSearch);
+    }
+    if (next.length) {
+      this.trigger(next, selected);
+    } else {
       this.dispatchEvent(new CustomEvent('commit'))
     }
   }
   async triggerArgument(selected: Command) {
-    const argument = selected.argument!;
-    this.reset();
-    this.pendingCommand = selected;
-    this.items = [];
-    const items = (await argument.suggestions()).map((description) => ({
-                                                       description,
-                                                       async execute() {},
-                                                     }));
-    this.items = items;
+    this.trigger(await selected.execute(), selected)
   }
   trigger(commands: Command[], pending?: Command) {
     this.reset();
