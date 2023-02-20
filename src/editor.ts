@@ -123,9 +123,10 @@ export class Editor extends LitElement {
       assert(inline.node);
       if (this.autocomplete.onInlineKeyDown(event)) {
         return;
-      } else if (keyboardEvent.key === 'ArrowUp') {
+      } else if (['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key)) {
         keyboardEvent.preventDefault();
-        const result = inline.moveCaretUp();
+        const granularity = keyboardEvent.key === 'ArrowUp' ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
+        const result = inline.moveCaret(keyboardEvent.shiftKey ? 'extend' : 'move', 'backward', granularity);
         if (result !== true) {
           function focusPrevious(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
             while (true) {
@@ -143,9 +144,10 @@ export class Editor extends LitElement {
           }
           focusPrevious(inline, node, result);
         }
-      } else if (keyboardEvent.key === 'ArrowDown') {
+      } else if (['ArrowDown', 'ArrowRight'].includes(keyboardEvent.key)) {
         keyboardEvent.preventDefault();
-        const result = inline.moveCaretDown();
+        const granularity = keyboardEvent.key === 'ArrowDown' ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
+        const result = inline.moveCaret(keyboardEvent.shiftKey ? 'extend' : 'move', 'forward', granularity);
         if (result !== true) {
           function focusNext(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
             while (true) {

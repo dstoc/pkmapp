@@ -228,42 +228,47 @@ export class MarkdownInline extends LitElement {
         selection.anchorNode!, selection.anchorOffset);
     const end = MarkdownInline.nodeOffsetToInputPoint(
         selection.focusNode!, selection.focusOffset);
-    return {start, end};
+    return start.index <= end.index ? {start, end} : {start: end, end: start};
   }
-  /**
-   * Moves the caret up one line. Returns true if it does, otherwise returns the
-   * index of the caret position on the first line.
-   */
-  moveCaretUp(): true|number {
+  moveCaret(alter: 'move'|'extend', direction: 'backward'|'forward', granularity: 'line'|'character'|'word'): true|number {
     const selection = (this.getRootNode()! as Document).getSelection()!;
-    const initialRange = selection.getRangeAt(0);
-    const {start: offsetStart} = MarkdownInline.getSelectionRange(selection);
-    selection.modify('move', 'backward', 'lineboundary');
-    const {start: lineStart} = MarkdownInline.getSelectionRange(selection);
+    const focusNode = selection.focusNode!;
+    const focusOffset = selection.focusOffset;
+    const initial = MarkdownInline.nodeOffsetToInputPoint(selection.focusNode!, selection.focusOffset);
+    const focus = document.createRange();
+    focus.setStart(selection.focusNode!, selection.focusOffset);
+    focus.collapse(true);
+    const anchor = document.createRange();
+    anchor.setStart(selection.anchorNode!, selection.anchorOffset);
+    anchor.collapse(true);
+
+    // Create a selection that spans the current line.
     selection.removeAllRanges();
-    selection.addRange(initialRange);
-    selection.modify('move', 'backward', 'line');
-    const {start: result} = MarkdownInline.getSelectionRange(selection);
-    return (
-        result.index < lineStart.index || offsetStart.index - lineStart.index);
-  }
-  /**
-   * Moves the caret down one line. Returns true if it does, otherwise returns
-   * the index of the caret position on the first line.
-   */
-  moveCaretDown(): true|number {
-    const selection = (this.getRootNode()! as Document).getSelection()!;
-    const initialRange = selection.getRangeAt(0);
-    const {start: offsetStart} = MarkdownInline.getSelectionRange(selection);
+    selection.addRange(focus);
     selection.modify('move', 'backward', 'lineboundary');
-    const {start: lineStart} = MarkdownInline.getSelectionRange(selection);
-    selection.modify('move', 'forward', 'lineboundary');
-    const {start: lineEnd} = MarkdownInline.getSelectionRange(selection);
+    selection.modify('extend', 'forward', 'lineboundary');
+    const line = MarkdownInline.getSelectionRange(selection);
+
+    // Find the end of the inline.
+    selection.modify('move', 'forward', 'documentboundary');
+    const end = MarkdownInline.nodeOffsetToInputPoint(selection.focusNode!, selection.focusOffset);
+
+    // Reset the selection to the initial state, then modify it based on the arguments.
     selection.removeAllRanges();
-    selection.addRange(initialRange);
-    selection.modify('move', 'forward', 'line');
-    const {start: result} = MarkdownInline.getSelectionRange(selection);
-    return result.index > lineEnd.index || offsetStart.index - lineStart.index;
+    selection.addRange(anchor);
+    selection.extend(focusNode, focusOffset);
+    selection.modify(alter, direction, granularity);
+    const result = MarkdownInline.nodeOffsetToInputPoint(selection.focusNode!, selection.focusOffset);
+
+    if (granularity === 'line') {
+      if (direction == 'backward') {
+        return result.index < line.start.index || initial.index - line.start.index;
+      } else {
+        return (result.index > line.end.index || result.index !== end.index && result.index == line.end.index) || initial.index - line.start.index;  
+      }
+    } else {
+      return result.index !== initial.index || (direction === 'backward' ? Infinity : 0);
+    }
   }
   getSelection() {
     const selection: Selection =
