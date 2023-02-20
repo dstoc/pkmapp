@@ -312,25 +312,27 @@ let Editor = class Editor extends LitElement {
         return [
             {
                 description: 'Find, Open, Create...',
-                argument: {
-                    description: 'Find or create...',
-                    suggestions: () => this.library.getAllNames(),
-                    validate: () => true,
+                execute: async () => {
+                    return (await this.library.getAllNames()).map(name => ({
+                        description: name,
+                        execute: async () => (this.load(name), []),
+                    }));
                 },
-                execute: (file) => this.load(file),
+                executeFreeform: async (file) => (this.load(file), []),
             },
             {
                 description: 'Force open',
-                argument: {
-                    description: 'Find or create...',
-                    suggestions: () => this.library.getAllNames(),
-                    validate: () => true,
+                execute: async () => {
+                    return (await this.library.getAllNames()).map(name => ({
+                        description: name,
+                        execute: async () => (this.load(name, true), []),
+                    }));
                 },
-                execute: (file) => this.load(file, true),
+                executeFreeform: async (file) => (this.load(file, true), []),
             },
             {
                 description: 'Force save',
-                execute: async () => this.document?.save(),
+                execute: async () => (this.document?.save(), [])
             },
             {
                 description: 'Copy all as markdown',
@@ -344,23 +346,23 @@ let Editor = class Editor extends LitElement {
                             [mdType]: new Blob([markdown], { type: mdType }),
                         }),
                     ]);
+                    return [];
                 },
             },
             {
                 description: 'Backlinks',
-                argument: {
-                    description: 'Open...',
-                    suggestions: async () => {
-                        return this.library.backLinks.getBacklinksByDocument(this.document, this.library);
-                    },
-                    validate: () => true,
-                },
-                execute: (file) => this.load(file),
+                execute: async () => {
+                    return this.library.backLinks.getBacklinksByDocument(this.document, this.library).map(name => ({
+                        description: name,
+                        execute: async () => (this.load(name, true), []),
+                    }));
+                }
             },
             ...activeNode && startIndex !== undefined && endIndex !== undefined ? [{
                     description: 'Paste as markdown',
                     execute: async () => {
                         this.triggerPaste(activeInline, activeNode, { startIndex, oldEndIndex: endIndex }, true);
+                        return [];
                     },
                 }] : [],
             ...inTopLevelDocument && activeNode && activeInline ? [{
@@ -368,6 +370,7 @@ let Editor = class Editor extends LitElement {
                     execute: async () => {
                         this.root = logicalContainingBlock(activeNode);
                         focusNode(cast(activeInline.hostContext), activeNode, startIndex);
+                        return [];
                     },
                 }] : [],
             ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
@@ -377,6 +380,7 @@ let Editor = class Editor extends LitElement {
                             this.root = logicalContainingBlock(this.root.viewModel.parent);
                         if (activeNode && activeInline)
                             focusNode(cast(activeInline.hostContext), activeNode, startIndex);
+                        return [];
                     },
                 }] : [],
             ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
@@ -385,6 +389,7 @@ let Editor = class Editor extends LitElement {
                         this.root = this.document?.tree.root;
                         if (activeNode)
                             focusNode(cast(activeInline.hostContext), activeNode, startIndex);
+                        return [];
                     },
                 }] : [],
             ...transclusion ? [{
@@ -394,26 +399,28 @@ let Editor = class Editor extends LitElement {
                         transclusion.node.viewModel.remove();
                         finished();
                         // TODO: focus
+                        return [];
                     },
                 }] : [],
             ...activeNode ? [{
                     description: 'Insert transclusion',
-                    argument: {
-                        description: 'Find or create...',
-                        suggestions: () => this.library.getAllNames(),
-                        validate: () => true,
-                    },
-                    execute: async (target) => {
-                        const finished = activeNode.viewModel.tree.edit();
-                        const newParagraph = activeNode.viewModel.tree.add({
-                            type: 'code-block',
-                            info: 'tc',
-                            content: target,
-                        });
-                        newParagraph.viewModel.insertBefore(cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
-                        finished();
-                        focusNode(activeInline.hostContext, newParagraph);
-                        // TODO: focus
+                    execute: async () => {
+                        return (await this.library.getAllNames()).map(target => ({
+                            description: target,
+                            execute: async () => {
+                                const finished = activeNode.viewModel.tree.edit();
+                                const newParagraph = activeNode.viewModel.tree.add({
+                                    type: 'code-block',
+                                    info: 'tc',
+                                    content: target,
+                                });
+                                newParagraph.viewModel.insertBefore(cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
+                                finished();
+                                focusNode(activeInline.hostContext, newParagraph);
+                                // TODO: focus
+                                return [];
+                            },
+                        }));
                     },
                 }] : [],
             ...transclusion ? [{
@@ -428,6 +435,7 @@ let Editor = class Editor extends LitElement {
                         newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
                         finished();
                         focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                        return [];
                     },
                 }] : [],
             ...transclusion ? [{
@@ -442,6 +450,7 @@ let Editor = class Editor extends LitElement {
                         newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
                         finished();
                         focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                        return [];
                     },
                 }] : [],
         ];

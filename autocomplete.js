@@ -95,6 +95,52 @@ let Autocomplete = class Autocomplete extends LitElement {
         this.endIndex = index;
         document.addEventListener('pointerdown', () => this.abort(), { capture: true, once: true });
     }
+    getLinkInsertionCommand(inline) {
+        const node = inline.node;
+        const execute = async (arg) => {
+            const finish = node.viewModel.tree.edit();
+            try {
+                const newEndIndex = this.startIndex + arg.length;
+                node.viewModel.edit({
+                    startIndex: this.startIndex,
+                    newEndIndex,
+                    oldEndIndex: this.endIndex,
+                    newText: arg,
+                });
+                focusNode(inline.hostContext, inline.node, newEndIndex + 1);
+            }
+            finally {
+                finish();
+            }
+            return [];
+        };
+        return {
+            execute: async () => (await this.library.getAllNames()).map(name => ({
+                description: name,
+                execute: () => execute(name),
+            })),
+            executeFreeform: execute,
+            description: 'Link',
+        };
+    }
+    getSlashCommandWrapper(inline, command) {
+        const node = inline.node;
+        return {
+            execute: async () => {
+                node.viewModel.edit({
+                    // TODO: numbers are too contextual
+                    startIndex: this.startIndex - 1,
+                    newEndIndex: this.startIndex + 2,
+                    oldEndIndex: this.endIndex,
+                    newText: '[]',
+                });
+                this.endIndex = this.startIndex;
+                focusNode(inline.hostContext, node, this.startIndex);
+                return command.execute();
+            },
+            description: command.description,
+        };
+    }
     onInlineEdit(inline, newText, cursorIndex) {
         const node = inline.node;
         if (!node)
@@ -111,33 +157,11 @@ let Autocomplete = class Autocomplete extends LitElement {
                     oldEndIndex: cursorIndex,
                     newText: ']',
                 });
-                this.palette.triggerArgument({
-                    description: '',
-                    argument: {
-                        description: '',
-                        suggestions: async () => this.library.getAllNames(),
-                        validate: () => true,
-                    },
-                    execute: async (arg) => {
-                        const finish = node.viewModel.tree.edit();
-                        try {
-                            const newEndIndex = this.startIndex + arg.length;
-                            node.viewModel.edit({
-                                startIndex: this.startIndex,
-                                newEndIndex,
-                                oldEndIndex: this.endIndex,
-                                newText: arg,
-                            });
-                            focusNode(inline.hostContext, inline.node, newEndIndex + 1);
-                        }
-                        finally {
-                            finish();
-                        }
-                    },
-                });
+                this.palette.triggerArgument(this.getLinkInsertionCommand(inline));
             }
             else if (newText === '/') {
-                // TODO: activate.
+                this.palette.trigger([this.getSlashCommandWrapper(inline, this.getLinkInsertionCommand(inline))]);
+                this.activate(inline, cursorIndex);
             }
         }
         else if (newText === ']') {

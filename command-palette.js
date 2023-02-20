@@ -127,34 +127,22 @@ let CommandPalette = class CommandPalette extends LitElement {
     }
     async commit() {
         const selected = this.activeItems[this.activeIndex];
-        if (selected?.argument) {
-            // Made a selection, need to complete argument.
-            this.triggerArgument(selected);
+        let next = [];
+        if (selected) {
+            next = await selected.execute();
         }
-        else if (this.pendingCommand) {
-            // Argument completion.
-            const argument = selected ? selected.description : this.activeSearch;
-            if (!this.pendingCommand.argument.validate(argument ?? ''))
-                return;
-            this.pendingCommand.execute(argument);
-            this.dispatchEvent(new CustomEvent('commit'));
+        else if (this.pendingCommand?.executeFreeform && this.activeSearch !== undefined) {
+            next = await this.pendingCommand.executeFreeform(this.activeSearch);
         }
-        else if (selected) {
-            // Made a selection, no argument needed.
-            selected.execute();
+        if (next.length) {
+            this.trigger(next, selected);
+        }
+        else {
             this.dispatchEvent(new CustomEvent('commit'));
         }
     }
     async triggerArgument(selected) {
-        const argument = selected.argument;
-        this.reset();
-        this.pendingCommand = selected;
-        this.items = [];
-        const items = (await argument.suggestions()).map((description) => ({
-            description,
-            async execute() { },
-        }));
-        this.items = items;
+        this.trigger(await selected.execute(), selected);
     }
     trigger(commands, pending) {
         this.reset();
