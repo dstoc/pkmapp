@@ -16,10 +16,50 @@ import {createContext} from '../deps/lit-labs-context.js';
 
 import {ViewModelNode} from './view-model.js';
 
-export type HostContext = {
+export class HostContext {
   focusNode?: ViewModelNode;
   focusOffset?: number;
   root?: ViewModelNode;
+  readonly selection = new Set<ViewModelNode>();
+  selectionAnchor?: ViewModelNode;
+  selectionFocus?: ViewModelNode;
+
+  get hasSelection() {
+    return !!this.selection.size;
+  } 
+
+  clearSelection() {
+    if (!this.selection.size) return;
+    const [...selection] = this.selection.values();
+    this.selection.clear();
+    this.selectionAnchor = undefined;
+    this.selectionFocus = undefined;
+    for (const node of selection) {
+      node.viewModel.observe.notify();
+    }
+  }
+
+  setSelection(anchor: ViewModelNode, focus: ViewModelNode) {
+    this.selectionAnchor = anchor;
+    this.selectionFocus = focus;
+    this.selection.add(anchor)
+    this.selection.add(focus)
+    anchor.viewModel.observe.notify();
+    focus.viewModel.observe.notify();
+  }
+
+  extendSelection(from: ViewModelNode, to: ViewModelNode) {
+    if (this.selection.has(to)) {
+      this.selection.delete(from);
+      if (this.selectionAnchor === from) {
+        this.selectionAnchor = to;
+      }
+      from.viewModel.observe.notify();
+    }
+    this.selection.add(to);
+    this.selectionFocus = to;
+    to.viewModel.observe.notify();
+  }
 };
 export const hostContext = createContext<HostContext|undefined>('hostContext');
 
