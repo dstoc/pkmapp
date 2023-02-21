@@ -118,6 +118,8 @@ export class Editor extends LitElement {
   }
   onInlineKeyDown(event: CustomEvent<InlineKeyDown>) {
     const {detail: {inline, node, keyboardEvent}} = event;
+    const hostContext = cast(inline.hostContext);
+    const root = cast(hostContext.root);
     const finishEditing = node.viewModel.tree.edit();
     try {
       assert(inline.node);
@@ -128,33 +130,70 @@ export class Editor extends LitElement {
         const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key) ? 'backward' : 'forward';
         const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
         const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key) ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
-        const result = inline.moveCaret(alter, direction, granularity);
+        const result = hostContext.hasSelection ? 0 : inline.moveCaret(alter, direction, granularity);
+        if (alter !== 'extend' || result === true) {
+          hostContext.clearSelection();
+        }
         if (result !== true) {
           function updateFocus(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
             while (true) {
               const next = direction === 'backward' ? findPreviousEditable(node, cast(cast(element.hostContext).root)) : findNextEditable(node, cast(cast(element.hostContext).root));
               if (next) {
                 focusNode(cast(element.hostContext), next, direction === 'backward' ? -offset : offset);
-                break;
+                return next;
               } else {
                 const transclusion = getContainingTransclusion(element);
                 if (!transclusion) return;
+                // TODO: may need to update transclusion focus logic
+                if (alter === 'extend') return transclusion.node;
                 element = transclusion;
                 node = cast(transclusion.node);
               }
             }
           }
-          updateFocus(inline, node, result);
+          const next = updateFocus(inline, node, result);
+          if (next && alter === 'extend') {
+            if (hostContext.selectionAnchor) {
+              hostContext.extendSelection(inline.node, next);
+            } else {
+              hostContext.setSelection(inline.node, next);
+            }
+          }
         }
       } else if (keyboardEvent.key === 'Tab') {
         keyboardEvent.preventDefault();
-        const {start} = inline.getSelection();
-        focusNode(cast(inline.hostContext), node, start.index);
-        if (keyboardEvent.shiftKey) {
-          unindent(node, cast(cast(inline.hostContext).root));
+        if (hostContext.hasSelection) {
+          for (const node of hostContext.selection) {
+            if (keyboardEvent.shiftKey) {
+              unindent(node, root);
+            } else {
+              indent(node, root);
+            }
+          }
+          focusNode(hostContext, hostContext.selectionFocus!, 0);
         } else {
-          indent(node, cast(cast(inline.hostContext).root));
+          const {start} = inline.getSelection();
+          focusNode(hostContext, node, start.index);
+          if (keyboardEvent.shiftKey) {
+            unindent(node, root);
+          } else {
+            indent(node, root);
+          }
         }
+      } else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey && hostContext.hasSelection) {
+        keyboardEvent.preventDefault();
+        copyMarkdownToClipboard(serializeSelection(hostContext));
+      } else if (keyboardEvent.key === 'x' && keyboardEvent.ctrlKey && hostContext.hasSelection) {
+        keyboardEvent.preventDefault();
+        copyMarkdownToClipboard(serializeSelection(hostContext));
+        removeNodes(hostContext.selection, hostContext);
+        hostContext.clearSelection();
+      } else if (keyboardEvent.key === 'Escape') {
+        hostContext.clearSelection();
+      } else if (hostContext.hasSelection && keyboardEvent.key === 'Backspace') {
+        keyboardEvent.preventDefault();
+        removeNodes(hostContext.selection, hostContext);
+        hostContext.clearSelection();
       } else {
         return;
       }
@@ -216,6 +255,7 @@ export class Editor extends LitElement {
     } = event;
     if (!inline.node) return;
 
+    inline.hostContext?.clearSelection();
     const finishEditing = inline.node.viewModel.tree.edit();
     try {
       if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
@@ -324,14 +364,7 @@ export class Editor extends LitElement {
         description: 'Copy all as markdown',
         execute: async () => {
           const markdown = serializeToString(this.document!.tree.root);
-          const textType = 'text/plain';
-          const mdType = 'web text/markdown';
-          navigator.clipboard.write([
-            new ClipboardItem({
-              [textType]: new Blob([markdown], {type: textType}),
-              [mdType]: new Blob([markdown], {type: mdType}),
-            }),
-          ]);
+          copyMarkdownToClipboard(markdown);
           return [];
         },
       },
@@ -750,7 +783,6 @@ function finishInsertParagraph(
       newText: node.content.substring(startIndex),
     });
 
-
     (node.viewModel as InlineViewModel).edit({
       startIndex,
       oldEndIndex: node.content.length,
@@ -830,6 +862,61 @@ function handleInlineInputAsBlockEdit(
     return insertSiblingParagraph(inline.node, root, inputStart.index, context);
   }
   return false;
+}
+
+function copyMarkdownToClipboard(markdown: string) {
+  const textType = 'text/plain';
+  const mdType = 'web text/markdown';
+  navigator.clipboard.write([
+    new ClipboardItem({
+      [textType]: new Blob([markdown], {type: textType}),
+      [mdType]: new Blob([markdown], {type: mdType}),
+    }),
+  ]);
+}
+
+function removeNodes(nodes: Iterable<ViewModelNode>, hostContext: HostContext) {
+  const context = [];
+  const root = cast(hostContext.root);
+  for (const node of nodes) {
+    node.viewModel.previousSibling && context.push(node.viewModel.previousSibling);
+    node.viewModel.parent && context.push(node.viewModel.parent);
+    node.viewModel.remove();
+  }
+  let didFocus = false;
+  for (const node of context) {
+    // TODO: this isn't a perfect test that the node is still connected
+    if (node.viewModel.parent) {
+      const prev = findPreviousEditable(node, root, true);
+      if (prev) {
+        focusNode(hostContext, prev, -Infinity);
+        didFocus = true;
+        break;
+      }
+    }
+  }
+  if (!didFocus) {
+    const next = findNextEditable(root, root, true);
+    if (next) {
+      focusNode(hostContext, next, 0);
+      didFocus = true;
+    }
+  }
+}
+
+function serializeSelection(hostContext: HostContext) {
+  return serializeToString(cast(hostContext.root), (node) => {
+    switch (node.type) {
+      case 'section':
+      case 'paragraph':
+      case 'code-block':
+        return hostContext.selection.has(node as ViewModelNode);
+      case 'unsupported':
+        return false;
+      default:
+        return true;
+    }
+  });
 }
 
 declare global {

@@ -213,4 +213,12 @@ describe('main', () => {
             `,
            ));
   });
+  describe('selection', () => {
+    it('can select and delete',
+       inputOutputTest(
+           input`a\nb\nc${['Shift', 'ArrowUp', 'Shift', 'Backspace']}`,
+           `a
+            `,
+           ));
+  })
 });

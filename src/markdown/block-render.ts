@@ -18,14 +18,18 @@ import {MarkdownInline} from './inline-render.js';
 import {ViewModelNode} from './view-model.js';
 import './transclusion.js';
 import {hostContext, HostContext} from './host-context.js';
-import {contextProvider} from '../deps/lit-labs-context.js';
+import {contextProvider, contextProvided} from '../deps/lit-labs-context.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement {
+  @property({type: Boolean, reflect: true}) selected?: boolean;
   @property({type: String, reflect: true}) checked?: boolean;
   @property({type: Boolean, reflect: true}) root?: boolean;
   @property({type: String, reflect: true}) type = '';
   @property({attribute: false}) node: ViewModelNode|undefined;
+  @contextProvided({context: hostContext, subscribe: true})
+  @property({attribute: false})
+  hostContext: HostContext|undefined;
   constructor() {
     super();
     this.addEventListener('click', (e) => this.handleClick(e));
@@ -48,6 +52,7 @@ export class MarkdownBlock extends LitElement {
     }
   }
   override render() {
+    this.selected = this.hostContext?.selection.has(this.node!) ?? false;
     const node = this.node;
     if (!node) return;
     this.type = node.type;
@@ -156,6 +161,11 @@ export class MarkdownRenderer extends LitElement {
         md-block[type='list'] + md-block {
           margin-block-start: 0em;
         }
+        md-block[selected]:not([type='section']),
+        md-block[selected][type='section'] > md-inline {
+          background: var(--md-block-selection-color);
+          caret-color: transparent;
+        }
       `,
       // Overridable styles.
       css`
@@ -192,7 +202,7 @@ export class MarkdownRenderer extends LitElement {
 
   @contextProvider({context: hostContext})
   @state()
-  hostContext: HostContext = {};
+  readonly hostContext = new HostContext();
 
   @property({type: Object, reflect: false}) block!: ViewModelNode;
   override render() {
