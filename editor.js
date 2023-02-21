@@ -102,70 +102,95 @@ let Editor = class Editor extends LitElement {
     }
     onInlineKeyDown(event) {
         const { detail: { inline, node, keyboardEvent } } = event;
+        const hostContext = cast(inline.hostContext);
+        const root = cast(hostContext.root);
         const finishEditing = node.viewModel.tree.edit();
         try {
             assert(inline.node);
             if (this.autocomplete.onInlineKeyDown(event)) {
                 return;
             }
-            else if (['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key)) {
+            else if (['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(keyboardEvent.key)) {
                 keyboardEvent.preventDefault();
-                const granularity = keyboardEvent.key === 'ArrowUp' ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
-                const result = inline.moveCaret(keyboardEvent.shiftKey ? 'extend' : 'move', 'backward', granularity);
-                if (result !== true) {
-                    function focusPrevious(element, node, offset) {
-                        while (true) {
-                            const prev = findPreviousEditable(node, cast(cast(element.hostContext).root));
-                            if (prev) {
-                                focusNode(cast(element.hostContext), prev, -offset);
-                                break;
-                            }
-                            else {
-                                const transclusion = getContainingTransclusion(element);
-                                if (!transclusion)
-                                    return;
-                                element = transclusion;
-                                node = cast(transclusion.node);
-                            }
-                        }
-                    }
-                    focusPrevious(inline, node, result);
+                const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key) ? 'backward' : 'forward';
+                const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
+                const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key) ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
+                const result = hostContext.hasSelection ? 0 : inline.moveCaret(alter, direction, granularity);
+                if (alter !== 'extend' || result === true) {
+                    hostContext.clearSelection();
                 }
-            }
-            else if (['ArrowDown', 'ArrowRight'].includes(keyboardEvent.key)) {
-                keyboardEvent.preventDefault();
-                const granularity = keyboardEvent.key === 'ArrowDown' ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
-                const result = inline.moveCaret(keyboardEvent.shiftKey ? 'extend' : 'move', 'forward', granularity);
                 if (result !== true) {
-                    function focusNext(element, node, offset) {
+                    function updateFocus(element, node, offset) {
                         while (true) {
-                            const next = findNextEditable(node, cast(cast(element.hostContext).root));
+                            const next = direction === 'backward' ? findPreviousEditable(node, cast(cast(element.hostContext).root)) : findNextEditable(node, cast(cast(element.hostContext).root));
                             if (next) {
-                                focusNode(cast(element.hostContext), next, offset);
-                                break;
+                                focusNode(cast(element.hostContext), next, direction === 'backward' ? -offset : offset);
+                                return next;
                             }
                             else {
                                 const transclusion = getContainingTransclusion(element);
                                 if (!transclusion)
                                     return;
+                                // TODO: may need to update transclusion focus logic
+                                if (alter === 'extend')
+                                    return transclusion.node;
                                 element = transclusion;
                                 node = cast(transclusion.node);
                             }
                         }
                     }
-                    focusNext(inline, node, result);
+                    const next = updateFocus(inline, node, result);
+                    if (next && alter === 'extend') {
+                        if (hostContext.selectionAnchor) {
+                            hostContext.extendSelection(inline.node, next);
+                        }
+                        else {
+                            hostContext.setSelection(inline.node, next);
+                        }
+                    }
                 }
             }
             else if (keyboardEvent.key === 'Tab') {
                 keyboardEvent.preventDefault();
-                const { start } = inline.getSelection();
-                focusNode(cast(inline.hostContext), node, start.index);
-                if (keyboardEvent.shiftKey) {
-                    unindent(node, cast(cast(inline.hostContext).root));
+                if (hostContext.hasSelection) {
+                    for (const node of hostContext.selection) {
+                        if (keyboardEvent.shiftKey) {
+                            unindent(node, root);
+                        }
+                        else {
+                            indent(node, root);
+                        }
+                    }
+                    focusNode(hostContext, hostContext.selectionFocus, 0);
                 }
                 else {
-                    indent(node, cast(cast(inline.hostContext).root));
+                    const { start } = inline.getSelection();
+                    focusNode(hostContext, node, start.index);
+                    if (keyboardEvent.shiftKey) {
+                        unindent(node, root);
+                    }
+                    else {
+                        indent(node, root);
+                    }
                 }
+            }
+            else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey && hostContext.hasSelection) {
+                keyboardEvent.preventDefault();
+                copyMarkdownToClipboard(serializeSelection(hostContext));
+            }
+            else if (keyboardEvent.key === 'x' && keyboardEvent.ctrlKey && hostContext.hasSelection) {
+                keyboardEvent.preventDefault();
+                copyMarkdownToClipboard(serializeSelection(hostContext));
+                removeNodes(hostContext.selection, hostContext);
+                hostContext.clearSelection();
+            }
+            else if (keyboardEvent.key === 'Escape') {
+                hostContext.clearSelection();
+            }
+            else if (hostContext.hasSelection && keyboardEvent.key === 'Backspace') {
+                keyboardEvent.preventDefault();
+                removeNodes(hostContext.selection, hostContext);
+                hostContext.clearSelection();
             }
             else {
                 return;
@@ -228,6 +253,7 @@ let Editor = class Editor extends LitElement {
         const { detail: { inline, inputEvent, inputStart, inputEnd }, } = event;
         if (!inline.node)
             return;
+        inline.hostContext?.clearSelection();
         const finishEditing = inline.node.viewModel.tree.edit();
         try {
             if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
@@ -340,14 +366,7 @@ let Editor = class Editor extends LitElement {
                 description: 'Copy all as markdown',
                 execute: async () => {
                     const markdown = serializeToString(this.document.tree.root);
-                    const textType = 'text/plain';
-                    const mdType = 'web text/markdown';
-                    navigator.clipboard.write([
-                        new ClipboardItem({
-                            [textType]: new Blob([markdown], { type: textType }),
-                            [mdType]: new Blob([markdown], { type: mdType }),
-                        }),
-                    ]);
+                    copyMarkdownToClipboard(markdown);
                     return [];
                 },
             },
@@ -842,5 +861,57 @@ function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart
         return insertSiblingParagraph(inline.node, root, inputStart.index, context);
     }
     return false;
+}
+function copyMarkdownToClipboard(markdown) {
+    const textType = 'text/plain';
+    const mdType = 'web text/markdown';
+    navigator.clipboard.write([
+        new ClipboardItem({
+            [textType]: new Blob([markdown], { type: textType }),
+            [mdType]: new Blob([markdown], { type: mdType }),
+        }),
+    ]);
+}
+function removeNodes(nodes, hostContext) {
+    const context = [];
+    const root = cast(hostContext.root);
+    for (const node of nodes) {
+        node.viewModel.previousSibling && context.push(node.viewModel.previousSibling);
+        node.viewModel.parent && context.push(node.viewModel.parent);
+        node.viewModel.remove();
+    }
+    let didFocus = false;
+    for (const node of context) {
+        // TODO: this isn't a perfect test that the node is still connected
+        if (node.viewModel.parent) {
+            const prev = findPreviousEditable(node, root, true);
+            if (prev) {
+                focusNode(hostContext, prev, -Infinity);
+                didFocus = true;
+                break;
+            }
+        }
+    }
+    if (!didFocus) {
+        const next = findNextEditable(root, root, true);
+        if (next) {
+            focusNode(hostContext, next, 0);
+            didFocus = true;
+        }
+    }
+}
+function serializeSelection(hostContext) {
+    return serializeToString(cast(hostContext.root), (node) => {
+        switch (node.type) {
+            case 'section':
+            case 'paragraph':
+            case 'code-block':
+                return hostContext.selection.has(node);
+            case 'unsupported':
+                return false;
+            default:
+                return true;
+        }
+    });
 }
 //# sourceMappingURL=editor.js.map

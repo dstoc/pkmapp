@@ -20,8 +20,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 import { state, css, customElement, html, LitElement, property } from '../deps/lit.js';
 import { MarkdownInline } from './inline-render.js';
 import './transclusion.js';
-import { hostContext } from './host-context.js';
-import { contextProvider } from '../deps/lit-labs-context.js';
+import { hostContext, HostContext } from './host-context.js';
+import { contextProvider, contextProvided } from '../deps/lit-labs-context.js';
 let MarkdownBlock = class MarkdownBlock extends LitElement {
     constructor() {
         super();
@@ -53,6 +53,7 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
         }
     }
     render() {
+        this.selected = this.hostContext?.selection.has(this.node) ?? false;
         const node = this.node;
         if (!node)
             return;
@@ -104,6 +105,9 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
     }
 };
 __decorate([
+    property({ type: Boolean, reflect: true })
+], MarkdownBlock.prototype, "selected", void 0);
+__decorate([
     property({ type: String, reflect: true })
 ], MarkdownBlock.prototype, "checked", void 0);
 __decorate([
@@ -115,6 +119,10 @@ __decorate([
 __decorate([
     property({ attribute: false })
 ], MarkdownBlock.prototype, "node", void 0);
+__decorate([
+    contextProvided({ context: hostContext, subscribe: true }),
+    property({ attribute: false })
+], MarkdownBlock.prototype, "hostContext", void 0);
 MarkdownBlock = __decorate([
     customElement('md-block')
 ], MarkdownBlock);
@@ -122,7 +130,7 @@ export { MarkdownBlock };
 let MarkdownRenderer = class MarkdownRenderer extends LitElement {
     constructor() {
         super(...arguments);
-        this.hostContext = {};
+        this.hostContext = new HostContext();
     }
     static get styles() {
         return [
@@ -172,6 +180,11 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
         }
         md-block[type='list'] + md-block {
           margin-block-start: 0em;
+        }
+        md-block[selected]:not([type='section']),
+        md-block[selected][type='section'] > md-inline {
+          background: var(--md-block-selection-color);
+          caret-color: transparent;
         }
       `,
             // Overridable styles.

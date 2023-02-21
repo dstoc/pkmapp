@@ -91,6 +91,7 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         };
         this.addEventListener('beforeinput', this.onBeforeInput, { capture: true });
         this.addEventListener('keydown', this.onKeyDown, { capture: true });
+        this.addEventListener('pointerdown', this.onPointerDown);
         this.addEventListener('pointerup', () => {
             if (this.hasFocus) {
                 this.active = true;
@@ -282,6 +283,9 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
             bubbles: true,
             composed: true,
         }));
+    }
+    onPointerDown(event) {
+        this.hostContext?.clearSelection();
     }
     addObserver(node) {
         node?.viewModel.observe.add(this.observer);

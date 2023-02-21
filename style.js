@@ -26,6 +26,7 @@ export const styles = [
       --md-block-quote-bgcolor: rgba(0, 0, 0, 0.05);
       --md-code-block-bgcolor: rgba(0, 0, 0, 0.05);
       --md-accent-color: #67f;
+      --md-block-selection-color: #ccc;
       --pkm-dialog-bgcolor: #f2f2f2;
       --root-color: black;
       --root-background-color: white;
@@ -35,6 +36,7 @@ export const styles = [
         --md-block-quote-bgcolor: rgba(255, 255, 255, 0.10);
         --md-code-block-bgcolor: rgba(255, 255, 255, 0.10);
         --md-accent-color: #56e;
+        --md-block-selection-color: #888;
         --pkm-dialog-bgcolor: #191919;
         --root-color: white;
         --root-background-color: rgb(40, 40, 40);
