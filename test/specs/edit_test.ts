@@ -118,6 +118,21 @@ describe('main', () => {
             # 3
             `,
            ));
+    it('nest correctly when ranges are not all contiguous',
+       inputOutputTest(
+           input`# top
+                 * 1
+                 2
+                 3
+                 # outer${['Shift', 'Tab', 'Shift']}${Array(2).fill('ArrowUp')}# `,
+           `# top
+            * 1
+            * # 2
+            * 3
+
+            # outer
+            `,
+           ));
   });
   it('can generate a list',
      inputOutputTest(
