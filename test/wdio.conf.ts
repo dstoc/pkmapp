@@ -46,5 +46,8 @@ export const config: Options.Testrunner = {
   jasmineOpts: {
     stopOnSpecFailure: true,
     defaultTimeoutInterval: 60000,
+    expectationResultHandler(passed) {
+      if (!passed) browser.saveScreenshot('./logs/failure.png');
+    }
   },
 };
