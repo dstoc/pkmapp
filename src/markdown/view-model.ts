@@ -230,6 +230,15 @@ export class MarkdownTree {
   readonly observe = new Observe(this);
   removed: Set<ViewModelNode> = new Set();
 
+  setRoot(node: ViewModelNode) {
+    assert(node.viewModel.tree === this);
+    assert(!node.viewModel.parent);
+    const finish = this.edit();
+    this.removed.add(this.root);
+    this.root = node;
+    finish();
+  }
+
   add<T>(node: T&MarkdownNode) {
     if ((node as MaybeViewModelNode).viewModel) {
       throw new Error('node is already part of a tree');
