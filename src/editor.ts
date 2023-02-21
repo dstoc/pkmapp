@@ -123,37 +123,18 @@ export class Editor extends LitElement {
       assert(inline.node);
       if (this.autocomplete.onInlineKeyDown(event)) {
         return;
-      } else if (['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key)) {
+      } else if (['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(keyboardEvent.key)) {
         keyboardEvent.preventDefault();
-        const granularity = keyboardEvent.key === 'ArrowUp' ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
-        const result = inline.moveCaret(keyboardEvent.shiftKey ? 'extend' : 'move', 'backward', granularity);
+        const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key) ? 'backward' : 'forward';
+        const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
+        const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key) ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
+        const result = inline.moveCaret(alter, direction, granularity);
         if (result !== true) {
-          function focusPrevious(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
+          function updateFocus(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
             while (true) {
-              const prev = findPreviousEditable(node, cast(cast(element.hostContext).root));
-              if (prev) {
-                focusNode(cast(element.hostContext), prev, -offset);
-                break;
-              } else {
-                const transclusion = getContainingTransclusion(element);
-                if (!transclusion) return;
-                element = transclusion;
-                node = cast(transclusion.node);
-              }
-            }
-          }
-          focusPrevious(inline, node, result);
-        }
-      } else if (['ArrowDown', 'ArrowRight'].includes(keyboardEvent.key)) {
-        keyboardEvent.preventDefault();
-        const granularity = keyboardEvent.key === 'ArrowDown' ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
-        const result = inline.moveCaret(keyboardEvent.shiftKey ? 'extend' : 'move', 'forward', granularity);
-        if (result !== true) {
-          function focusNext(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
-            while (true) {
-              const next = findNextEditable(node, cast(cast(element.hostContext).root));
+              const next = direction === 'backward' ? findPreviousEditable(node, cast(cast(element.hostContext).root)) : findNextEditable(node, cast(cast(element.hostContext).root));
               if (next) {
-                focusNode(cast(element.hostContext), next, offset);
+                focusNode(cast(element.hostContext), next, direction === 'backward' ? -offset : offset);
                 break;
               } else {
                 const transclusion = getContainingTransclusion(element);
@@ -163,7 +144,7 @@ export class Editor extends LitElement {
               }
             }
           }
-          focusNext(inline, node, result);
+          updateFocus(inline, node, result);
         }
       } else if (keyboardEvent.key === 'Tab') {
         keyboardEvent.preventDefault();
