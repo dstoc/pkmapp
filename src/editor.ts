@@ -373,7 +373,7 @@ export class Editor extends LitElement {
         execute: async () => {
           return this.library.backLinks.getBacklinksByDocument(this.document!, this.library).map(name => ({
             description: name,
-            execute: async () => (this.load(name, true), []),
+            execute: async () => (this.load(name), []),
           }));
         }
       },

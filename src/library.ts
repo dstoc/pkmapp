@@ -114,8 +114,7 @@ export class FileSystemLibrary implements Library {
         }
       }
       async refresh() {
-        // this.tree.root.viewModel.remove();
-        this.tree.root = this.tree.add<MarkdownNode>(await load());
+        this.tree.setRoot(this.tree.add<MarkdownNode>(await load()))
         this.tree.observe.notify();
       }
       async save() {
