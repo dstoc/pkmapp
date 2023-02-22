@@ -169,6 +169,9 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
         md-block + md-block[type='list'] {
           margin-block-start: -0.5em !important;
         }
+        md-block[type='list-item'] > md-block[type='paragraph'] + md-block[type='list'] {
+          margin-block-start: -1em !important;
+        }
         md-block[type='section'] > md-block:nth-child(2) {
           margin-block-start: 0.5em !important;
         }

@@ -13,6 +13,7 @@
 // limitations under the License.
 import { assert } from '../asserts.js';
 import { children, dfs } from './view-model-util.js';
+import { cast } from '../asserts.js';
 function moveTrailingNodesIntoSections(tree) {
     for (const node of dfs(tree.root)) {
         let section;
@@ -63,20 +64,28 @@ function normalizeContiguousSections(sections) {
 }
 function normalizeSections(tree) {
     moveTrailingNodesIntoSections(tree);
-    const sections = [];
+    const ranges = new Map();
     for (const node of dfs(tree.root)) {
         if (node.type !== 'section')
             continue;
-        if (node.viewModel.parent?.type !== 'section' &&
-            (!node.viewModel.previousSibling ||
-                node.viewModel.previousSibling.type !== 'section')) {
-            // Finished traversing a contiguous sequence of sections.
-            normalizeContiguousSections(sections);
-            sections.length = 0;
+        const previousSibling = node.viewModel.previousSibling;
+        const parent = node.viewModel.parent;
+        let range;
+        if (previousSibling?.type === 'section') {
+            range = cast(ranges.get(previousSibling));
         }
-        sections.push(node);
+        else if (parent?.type === 'section') {
+            range = cast(ranges.get(parent));
+        }
+        else {
+            range = [];
+        }
+        range.push(node);
+        ranges.set(node, range);
     }
-    normalizeContiguousSections(sections);
+    for (const sections of ranges.values()) {
+        normalizeContiguousSections(sections);
+    }
 }
 export function normalizeTree(tree) {
     const emptyPredicate = (node) => node &&

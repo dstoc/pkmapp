@@ -94,8 +94,7 @@ export class FileSystemLibrary {
                 }
             }
             async refresh() {
-                // this.tree.root.viewModel.remove();
-                this.tree.root = this.tree.add(await load());
+                this.tree.setRoot(this.tree.add(await load()));
                 this.tree.observe.notify();
             }
             async save() {

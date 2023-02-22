@@ -217,6 +217,14 @@ export class MarkdownTree {
         this.removed = new Set();
         this.root = this.addDom(root);
     }
+    setRoot(node) {
+        assert(node.viewModel.tree === this);
+        assert(!node.viewModel.parent);
+        const finish = this.edit();
+        this.removed.add(this.root);
+        this.root = node;
+        finish();
+    }
     add(node) {
         if (node.viewModel) {
             throw new Error('node is already part of a tree');
