@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {browser} from '@wdio/globals';
 import type {Options} from '@wdio/types';
 import * as os from 'os';
 
@@ -21,7 +22,7 @@ export const config: Options.Testrunner = {
     autoCompile: true,
     tsNodeOpts: {transpileOnly: true, project: 'test/tsconfig.json'},
   },
-  specs: ['./test/specs/**/*test.ts'],
+  specs: ['./specs/**/*test.ts'],
   exclude: [],
   maxInstances: instances,
   capabilities: [{
@@ -47,7 +48,7 @@ export const config: Options.Testrunner = {
     stopOnSpecFailure: true,
     defaultTimeoutInterval: 60000,
     expectationResultHandler(passed) {
-      if (!passed) browser.saveScreenshot('./logs/failure.png');
+      if (!passed) browser.saveScreenshot('./test/logs/failure.png');
     }
   },
 };
