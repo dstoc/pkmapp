@@ -39,6 +39,7 @@ function separator(prev, next) {
 }
 function serializeBlocks(blocks, indents, result, predicate) {
     let prev;
+    let serializedContent = false;
     for (const block of blocks) {
         const preResultLength = result.length;
         if (prev) {
@@ -52,6 +53,7 @@ function serializeBlocks(blocks, indents, result, predicate) {
         }
         if (serialize(block, indents, result, predicate)) {
             prev = block;
+            serializedContent = true;
         }
         else {
             while (result.length > preResultLength) {
@@ -59,6 +61,7 @@ function serializeBlocks(blocks, indents, result, predicate) {
             }
         }
     }
+    return serializedContent;
 }
 export function getPrefix(node) {
     switch (node.type) {
@@ -87,39 +90,43 @@ function serialize(node, indents, result, predicate) {
             result.push(indent.next().value);
         }
     }
-    const resultStartLength = result.length;
-    if (!predicate || predicate(node)) {
-        switch (node.type) {
-            case 'document':
-            case 'list':
-                assert(node.children && node.children.length);
-                break;
-            case 'section':
-                indent();
+    const shouldSerializeNodeContent = !predicate || predicate(node);
+    switch (node.type) {
+        case 'document':
+        case 'list':
+            assert(node.children && node.children.length);
+            break;
+        case 'section':
+            indent();
+            if (shouldSerializeNodeContent) {
                 result.push(node.marker);
                 result.push(' ');
                 result.push(node.content.trimStart());
-                result.push('\n');
-                break;
-            case 'list-item':
-                assert(node.children && node.children.length);
-                indents = [...indents, onceThenWhitespace(node.marker)];
-                if (node.checked === true)
-                    indents.push(onceThenNothing('[x] '));
-                if (node.checked === false)
-                    indents.push(onceThenNothing('[ ] '));
-                break;
-            case 'block-quote':
-                assert(node.children && node.children.length);
-                indents = [...indents, always(node.marker)];
-                break;
-            case 'paragraph':
-                indent();
+            }
+            result.push('\n');
+            break;
+        case 'list-item':
+            assert(node.children && node.children.length);
+            indents = [...indents, onceThenWhitespace(node.marker)];
+            if (node.checked === true)
+                indents.push(onceThenNothing('[x] '));
+            if (node.checked === false)
+                indents.push(onceThenNothing('[ ] '));
+            break;
+        case 'block-quote':
+            assert(node.children && node.children.length);
+            indents = [...indents, always(node.marker)];
+            break;
+        case 'paragraph':
+            indent();
+            if (shouldSerializeNodeContent) {
                 result.push(node.content);
-                result.push('\n');
-                break;
-            case 'code-block':
-                indent();
+            }
+            result.push('\n');
+            break;
+        case 'code-block':
+            indent();
+            if (shouldSerializeNodeContent) {
                 result.push('```');
                 if (node.info !== null) {
                     result.push(node.info);
@@ -131,22 +138,25 @@ function serialize(node, indents, result, predicate) {
                     result.push('\n');
                 }
                 indent();
-                result.push('```\n');
-                break;
-            case 'unsupported':
-                for (const line of node.content.trimEnd().split('\n')) {
-                    indent();
+                result.push('```');
+            }
+            result.push('\n');
+            break;
+        case 'unsupported':
+            for (const line of node.content.trimEnd().split('\n')) {
+                indent();
+                if (shouldSerializeNodeContent) {
                     result.push(line);
-                    result.push('\n');
                 }
-                break;
-            default:
-                // TODO: assert not reached?
-                assert(false);
-        }
+                result.push('\n');
+            }
+            break;
+        default:
+            // TODO: assert not reached?
+            assert(false);
     }
-    serializeBlocks(node.children || [], indents, result, predicate);
-    return result.length !== resultStartLength;
+    const serializedChild = serializeBlocks(node.children || [], indents, result, predicate);
+    return shouldSerializeNodeContent || serializedChild;
 }
 export function serializeToString(node, predicate) {
     const result = [];
