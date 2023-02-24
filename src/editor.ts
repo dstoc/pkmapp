@@ -33,6 +33,7 @@ import {InlineEdit, InlineViewModel, InlineViewModelNode, ViewModelNode} from '.
 import {Observer, Observers} from './observe.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
+import {resolveDateAlias} from './date-aliases.js';
 
 @customElement('pkm-editor')
 export class Editor extends LitElement {
@@ -95,6 +96,8 @@ export class Editor extends LitElement {
   }
   async load(name: string, forceRefresh = false) {
     if (!this.library) return;
+    // TODO: this probably belongs somewhere else
+    name = resolveDateAlias(name) ?? name;
     this.status = 'loading';
     this.document = undefined;
     try {
