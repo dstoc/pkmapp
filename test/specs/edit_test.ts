@@ -235,5 +235,12 @@ describe('main', () => {
            `a
             `,
            ));
+    it('can select a single block',
+       inputOutputTest(
+           input`* a\nb\nc${['ArrowUp', 'Control', 'a', 'Control', 'Backspace']}`,
+           `* a
+            * c
+            `,
+           ));
   })
 });
