@@ -34,6 +34,8 @@ import {Observer, Observers} from './observe.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
 import {resolveDateAlias} from './date-aliases.js';
+import {maybeEditBlockSelectionIndent, editInlineIndent} from './indent-util.js';
+import {getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn} from './block-selection-util.js';
 
 @customElement('pkm-editor')
 export class Editor extends LitElement {
@@ -69,8 +71,6 @@ export class Editor extends LitElement {
   }
   constructor() {
     super();
-    // this.addEventListener('focus', () => this.appContext.activeEditor =
-    // this);
   }
   override render() {
     this.observers.update();
@@ -122,7 +122,6 @@ export class Editor extends LitElement {
   onInlineKeyDown(event: CustomEvent<InlineKeyDown>) {
     const {detail: {inline, node, keyboardEvent}} = event;
     const hostContext = cast(inline.hostContext);
-    const root = cast(hostContext.root);
     const finishEditing = node.viewModel.tree.edit();
     try {
       assert(inline.node);
@@ -134,21 +133,18 @@ export class Editor extends LitElement {
         const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
         const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key) ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
         const result = hostContext.hasSelection ? 0 : inline.moveCaret(alter, direction, granularity);
-        if (alter !== 'extend' || result === true) {
+        if (result === true) {
           hostContext.clearSelection();
-        }
-        if (result !== true) {
+        } else {
           function updateFocus(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
-            if (alter === 'extend') {
-              // Retarget if there's any containing transclusion that has a selection.
-              let transclusion;
-              do {
-                transclusion = getContainingTransclusion(transclusion ?? element);
-              } while (transclusion && !cast(transclusion.hostContext).hasSelection)
-              if (transclusion && cast(transclusion.hostContext).hasSelection) {
-                node = cast(transclusion.node);
-                element = transclusion;
-              }
+            // Retarget if there's any containing transclusion that has a selection.
+            const target = getBlockSelectionTarget(element);
+            if (target) {
+              node = cast(target.node);
+              element = target;
+            }
+            if (alter !== 'extend') {
+              cast(element.hostContext).clearSelection();
             }
             while (true) {
               const root = cast(cast(element.hostContext).root);
@@ -176,43 +172,31 @@ export class Editor extends LitElement {
         }
       } else if (keyboardEvent.key === 'Tab') {
         keyboardEvent.preventDefault();
-        if (hostContext.hasSelection) {
-          for (const node of hostContext.selection) {
-            if (keyboardEvent.shiftKey) {
-              unindent(node, root);
-            } else {
-              indent(node, root);
-            }
-          }
-          focusNode(hostContext, hostContext.selectionFocus!, 0);
-        } else {
-          const {start} = inline.getSelection();
-          focusNode(hostContext, node, start.index);
-          if (keyboardEvent.shiftKey) {
-            unindent(node, root);
-          } else {
-            indent(node, root);
-          }
-        }
+        const mode = keyboardEvent.shiftKey ? 'unindent' : 'indent';
+        if (maybeEditBlockSelectionIndent(inline, mode)) return;
+        editInlineIndent(inline, mode);
       } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
         keyboardEvent.preventDefault();
         if (!hostContext.hasSelection) {
           hostContext.setSelection(node, node);
         }
-      } else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey && hostContext.hasSelection) {
+      } else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey) {
+        const {hostContext} = getBlockSelectionTarget(inline) ?? {};
+        if (!hostContext) return;
         keyboardEvent.preventDefault();
         copyMarkdownToClipboard(serializeSelection(hostContext));
-      } else if (keyboardEvent.key === 'x' && keyboardEvent.ctrlKey && hostContext.hasSelection) {
+      } else if (keyboardEvent.key === 'x' && keyboardEvent.ctrlKey) {
+        const {hostContext} = getBlockSelectionTarget(inline) ?? {};
+        if (!hostContext) return;
         keyboardEvent.preventDefault();
         copyMarkdownToClipboard(serializeSelection(hostContext));
-        removeNodes(hostContext.selection, hostContext);
+        maybeRemoveSelectedNodesIn(hostContext);
         hostContext.clearSelection();
       } else if (keyboardEvent.key === 'Escape') {
         hostContext.clearSelection();
-      } else if (hostContext.hasSelection && keyboardEvent.key === 'Backspace') {
+      } else if (keyboardEvent.key === 'Backspace') {
+        if (!maybeRemoveSelectedNodes(inline)) return;
         keyboardEvent.preventDefault();
-        removeNodes(hostContext.selection, hostContext);
-        hostContext.clearSelection();
       } else {
         return;
       }
@@ -274,7 +258,10 @@ export class Editor extends LitElement {
     } = event;
     if (!inline.node) return;
 
-    inline.hostContext?.clearSelection();
+    // TODO: Most edit types could be handled here. E.g. insertText
+    // could replace the selection.
+    const {hostContext: selectionHostContext} = getBlockSelectionTarget(inline) ?? {};
+    selectionHostContext?.clearSelection();
     const finishEditing = inline.node.viewModel.tree.edit();
     try {
       if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
@@ -566,102 +553,6 @@ function maybeMergeContentInto(
   return false;
 }
 
-function unindent(node: ViewModelNode, root: ViewModelNode) {
-  const {ancestor: listItem, path} = findAncestor(node, root, 'list-item');
-  if (!listItem || !path) return;
-  const target = path[0];
-  const nextSibling = listItem.viewModel.nextSibling;
-  const list = listItem.viewModel.parent!;
-  const targetListItemSibling = list.viewModel.parent!;
-  if (targetListItemSibling?.type === 'list-item') {
-    listItem.viewModel.insertBefore(
-        cast(targetListItemSibling.viewModel.parent),
-        targetListItemSibling.viewModel.nextSibling);
-  } else {
-    target.viewModel.insertBefore(
-        cast(list.viewModel.parent), list.viewModel.nextSibling);
-    listItem.viewModel.remove();
-  }
-  // Siblings of the undended list-item move to sublist.
-  if (nextSibling) {
-    let next: ViewModelNode|undefined = nextSibling;
-    while (next) {
-      if (listItem.viewModel.lastChild?.type !== 'list') {
-        listItem.viewModel.tree
-            .add({
-              type: 'list',
-            })
-            .viewModel.insertBefore(listItem);
-      }
-      const targetList = listItem.viewModel.lastChild!;
-      const toMove: ViewModelNode = next;
-      next = toMove.viewModel.nextSibling;
-      toMove.viewModel.insertBefore(targetList);
-    }
-  }
-  // The target might have been removed from the list item. Move any
-  // remaining siblings to the same level.
-  if (listItem.children?.length && !listItem.viewModel.parent) {
-    // TODO: move more than the first child.
-    listItem.viewModel.firstChild?.viewModel.insertBefore(
-        cast(target.viewModel.parent), target.viewModel.nextSibling);
-  }
-  if (!list.children?.length) {
-    list.viewModel.remove();
-  }
-}
-
-function indent(node: ViewModelNode, root: ViewModelNode) {
-  let target = node;
-  for (const ancestor of ancestors(node, root)) {
-    if (ancestor.type === 'list-item') {
-      break;
-    }
-    if (ancestor.type === 'document') {
-      break;
-    }
-    // Don't indent a section at the top level, unless we are inside a heading.
-    if (ancestor.type === 'section' &&
-        ancestor.viewModel.parent!.type == 'document') {
-      if (target.type === 'section') {
-        target = ancestor;
-      }
-      break;
-    }
-    target = ancestor;
-  }
-  let listItem: ViewModelNode;
-  if (target.viewModel.parent!.type === 'list-item') {
-    listItem = target.viewModel.parent!;
-  } else {
-    listItem = target.viewModel.tree.add({
-      type: 'list-item',
-      marker: '* ',
-    });
-    listItem.viewModel.insertBefore(cast(target.viewModel.parent), target);
-    target.viewModel.insertBefore(listItem);
-  }
-  const listItemPreviousSibling = listItem.viewModel.previousSibling;
-  if (listItemPreviousSibling?.type === 'list-item') {
-    const lastChild = listItemPreviousSibling.viewModel.lastChild;
-    if (lastChild?.type === 'list') {
-      listItem.viewModel.insertBefore(lastChild);
-    } else {
-      listItem.viewModel.insertBefore(listItemPreviousSibling);
-    }
-  } else if (listItemPreviousSibling?.type === 'list') {
-    listItem.viewModel.insertBefore(listItemPreviousSibling);
-  }
-  // Ensure the list-item we may have created is in a list.
-  if (listItem.viewModel.parent!.type !== 'list') {
-    const list = target.viewModel.tree.add({
-      type: 'list',
-    });
-    list.viewModel.insertBefore(cast(listItem.viewModel.parent), listItem);
-    listItem.viewModel.insertBefore(list);
-  }
-}
-
 function insertSiblingParagraph(
     node: InlineNode&ViewModelNode,
     root: ViewModelNode,
@@ -892,35 +783,6 @@ function copyMarkdownToClipboard(markdown: string) {
       [mdType]: new Blob([markdown], {type: mdType}),
     }),
   ]);
-}
-
-function removeNodes(nodes: Iterable<ViewModelNode>, hostContext: HostContext) {
-  const context = [];
-  const root = cast(hostContext.root);
-  for (const node of nodes) {
-    node.viewModel.previousSibling && context.push(node.viewModel.previousSibling);
-    node.viewModel.parent && context.push(node.viewModel.parent);
-    node.viewModel.remove();
-  }
-  let didFocus = false;
-  for (const node of context) {
-    // TODO: this isn't a perfect test that the node is still connected
-    if (node.viewModel.parent) {
-      const prev = findPreviousEditable(node, root, true);
-      if (prev) {
-        focusNode(hostContext, prev, -Infinity);
-        didFocus = true;
-        break;
-      }
-    }
-  }
-  if (!didFocus) {
-    const next = findNextEditable(root, root, true);
-    if (next) {
-      focusNode(hostContext, next, 0);
-      didFocus = true;
-    }
-  }
 }
 
 function serializeSelection(hostContext: HostContext) {
