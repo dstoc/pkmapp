@@ -30,6 +30,7 @@ import { normalizeTree } from './markdown/normalize.js';
 import { ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousEditable, reverseDfs, swapNodes } from './markdown/view-model-util.js';
 import { Observer, Observers } from './observe.js';
 import { getContainingTransclusion } from './markdown/transclusion.js';
+import { resolveDateAlias } from './date-aliases.js';
 let Editor = class Editor extends LitElement {
     static get styles() {
         return [
@@ -80,6 +81,8 @@ let Editor = class Editor extends LitElement {
     async load(name, forceRefresh = false) {
         if (!this.library)
             return;
+        // TODO: this probably belongs somewhere else
+        name = resolveDateAlias(name) ?? name;
         this.status = 'loading';
         this.document = undefined;
         try {
@@ -121,31 +124,41 @@ let Editor = class Editor extends LitElement {
                 }
                 if (result !== true) {
                     function updateFocus(element, node, offset) {
+                        if (alter === 'extend') {
+                            // Retarget if there's any containing transclusion that has a selection.
+                            let transclusion;
+                            do {
+                                transclusion = getContainingTransclusion(transclusion ?? element);
+                            } while (transclusion && !cast(transclusion.hostContext).hasSelection);
+                            if (transclusion && cast(transclusion.hostContext).hasSelection) {
+                                node = cast(transclusion.node);
+                                element = transclusion;
+                            }
+                        }
                         while (true) {
-                            const next = direction === 'backward' ? findPreviousEditable(node, cast(cast(element.hostContext).root)) : findNextEditable(node, cast(cast(element.hostContext).root));
+                            const root = cast(cast(element.hostContext).root);
+                            const next = direction === 'backward' ? findPreviousEditable(node, root) : findNextEditable(node, root);
                             if (next) {
                                 focusNode(cast(element.hostContext), next, direction === 'backward' ? -offset : offset);
-                                return next;
+                                return { node, element, next };
                             }
                             else {
                                 const transclusion = getContainingTransclusion(element);
-                                if (!transclusion)
-                                    return;
-                                // TODO: may need to update transclusion focus logic
-                                if (alter === 'extend')
-                                    return transclusion.node;
+                                if (!transclusion || alter === 'extend')
+                                    return {};
                                 element = transclusion;
                                 node = cast(transclusion.node);
                             }
                         }
                     }
-                    const next = updateFocus(inline, node, result);
+                    const { node: updatedNode, element, next } = updateFocus(inline, node, result);
                     if (next && alter === 'extend') {
+                        const hostContext = cast(element.hostContext);
                         if (hostContext.selectionAnchor) {
-                            hostContext.extendSelection(inline.node, next);
+                            hostContext.extendSelection(updatedNode, next);
                         }
                         else {
-                            hostContext.setSelection(inline.node, next);
+                            hostContext.setSelection(updatedNode, next);
                         }
                     }
                 }
