@@ -194,6 +194,11 @@ export class Editor extends LitElement {
             indent(node, root);
           }
         }
+      } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
+        keyboardEvent.preventDefault();
+        if (!hostContext.hasSelection) {
+          hostContext.setSelection(node, node);
+        }
       } else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey && hostContext.hasSelection) {
         keyboardEvent.preventDefault();
         copyMarkdownToClipboard(serializeSelection(hostContext));
