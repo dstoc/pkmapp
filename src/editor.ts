@@ -166,6 +166,7 @@ export class Editor extends LitElement {
             if (hostContext.selectionAnchor) {
               hostContext.extendSelection(updatedNode, next);
             } else {
+              this.autocomplete.abort();
               hostContext.setSelection(updatedNode, next);
             }
           }
@@ -178,6 +179,7 @@ export class Editor extends LitElement {
       } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
         keyboardEvent.preventDefault();
         if (!hostContext.hasSelection) {
+          this.autocomplete.abort();
           hostContext.setSelection(node, node);
         }
       } else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey) {
