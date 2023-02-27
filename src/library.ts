@@ -18,6 +18,7 @@ import {MarkdownNode} from './markdown/node.js';
 import {InlineViewModelNode, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 import {Observe} from './observe.js';
 import {BackLinks} from './backlinks.js';
+import {cast} from './asserts.js';
 
 export interface Document {
   refresh(): Promise<void>;
@@ -33,6 +34,7 @@ export interface Library {
   getDocumentByTree(tree: MarkdownTree): Document|undefined;
   getAllNames(): Promise<string[]>;
   readonly backLinks: BackLinks;
+  sync(): Promise<void>;
 }
 
 async function*
@@ -76,19 +78,29 @@ export class FileSystemLibrary implements Library {
     }
     return undefined;
   }
+  async sync() {
+    for await (const name of allFiles('', this.directory)) {
+      const document = await this.getDocument(name);
+      await document.refresh();
+    }
+  }
   async getDocument(name: string, forceRefresh = false): Promise<Document> {
-    const load = async () => {
-      const fileName = name;
+    const fileName = name + '.md';
+    const load = async (ifModifiedSince: number) => {
       let text = '';
+      let lastModified = new Date().getTime();
       try {
         const handle = await getFileHandleFromPath(this.directory, fileName);
         const file = await handle.getFile();
+        // TODO: also check that the content has actually changed
+        if (ifModifiedSince >= file.lastModified) return {lastModified: file.lastModified};
         const decoder = new TextDecoder();
         text = decoder.decode(await file.arrayBuffer());
+        lastModified = file.lastModified;
       } catch (e) {
         console.error(e);
       }
-      return parseBlocks(text)!;
+      return {root: parseBlocks(text)!, lastModified};
     };
     const cached = this.cache.get(name);
     if (cached) {
@@ -97,33 +109,39 @@ export class FileSystemLibrary implements Library {
       }
       return cached;
     }
-    const node = await load();
+    const {root, lastModified} = await load(0);
     const library = this;
     const result = new class implements Document {
       constructor() {
-        this.tree = new MarkdownTree(node, this);
+        this.lastModified = lastModified;
+        this.tree = new MarkdownTree(cast(root), this);
         this.tree.observe.add(() => this.markDirty());
       }
       readonly tree: MarkdownTree;
+      lastModified: number;
       dirty = false;
       observe: Observe<Document> = new Observe<Document>(this);
-      get aliases() { return [name.substring(0, name.length - 3)]; }
+      get aliases() { return [name]; }
       postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed') {
         if (node.type === 'paragraph') {
           library.backLinks.postEditUpdate(node as InlineViewModelNode, change);
         }
       }
       async refresh() {
-        this.tree.setRoot(this.tree.add<MarkdownNode>(await load()))
-        this.tree.observe.notify();
+        const {root, lastModified} = await load(this.lastModified);
+        if (root) {
+          this.lastModified = lastModified;
+          this.tree.setRoot(this.tree.add<MarkdownNode>(root));
+          this.tree.observe.notify();
+        }
       }
       async save() {
         const text = serializeToString(this.tree.root);
-        const fileName = name;
         const handle = await getFileHandleFromPath(library.directory, fileName, true);
         const stream = await handle.createWritable();
         await stream.write(text);
         await stream.close();
+        this.lastModified = new Date().getTime();
       }
       private pendingModifications = 0;
       async markDirty() {
