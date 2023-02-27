@@ -14,6 +14,7 @@
 
 import './markdown/block-render.js';
 import './autocomplete.js';
+import './title.js';
 
 import {libraryContext} from './app-context.js';
 import {assert, cast} from './asserts.js';
@@ -66,6 +67,13 @@ export class Editor extends LitElement {
         md-block-render {
           width: 700px;
         }
+        pkm-title {
+          display: block;
+          position: sticky;
+          top: 0;
+          padding-bottom: 0.5em;
+          background: var(--root-background-color);
+        }
       `,
     ];
   }
@@ -77,6 +85,9 @@ export class Editor extends LitElement {
     this.dirty = this.document?.dirty ?? false;
     return html`
     <div id=status>${this.document?.dirty ? '💽' : ''}</div>
+    <pkm-title
+      .node=${this.root}
+      @title-item-click=${this.onTitleItemClick}></pkm-title>
     <div id=content>
     <md-block-render
       .block=${this.root}
@@ -118,6 +129,9 @@ export class Editor extends LitElement {
     detail: {destination},
   }: CustomEvent<InlineLinkClick>) {
     this.load(destination);
+  }
+  onTitleItemClick({detail}: CustomEvent) {
+    this.root = detail;
   }
   onInlineKeyDown(event: CustomEvent<InlineKeyDown>) {
     const {detail: {inline, node, keyboardEvent}} = event;

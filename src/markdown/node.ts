@@ -12,19 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export type MarkdownNode =|ContainerNode|ParagraphNode|BlockQuoteNode|
+export type MarkdownNode = DocumentNode|ListNode|ParagraphNode|BlockQuoteNode|
     ListItemNode|SectionNode|CodeBlockNode|UnsupportedNode;
 export type InlineNode = ParagraphNode|CodeBlockNode|SectionNode;
-export type ParentNode = ContainerNode|BlockQuoteNode|ListItemNode|SectionNode;
+export type ParentNode = DocumentNode|ListNode|BlockQuoteNode|ListItemNode|SectionNode;
 
 // TODO: ID, Sequence Number (per tree?)
 interface Node {
   readonly children?: MarkdownNode[];
 }
 
-export type ContainerNode = Node&{
-  readonly type: 'document'|'list';
-};
+export type DocumentNode = Node&{
+  readonly type: 'document';
+}
+
+export type ListNode = Node&{
+  readonly type: 'list';
+}
 
 export type SectionNode = Node&{
   readonly type: 'section';
