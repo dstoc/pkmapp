@@ -58,7 +58,7 @@ export class MarkdownTransclusion extends LitElement {
     `;
   }
   async load(name: string) {
-    const document = await this.library.getDocument(name + '.md');
+    const document = await this.library.getDocument(name);
     this.root = document.tree.root;
   }
   maybeUpdateFocus() {

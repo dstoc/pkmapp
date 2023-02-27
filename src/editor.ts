@@ -101,7 +101,7 @@ export class Editor extends LitElement {
     this.status = 'loading';
     this.document = undefined;
     try {
-      this.document = await this.library.getDocument(name + '.md', forceRefresh);
+      this.document = await this.library.getDocument(name, forceRefresh);
       this.root = this.document.tree.root;
       normalizeTree(this.document.tree);
       const node = findNextEditable(this.root, this.root);
@@ -361,6 +361,14 @@ export class Editor extends LitElement {
             description: name,
             execute: async () => (this.load(name, true), []),
           }));
+        },
+        executeFreeform: async (file: string) => (this.load(file, true), []),
+      },
+      {
+        description: 'Sync all',
+        execute: async () => {
+          await this.library.sync();
+          return [];
         },
         executeFreeform: async (file: string) => (this.load(file, true), []),
       },

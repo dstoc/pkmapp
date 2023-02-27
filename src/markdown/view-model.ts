@@ -220,6 +220,7 @@ export interface MarkdownTreeDelegate {
 export class MarkdownTree {
   constructor(root: MarkdownNode, private readonly delegate?: MarkdownTreeDelegate) {
     this.root = this.addDom<MarkdownNode>(root);
+    this.setRoot(this.root);
   }
 
   state: 'editing'|'post-edit'|'idle' = 'idle';
@@ -234,8 +235,10 @@ export class MarkdownTree {
     assert(node.viewModel.tree === this);
     assert(!node.viewModel.parent);
     const finish = this.edit();
-    this.removed.add(this.root);
-    this.root = node;
+    if (node !== this.root) {
+      this.removed.add(this.root);
+      this.root = node;
+    }
     finish();
   }
 
