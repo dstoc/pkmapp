@@ -216,13 +216,16 @@ export class MarkdownTree {
         this.observe = new Observe(this);
         this.removed = new Set();
         this.root = this.addDom(root);
+        this.setRoot(this.root);
     }
     setRoot(node) {
         assert(node.viewModel.tree === this);
         assert(!node.viewModel.parent);
         const finish = this.edit();
-        this.removed.add(this.root);
-        this.root = node;
+        if (node !== this.root) {
+            this.removed.add(this.root);
+            this.root = node;
+        }
         finish();
     }
     add(node) {

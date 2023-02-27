@@ -16,6 +16,7 @@ import { serializeToString } from './markdown/block-serializer.js';
 import { MarkdownTree } from './markdown/view-model.js';
 import { Observe } from './observe.js';
 import { BackLinks } from './backlinks.js';
+import { cast } from './asserts.js';
 async function* allFiles(prefix, directory) {
     for await (const entry of directory.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
@@ -55,20 +56,31 @@ export class FileSystemLibrary {
         }
         return undefined;
     }
+    async sync() {
+        for await (const name of allFiles('', this.directory)) {
+            const document = await this.getDocument(name);
+            await document.refresh();
+        }
+    }
     async getDocument(name, forceRefresh = false) {
-        const load = async () => {
-            const fileName = name;
+        const fileName = name + '.md';
+        const load = async (ifModifiedSince) => {
             let text = '';
+            let lastModified = new Date().getTime();
             try {
                 const handle = await getFileHandleFromPath(this.directory, fileName);
                 const file = await handle.getFile();
+                // TODO: also check that the content has actually changed
+                if (ifModifiedSince >= file.lastModified)
+                    return { lastModified: file.lastModified };
                 const decoder = new TextDecoder();
                 text = decoder.decode(await file.arrayBuffer());
+                lastModified = file.lastModified;
             }
             catch (e) {
                 console.error(e);
             }
-            return parseBlocks(text);
+            return { root: parseBlocks(text), lastModified };
         };
         const cached = this.cache.get(name);
         if (cached) {
@@ -77,33 +89,38 @@ export class FileSystemLibrary {
             }
             return cached;
         }
-        const node = await load();
+        const { root, lastModified } = await load(0);
         const library = this;
         const result = new class {
             constructor() {
                 this.dirty = false;
                 this.observe = new Observe(this);
                 this.pendingModifications = 0;
-                this.tree = new MarkdownTree(node, this);
+                this.lastModified = lastModified;
+                this.tree = new MarkdownTree(cast(root), this);
                 this.tree.observe.add(() => this.markDirty());
             }
-            get aliases() { return [name.substring(0, name.length - 3)]; }
+            get aliases() { return [name]; }
             postEditUpdate(node, change) {
                 if (node.type === 'paragraph') {
                     library.backLinks.postEditUpdate(node, change);
                 }
             }
             async refresh() {
-                this.tree.setRoot(this.tree.add(await load()));
-                this.tree.observe.notify();
+                const { root, lastModified } = await load(this.lastModified);
+                if (root) {
+                    this.lastModified = lastModified;
+                    this.tree.setRoot(this.tree.add(root));
+                    this.tree.observe.notify();
+                }
             }
             async save() {
                 const text = serializeToString(this.tree.root);
-                const fileName = name;
                 const handle = await getFileHandleFromPath(library.directory, fileName, true);
                 const stream = await handle.createWritable();
                 await stream.write(text);
                 await stream.close();
+                this.lastModified = new Date().getTime();
             }
             async markDirty() {
                 // TODO: The tree could be in an inconsistent state, don't trigger the
