@@ -23,6 +23,7 @@ import {customElement, html, LitElement, query, render, state} from './deps/lit.
 import {Editor} from './editor.js';
 import {FileSystemLibrary, Library} from './library.js';
 import {styles} from './style.js';
+import {getDirectory, setDirectory} from './directory-db.js';
 
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
@@ -46,11 +47,7 @@ export class PkmApp extends LitElement {
   }
   override render() {
     if (!this.library) {
-      return html`
-        <button id=opendir @click=${this.ensureDirectory}>
-          Open directory...
-        </button>
-      `;
+      return html`pkmapp`;
     }
     return html`
       <pkm-editor></pkm-editor>
@@ -59,32 +56,45 @@ export class PkmApp extends LitElement {
   }
   override async connectedCallback() {
     super.connectedCallback();
+    const task = async () => {
+      await this.trySetDirectory();
+      if (!this.library) {
+        setTimeout(task, 100);
+      }
+    };
+    task();
+  }
+  async trySetDirectory() {
+    if (this.library) return;
     const url = new URL(location.toString());
     if (url.searchParams.has('opfs')) {
-      await this.ensureDirectory();
-    }
-  }
-  async ensureDirectory() {
-    if (!this.library) {
-      const url = new URL(location.toString());
-      if (url.searchParams.has('opfs')) {
-        const opfs = await navigator.storage.getDirectory();
-        const path = url.searchParams.get('opfs')!;
-        this.library = new FileSystemLibrary(
-            path == '' ? opfs :
-                         await opfs.getDirectoryHandle(path, {create: true}));
-      } else {
-        this.library = new FileSystemLibrary(
-            await showDirectoryPicker({mode: 'readwrite'}));
+      const opfs = await navigator.storage.getDirectory();
+      const path = url.searchParams.get('opfs')!;
+      this.library = new FileSystemLibrary(
+          path == '' ? opfs :
+                       await opfs.getDirectoryHandle(path, {create: true}));
+    } else {
+      if (!navigator.userActivation?.isActive) return;
+      let directory = await getDirectory('default');
+      if (!directory) {
+        directory = await showDirectoryPicker({mode: 'readwrite'});
       }
+      await setDirectory('default', directory);
+      const status = await directory.requestPermission({mode: 'readwrite'});
+      if (status !== 'granted') return;
+      this.library = new FileSystemLibrary(directory);
     }
-    return this.library;
   }
 }
 
 declare global {
   interface HTMLElementTagNameMap {
     'pkm-app': PkmApp;
+  }
+  interface Navigator {
+    userActivation?: {
+      isActive: boolean;
+    }
   }
 }
 
