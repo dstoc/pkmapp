@@ -18,7 +18,7 @@ import {Page} from './page';
 
 type Status = 'loading'|'loaded'|'error';
 export class Main extends Page {
-  path = '/?opfs';
+  path = '/?opfs&no-default';
   host = $('>>>pkm-editor');
   isReady = this.host.shadow$('*').isExisting;
   fileSystem = new FileSystem();
