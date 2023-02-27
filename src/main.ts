@@ -24,6 +24,7 @@ import {Editor} from './editor.js';
 import {FileSystemLibrary, Library} from './library.js';
 import {styles} from './style.js';
 import {getDirectory, setDirectory} from './directory-db.js';
+import {EditorNavigation} from './editor.js';
 
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
@@ -44,13 +45,18 @@ export class PkmApp extends LitElement {
         ]);
       }
     });
+    window.addEventListener('popstate', (e) => {
+      this.editor.navigateByName(e.state);
+    });
   }
   override render() {
+    const url = new URL(location.toString());
+    const defaultName = url.searchParams.has('no-default') ? undefined : url.pathname.substring(1) || 'index';
     if (!this.library) {
       return html`pkmapp`;
     }
     return html`
-      <pkm-editor></pkm-editor>
+      <pkm-editor @editor-navigate=${this.onEditorNavigate} .defaultName=${defaultName}></pkm-editor>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
   }
@@ -64,7 +70,16 @@ export class PkmApp extends LitElement {
     };
     task();
   }
-  async trySetDirectory() {
+  private onEditorNavigate({detail: navigation}: CustomEvent<EditorNavigation>) {
+    const name = navigation.document.aliases[0];
+    if (!history.state) {
+      location.search;
+      history.replaceState(name, '', `/${name}${location.search}`);
+    } else {
+      history.pushState(name, '', `/${name}${location.search}`);
+    }
+  }
+  private async trySetDirectory() {
     if (this.library) return;
     const url = new URL(location.toString());
     if (url.searchParams.has('opfs')) {
@@ -102,3 +117,5 @@ onunhandledrejection = (e) => console.error(e.reason);
 onerror = (event, source, lineno, colno, error) => console.error(event, error);
 
 render(html`<pkm-app></pkm-app>`, document.body);
+
+navigator.serviceWorker.register('/serviceworker.js')
