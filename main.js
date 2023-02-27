@@ -25,6 +25,7 @@ import { contextProvider } from './deps/lit-labs-context.js';
 import { customElement, html, LitElement, query, render, state } from './deps/lit.js';
 import { FileSystemLibrary } from './library.js';
 import { styles } from './style.js';
+import { getDirectory, setDirectory } from './directory-db.js';
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
 let PkmApp = class PkmApp extends LitElement {
@@ -42,11 +43,7 @@ let PkmApp = class PkmApp extends LitElement {
     }
     render() {
         if (!this.library) {
-            return html `
-        <button id=opendir @click=${this.ensureDirectory}>
-          Open directory...
-        </button>
-      `;
+            return html `pkmapp`;
         }
         return html `
       <pkm-editor></pkm-editor>
@@ -55,25 +52,37 @@ let PkmApp = class PkmApp extends LitElement {
     }
     async connectedCallback() {
         super.connectedCallback();
+        const task = async () => {
+            await this.trySetDirectory();
+            if (!this.library) {
+                setTimeout(task, 100);
+            }
+        };
+        task();
+    }
+    async trySetDirectory() {
+        if (this.library)
+            return;
         const url = new URL(location.toString());
         if (url.searchParams.has('opfs')) {
-            await this.ensureDirectory();
+            const opfs = await navigator.storage.getDirectory();
+            const path = url.searchParams.get('opfs');
+            this.library = new FileSystemLibrary(path == '' ? opfs :
+                await opfs.getDirectoryHandle(path, { create: true }));
         }
-    }
-    async ensureDirectory() {
-        if (!this.library) {
-            const url = new URL(location.toString());
-            if (url.searchParams.has('opfs')) {
-                const opfs = await navigator.storage.getDirectory();
-                const path = url.searchParams.get('opfs');
-                this.library = new FileSystemLibrary(path == '' ? opfs :
-                    await opfs.getDirectoryHandle(path, { create: true }));
+        else {
+            if (!navigator.userActivation?.isActive)
+                return;
+            let directory = await getDirectory('default');
+            if (!directory) {
+                directory = await showDirectoryPicker({ mode: 'readwrite' });
             }
-            else {
-                this.library = new FileSystemLibrary(await showDirectoryPicker({ mode: 'readwrite' }));
-            }
+            await setDirectory('default', directory);
+            const status = await directory.requestPermission({ mode: 'readwrite' });
+            if (status !== 'granted')
+                return;
+            this.library = new FileSystemLibrary(directory);
         }
-        return this.library;
     }
 };
 __decorate([
