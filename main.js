@@ -40,13 +40,18 @@ let PkmApp = class PkmApp extends LitElement {
                 ]);
             }
         });
+        window.addEventListener('popstate', (e) => {
+            this.editor.navigateByName(e.state);
+        });
     }
     render() {
+        const url = new URL(location.toString());
+        const defaultName = url.searchParams.has('no-default') ? undefined : url.pathname.substring(1) || 'index';
         if (!this.library) {
             return html `pkmapp`;
         }
         return html `
-      <pkm-editor></pkm-editor>
+      <pkm-editor @editor-navigate=${this.onEditorNavigate} .defaultName=${defaultName}></pkm-editor>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
     }
@@ -59,6 +64,16 @@ let PkmApp = class PkmApp extends LitElement {
             }
         };
         task();
+    }
+    onEditorNavigate({ detail: navigation }) {
+        const name = navigation.document.aliases[0];
+        if (!history.state) {
+            location.search;
+            history.replaceState(name, '', `/${name}${location.search}`);
+        }
+        else {
+            history.pushState(name, '', `/${name}${location.search}`);
+        }
     }
     async trySetDirectory() {
         if (this.library)
@@ -102,4 +117,5 @@ export { PkmApp };
 onunhandledrejection = (e) => console.error(e.reason);
 onerror = (event, source, lineno, colno, error) => console.error(event, error);
 render(html `<pkm-app></pkm-app>`, document.body);
+navigator.serviceWorker.register('/serviceworker.js');
 //# sourceMappingURL=main.js.map

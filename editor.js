@@ -83,36 +83,70 @@ let Editor = class Editor extends LitElement {
     }
     async connectedCallback() {
         super.connectedCallback();
-        const url = new URL(location.toString());
         await this.updateComplete;
-        if (url.searchParams.has('path')) {
-            await this.load(url.searchParams.get('path'));
+        if (this.defaultName !== undefined) {
+            await this.navigateByName(this.defaultName, true);
         }
     }
-    async load(name, forceRefresh = false) {
-        if (!this.library)
-            return;
-        // TODO: this probably belongs somewhere else
+    async navigateByName(name, fireEvent = false) {
         name = resolveDateAlias(name) ?? name;
+        const oldStatus = this.status;
         this.status = 'loading';
         this.document = undefined;
         try {
-            this.document = await this.library.getDocument(name, forceRefresh);
-            this.root = this.document.tree.root;
+            const document = await this.library.getDocument(name, true);
+            const root = document.tree.root;
+            if (this.document === document && this.root === root) {
+                this.status = oldStatus;
+                return;
+            }
+            this.document = document;
+            this.root = root;
+            // TODO: is this still needed here?
             normalizeTree(this.document.tree);
             const node = findNextEditable(this.root, this.root);
             if (node) {
                 focusNode(this.markdownRenderer.hostContext, node, 0);
             }
             this.status = 'loaded';
+            if (fireEvent)
+                this.dispatchEvent(new CustomEvent('editor-navigate', {
+                    detail: {
+                        document,
+                        root,
+                    },
+                    bubbles: true,
+                    composed: true,
+                }));
         }
         catch (e) {
             this.status = 'error';
             console.error(e);
         }
     }
+    navigate(document, root, fireEvent = false) {
+        if (this.document === document && this.root === root)
+            return;
+        assert(document.tree === root.viewModel.tree);
+        assert(root.viewModel.connected);
+        this.document = document;
+        this.root = root;
+        const node = findNextEditable(this.root, this.root);
+        if (node) {
+            focusNode(this.markdownRenderer.hostContext, node, 0);
+        }
+        if (fireEvent)
+            this.dispatchEvent(new CustomEvent('editor-navigate', {
+                detail: {
+                    document,
+                    root,
+                },
+                bubbles: true,
+                composed: true,
+            }));
+    }
     onInlineLinkClick({ detail: { destination }, }) {
-        this.load(destination);
+        this.navigateByName(destination, true);
     }
     onTitleItemClick({ detail }) {
         this.root = detail;
@@ -367,20 +401,20 @@ let Editor = class Editor extends LitElement {
                 execute: async () => {
                     return (await this.library.getAllNames()).map(name => ({
                         description: name,
-                        execute: async () => (this.load(name), []),
+                        execute: async () => (this.navigateByName(name, true), []),
                     }));
                 },
-                executeFreeform: async (file) => (this.load(file), []),
+                executeFreeform: async (file) => (this.navigateByName(file, true), []),
             },
             {
                 description: 'Force open',
                 execute: async () => {
                     return (await this.library.getAllNames()).map(name => ({
                         description: name,
-                        execute: async () => (this.load(name, true), []),
+                        execute: async () => (this.navigateByName(name, true), []),
                     }));
                 },
-                executeFreeform: async (file) => (this.load(file, true), []),
+                executeFreeform: async (file) => (this.navigateByName(file, true), []),
             },
             {
                 description: 'Sync all',
@@ -388,7 +422,6 @@ let Editor = class Editor extends LitElement {
                     await this.library.sync();
                     return [];
                 },
-                executeFreeform: async (file) => (this.load(file, true), []),
             },
             {
                 description: 'Force save',
@@ -407,7 +440,7 @@ let Editor = class Editor extends LitElement {
                 execute: async () => {
                     return this.library.backLinks.getBacklinksByDocument(this.document, this.library).map(name => ({
                         description: name,
-                        execute: async () => (this.load(name), []),
+                        execute: async () => (this.navigateByName(name, true), []),
                     }));
                 }
             },
