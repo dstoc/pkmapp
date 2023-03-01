@@ -34,7 +34,6 @@ import {InlineEdit, InlineViewModel, InlineViewModelNode, ViewModelNode} from '.
 import {Observer, Observers} from './observe.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
-import {resolveDateAlias} from './date-aliases.js';
 import {maybeEditBlockSelectionIndent, editInlineIndent} from './indent-util.js';
 import {getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn} from './block-selection-util.js';
 
@@ -111,7 +110,6 @@ export class Editor extends LitElement {
     }
   }
   async navigateByName(name: string, fireEvent = false) {
-    name = resolveDateAlias(name) ?? name;
     const oldStatus = this.status;
     this.status = 'loading';
     this.document = undefined;
