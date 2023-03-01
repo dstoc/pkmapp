@@ -26,11 +26,13 @@ import { customElement, html, LitElement, query, render, state } from './deps/li
 import { FileSystemLibrary } from './library.js';
 import { styles } from './style.js';
 import { getDirectory, setDirectory } from './directory-db.js';
+import { resolve } from './resolve.js';
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
 let PkmApp = class PkmApp extends LitElement {
     constructor() {
         super();
+        this.initialLocation = location.toString();
         document.addEventListener('keydown', (e) => {
             if (e.key === 'p' && e.ctrlKey) {
                 e.preventDefault();
@@ -45,8 +47,9 @@ let PkmApp = class PkmApp extends LitElement {
         });
     }
     render() {
-        const url = new URL(location.toString());
-        const defaultName = url.searchParams.has('no-default') ? undefined : url.pathname.substring(1) || 'index';
+        const url = new URL(this.initialLocation);
+        const basePath = new URL(resolve('./')).pathname;
+        const defaultName = url.searchParams.has('no-default') ? undefined : url.pathname.substring(basePath.length) || 'index';
         if (!this.library) {
             return html `pkmapp`;
         }
@@ -67,12 +70,15 @@ let PkmApp = class PkmApp extends LitElement {
     }
     onEditorNavigate({ detail: navigation }) {
         const name = navigation.document.aliases[0];
+        const url = new URL(this.initialLocation.toString());
+        url.pathname = new URL(resolve('./' + name)).pathname;
+        url.searchParams.delete('path');
         if (!history.state) {
             location.search;
-            history.replaceState(name, '', `/${name}${location.search}`);
+            history.replaceState(name, '', url.toString());
         }
         else {
-            history.pushState(name, '', `/${name}${location.search}`);
+            history.pushState(name, '', url.toString());
         }
     }
     async trySetDirectory() {
@@ -117,5 +123,5 @@ export { PkmApp };
 onunhandledrejection = (e) => console.error(e.reason);
 onerror = (event, source, lineno, colno, error) => console.error(event, error);
 render(html `<pkm-app></pkm-app>`, document.body);
-navigator.serviceWorker.register('/serviceworker.js');
-//# sourceMappingURL=main.js.map
+navigator.serviceWorker.register('./serviceworker.js');
+//# sourceMappingURL=pkmapp.js.map

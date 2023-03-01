@@ -12,13 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 self.addEventListener('fetch', (event) => {
+    const basePath = new URL(self.location.toString()).pathname.replace('/serviceworker.js', '');
     const target = new URL(event.request.url);
     if (target.origin !== self.origin)
         return;
     if (target.pathname === '/')
         return;
+    if (target.pathname.endsWith('/pkmapp.js')) {
+        const path = basePath + '/pkmapp.js';
+        if (path === target.pathname)
+            return;
+        event.respondWith(Response.redirect(path));
+        return;
+    }
     if (target.pathname.includes('.'))
         return;
-    event.respondWith(fetch('/'));
+    event.respondWith(fetch(basePath + '/index.html'));
+    return;
 });
 //# sourceMappingURL=serviceworker.js.map

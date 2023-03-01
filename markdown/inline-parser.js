@@ -12,8 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import Parser from '../deps/tree-sitter.js';
-await Parser.init();
-const inline = await Parser.Language.load('tree-sitter-markdown_inline.wasm');
+import { resolve } from '../resolve.js';
+await Parser.init({
+    locateFile(path) {
+        return resolve(`./deps/${path}`);
+    }
+});
+const inline = await Parser.Language.load(resolve('./deps/tree-sitter-markdown_inline.wasm'));
 export const parser = new Parser();
 parser.setLanguage(inline);
 export function* dfs(node) {
