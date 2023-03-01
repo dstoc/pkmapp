@@ -19,6 +19,7 @@ import {InlineViewModelNode, MarkdownTree, ViewModelNode} from './markdown/view-
 import {Observe} from './observe.js';
 import {BackLinks} from './backlinks.js';
 import {cast} from './asserts.js';
+import {resolveDateAlias} from './date-aliases.js';
 
 export interface Document {
   refresh(): Promise<void>;
@@ -85,6 +86,7 @@ export class FileSystemLibrary implements Library {
     }
   }
   async getDocument(name: string, forceRefresh = false): Promise<Document> {
+    name = resolveDateAlias(name) ?? name;
     const fileName = name + '.md';
     const load = async (ifModifiedSince: number) => {
       let text = '';
