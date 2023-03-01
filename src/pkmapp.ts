@@ -25,6 +25,7 @@ import {FileSystemLibrary, Library} from './library.js';
 import {styles} from './style.js';
 import {getDirectory, setDirectory} from './directory-db.js';
 import {EditorNavigation} from './editor.js';
+import {resolve} from './resolve.js';
 
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
@@ -49,9 +50,11 @@ export class PkmApp extends LitElement {
       this.editor.navigateByName(e.state);
     });
   }
+  private initialLocation = location.toString();
   override render() {
-    const url = new URL(location.toString());
-    const defaultName = url.searchParams.has('no-default') ? undefined : url.pathname.substring(1) || 'index';
+    const url = new URL(this.initialLocation);
+    const basePath = new URL(resolve('./')).pathname;
+    const defaultName = url.searchParams.has('no-default') ? undefined : url.pathname.substring(basePath.length) || 'index';
     if (!this.library) {
       return html`pkmapp`;
     }
@@ -72,11 +75,14 @@ export class PkmApp extends LitElement {
   }
   private onEditorNavigate({detail: navigation}: CustomEvent<EditorNavigation>) {
     const name = navigation.document.aliases[0];
+    const url = new URL(this.initialLocation.toString());
+    url.pathname = new URL(resolve('./' + name)).pathname;
+    url.searchParams.delete('path');
     if (!history.state) {
       location.search;
-      history.replaceState(name, '', `/${name}${location.search}`);
+      history.replaceState(name, '', url.toString());
     } else {
-      history.pushState(name, '', `/${name}${location.search}`);
+      history.pushState(name, '', url.toString());
     }
   }
   private async trySetDirectory() {
@@ -118,4 +124,4 @@ onerror = (event, source, lineno, colno, error) => console.error(event, error);
 
 render(html`<pkm-app></pkm-app>`, document.body);
 
-navigator.serviceWorker.register('/serviceworker.js')
+navigator.serviceWorker.register('./serviceworker.js')

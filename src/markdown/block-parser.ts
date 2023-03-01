@@ -14,9 +14,14 @@
 
 import Parser from '../deps/tree-sitter.js';
 import type {MarkdownNode, ParagraphNode} from './node.js';
+import {resolve} from '../resolve.js';
 
-await Parser.init();
-const blocks = await Parser.Language.load('tree-sitter-markdown.wasm');
+await Parser.init({
+  locateFile(path: string) {
+    return resolve(`./deps/${path}`);
+  }
+});
+const blocks = await Parser.Language.load(resolve('./deps/tree-sitter-markdown.wasm'));
 const parser = new Parser();
 parser.setLanguage(blocks);
 
