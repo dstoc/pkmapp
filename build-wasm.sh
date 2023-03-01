@@ -20,13 +20,14 @@ npx emsdk install 2.0.24 || exit 1
 npx emsdk activate 2.0.24 || exit 1
 source node_modules/emscripten-sdk-npm/emsdk/emsdk_env.sh || exit 1
 (
-  cd build/
-  npx tree-sitter-cli build-wasm ../node_modules/tree-sitter-markdown/tree-sitter-markdown || exit 1
-  npx tree-sitter-cli build-wasm ../node_modules/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
+  cd build/deps/
+  npx tree-sitter-cli build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown || exit 1
+  npx tree-sitter-cli build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
 )
 (
   cd third_party/tree-sitter || exit 1
   script/build-wasm || exit 1
 )
-cp third_party/tree-sitter/lib/binding_web/tree-sitter.js build/
-cp third_party/tree-sitter/lib/binding_web/tree-sitter.wasm build/
+cp third_party/tree-sitter/lib/binding_web/tree-sitter.js build/deps/
+echo 'export default TreeSitter;' >> build/deps/tree-sitter.js
+cp third_party/tree-sitter/lib/binding_web/tree-sitter.wasm build/deps/
