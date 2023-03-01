@@ -31,7 +31,6 @@ import { normalizeTree } from './markdown/normalize.js';
 import { ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousEditable, reverseDfs, swapNodes } from './markdown/view-model-util.js';
 import { Observer, Observers } from './observe.js';
 import { getContainingTransclusion } from './markdown/transclusion.js';
-import { resolveDateAlias } from './date-aliases.js';
 import { maybeEditBlockSelectionIndent, editInlineIndent } from './indent-util.js';
 import { getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn } from './block-selection-util.js';
 let Editor = class Editor extends LitElement {
@@ -89,7 +88,6 @@ let Editor = class Editor extends LitElement {
         }
     }
     async navigateByName(name, fireEvent = false) {
-        name = resolveDateAlias(name) ?? name;
         const oldStatus = this.status;
         this.status = 'loading';
         this.document = undefined;

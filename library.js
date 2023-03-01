@@ -17,6 +17,7 @@ import { MarkdownTree } from './markdown/view-model.js';
 import { Observe } from './observe.js';
 import { BackLinks } from './backlinks.js';
 import { cast } from './asserts.js';
+import { resolveDateAlias } from './date-aliases.js';
 async function* allFiles(prefix, directory) {
     for await (const entry of directory.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
@@ -63,6 +64,7 @@ export class FileSystemLibrary {
         }
     }
     async getDocument(name, forceRefresh = false) {
+        name = resolveDateAlias(name) ?? name;
         const fileName = name + '.md';
         const load = async (ifModifiedSince) => {
             let text = '';
