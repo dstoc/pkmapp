@@ -1,3 +1,17 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 import {dfs} from './markdown/inline-parser.js';
 import {InlineViewModelNode} from './markdown/view-model.js';
 import {Library, Document} from './library.js';
@@ -11,15 +25,15 @@ export class BackLinks {
   }
   getBacklinksByDocument(document: Document, library: Library) {
     const sources = new Set<string>();
-    for (const name of document.aliases) {
+    for (const name of document.allNames) {
       for (const tree of this.getBacklinksByName(name)) {
-        const source = library.getDocumentByTree(tree)?.aliases[0];
+        const source = library.getDocumentByTree(tree)?.name;
         if (source == null) continue;
         sources.add(source);
       }
-      
     }
     // TODO: maybe sort by last edit time
+    // TODO: return block rather than string?
     return [...sources.values()];
   }
   postEditUpdate(node: InlineViewModelNode, change: 'connected'|'disconnected'|'changed') {

@@ -18,6 +18,7 @@ export async function testRoundtrip(
     content: string, main: Main, fs: FileSystem, removeWhitespace = false,
     expectedFailure?: string) {
   await fs.setFile('test.md', content);
+  await main.runCommand('sync');
   await main.runCommand('open', 'test');
   expect(await main.status('loaded', 'error')).toEqual('loaded');
   await main.runCommand('force save');

@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {ViewModelNode} from './markdown/view-model.js';
 import {Library} from './library.js';
 import {assert} from './asserts.js';
 import {findNextEditable} from './markdown/view-model-util.js';
 import {state, property, css, customElement, html, LitElement} from './deps/lit.js';
 import {contextProvided} from './deps/lit-labs-context.js';
 import {libraryContext} from './app-context.js';
-
-type LogicalContainingBlock = ViewModelNode&{type: 'list-item'|'section'|'document'};
+import {LogicalContainingBlock, getLogicalContainingBlock} from './block-util.js';
+import {Observers, Observer} from './observe.js';
 
 @customElement('pkm-title')
 export class Title extends LitElement {
@@ -37,15 +36,24 @@ export class Title extends LitElement {
   @contextProvided({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
+  observers?: Observers;
 
   override render() {
     if (!this.node) return ``;
+    this.observers?.clear();
     let containers = [];
     let next: LogicalContainingBlock|undefined = this.node;
     while (next) {
       containers.unshift(next);
       next = getLogicalContainingBlock(next);
     }
+    this.observers = new Observers(...containers.map(container => new Observer(
+       () => container.viewModel.observe,
+       (target, observer) => target.add(observer),
+       (target, observer) => target.remove(observer),
+       () => this.requestUpdate(),
+       )));
+    this.observers.update();
 
     return html`
       ${containers.map(node => html`» <a class=item @click=${() => this.onItemClick(node)}>${getTitle(node, this.library)}</a> `)}
@@ -78,26 +86,9 @@ function getTitle(node: LogicalContainingBlock, library: Library): string {
       return node.content;
     case 'document':
       const document = library.getDocumentByTree(node.viewModel.tree);
-      return document?.aliases[0] ?? 'no-document';
+      return document?.name ?? 'no-document';
     default:
       assert(false);
   }
-}
-
-// TODO: dedupe with `logicalContainingBlock` in editor.ts
-function getLogicalContainingBlock(node: ViewModelNode): LogicalContainingBlock|undefined {
-  let next = node.viewModel.parent;
-  while (next) {
-    switch (next.type) {
-      case 'list-item':
-      case 'section':
-      case 'document':
-        return next;
-      default:
-        next = next.viewModel.parent;
-        continue;
-    }
-  }
-  return;
 }
 

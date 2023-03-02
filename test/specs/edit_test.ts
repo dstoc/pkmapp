@@ -48,6 +48,7 @@ describe('main', () => {
   }
   beforeEach(async () => {
     await state.fs.setFile('test.md', '');
+    await state.main.runCommand('sync');
     await state.main.runCommand('force open', 'test');
     await state.main.status('loaded');
     const inline = $('>>>[contenteditable]');
@@ -57,6 +58,7 @@ describe('main', () => {
     it('can be inserted and edited', async () => {
       await browser.keys(input`test`);
       await state.fs.setFile('transclusion.md', '');
+      await state.main.runCommand('sync');
       await state.main.runCommand('insert transclusion', 'transclusion');
       await browser.waitUntil(state.main.host.$('>>>md-transclusion').isExisting);
       // TODO: shouldn't be required

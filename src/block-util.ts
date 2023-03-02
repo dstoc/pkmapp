@@ -1,0 +1,37 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import {ViewModelNode} from './markdown/view-model.js';
+
+export type LogicalContainingBlock = ViewModelNode&{type: 'list-item'|'section'|'document'};
+
+export function isLogicalContainingBlock(node?: ViewModelNode): node is LogicalContainingBlock {
+  switch (node?.type) {
+    case 'list-item':
+    case 'section':
+    case 'document':
+      return true;
+    default:
+      return false;
+  }
+}
+
+export function getLogicalContainingBlock(node?: ViewModelNode): LogicalContainingBlock|undefined {
+  let next = node?.viewModel.parent;
+  while (next) {
+    if (isLogicalContainingBlock(next)) return next
+    next = next.viewModel.parent;
+  }
+  return;
+}

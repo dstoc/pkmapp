@@ -54,7 +54,7 @@ export class PkmApp extends LitElement {
   override render() {
     const url = new URL(this.initialLocation);
     const basePath = new URL(resolve('./')).pathname;
-    const defaultName = url.searchParams.has('no-default') ? undefined : url.pathname.substring(basePath.length) || 'index';
+    const defaultName = url.searchParams.has('no-default') ? undefined : decodeURIComponent(url.pathname.substring(basePath.length)) || 'index';
     if (!this.library) {
       return html`pkmapp`;
     }
@@ -74,36 +74,45 @@ export class PkmApp extends LitElement {
     task();
   }
   private onEditorNavigate({detail: navigation}: CustomEvent<EditorNavigation>) {
-    const name = navigation.document.aliases[0];
+    const name = navigation.document.name;
     const url = new URL(this.initialLocation.toString());
     url.pathname = new URL(resolve('./' + name)).pathname;
     url.searchParams.delete('path');
-    if (!history.state) {
-      location.search;
+    if (navigation.kind === 'replace' || !history.state) {
       history.replaceState(name, '', url.toString());
     } else {
       history.pushState(name, '', url.toString());
     }
   }
+  loading = false;
   private async trySetDirectory() {
     if (this.library) return;
-    const url = new URL(location.toString());
-    if (url.searchParams.has('opfs')) {
-      const opfs = await navigator.storage.getDirectory();
-      const path = url.searchParams.get('opfs')!;
-      this.library = new FileSystemLibrary(
-          path == '' ? opfs :
-                       await opfs.getDirectoryHandle(path, {create: true}));
-    } else {
-      if (!navigator.userActivation?.isActive) return;
-      let directory = await getDirectory('default');
-      if (!directory) {
-        directory = await showDirectoryPicker({mode: 'readwrite'});
+    if (this.loading) return;
+    this.loading = true;
+    try {
+      const url = new URL(location.toString());
+      let library;
+      if (url.searchParams.has('opfs')) {
+        const opfs = await navigator.storage.getDirectory();
+        const path = url.searchParams.get('opfs')!;
+        library = new FileSystemLibrary(
+            path == '' ? opfs :
+                         await opfs.getDirectoryHandle(path, {create: true}));
+      } else {
+        if (!navigator.userActivation?.isActive) return;
+        let directory = await getDirectory('default');
+        if (!directory) {
+          directory = await showDirectoryPicker({mode: 'readwrite'});
+        }
+        await setDirectory('default', directory);
+        const status = await directory.requestPermission({mode: 'readwrite'});
+        if (status !== 'granted') return;
+        library = new FileSystemLibrary(directory);
       }
-      await setDirectory('default', directory);
-      const status = await directory.requestPermission({mode: 'readwrite'});
-      if (status !== 'granted') return;
-      this.library = new FileSystemLibrary(directory);
+      await library.sync();
+      this.library = library;
+    } finally {
+      this.loading = false;
     }
   }
 }

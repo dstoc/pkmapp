@@ -36,8 +36,10 @@ import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
 import {maybeEditBlockSelectionIndent, editInlineIndent} from './indent-util.js';
 import {getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn} from './block-selection-util.js';
+import {getLogicalContainingBlock} from './block-util.js';
 
 export interface EditorNavigation {
+  kind: 'navigate'|'replace';
   document: Document;
   root: ViewModelNode;
 }
@@ -47,8 +49,9 @@ export class Editor extends LitElement {
   defaultName?: string;
   @property({type: String, reflect: true})
   status: 'loading'|'loaded'|'error'|undefined;
-  @state() document?: Document;
-  @state() root?: ViewModelNode;
+  @state() private document?: Document;
+  @state() private root?: ViewModelNode;
+  private name?: string;
   @property({type: Boolean, reflect: true}) dirty = false;
   @contextProvided({context: libraryContext, subscribe: true})
   @state()
@@ -102,6 +105,18 @@ export class Editor extends LitElement {
     </div>
     <pkm-autocomplete></pkm-autocomplete>`;
   }
+  override updated() {
+    if (this.name === undefined || this.name === this.document?.name) return;
+    this.dispatchEvent(new CustomEvent('editor-navigate', {
+      detail: {
+        kind: 'replace',
+        document: this.document,
+        root: this.root,
+      },
+      bubbles: true,
+      composed: true,
+    }));
+  }
   override async connectedCallback() {
     super.connectedCallback();
     await this.updateComplete;
@@ -123,14 +138,16 @@ export class Editor extends LitElement {
       this.document = document;
       this.root = root;
       // TODO: is this still needed here?
-      normalizeTree(this.document.tree);
-      const node = findNextEditable(this.root, this.root);
+      normalizeTree(document.tree);
+      const node = findNextEditable(root, root);
       if (node) {
         focusNode(this.markdownRenderer.hostContext, node, 0);
       }
+      this.name = this.document.name;
       this.status = 'loaded';
       if (fireEvent) this.dispatchEvent(new CustomEvent('editor-navigate', {
         detail: {
+          kind: 'navigate',
           document,
           root,
         },
@@ -453,7 +470,7 @@ export class Editor extends LitElement {
       ...inTopLevelDocument && activeNode && activeInline ? [{
         description: 'Focus on block',
         execute: async () => {
-          this.root = logicalContainingBlock(activeNode);
+          this.root = getLogicalContainingBlock(activeNode);
           focusNode(cast(activeInline.hostContext), activeNode, startIndex);
           return [];
         },
@@ -461,7 +478,7 @@ export class Editor extends LitElement {
       ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
         description: 'Focus on containing block',
         execute: async () => {
-          if (this.root?.viewModel.parent) this.root = logicalContainingBlock(this.root.viewModel.parent);
+          if (this.root?.viewModel.parent) this.root = getLogicalContainingBlock(this.root.viewModel.parent);
           if (activeNode && activeInline) focusNode(cast(activeInline.hostContext), activeNode, startIndex);
           return [];
         },
@@ -540,15 +557,6 @@ export class Editor extends LitElement {
       }] : [],
     ];
   }
-}
-
-function logicalContainingBlock(context: ViewModelNode) {
-  let next: ViewModelNode|undefined = context;
-  while (next) {
-    if (next.type === 'section' || next.type === 'list-item' || next.type === 'document') return next;
-    next = next.viewModel.parent;
-  }
-  return context;
 }
 
 function performLogicalInsertion(
