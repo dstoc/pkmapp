@@ -14,17 +14,19 @@
 
 import {parseBlocks} from './markdown/block-parser.js';
 import {serializeToString} from './markdown/block-serializer.js';
-import {MarkdownNode} from './markdown/node.js';
+import {DocumentNode} from './markdown/node.js';
 import {InlineViewModelNode, MarkdownTree, ViewModelNode} from './markdown/view-model.js';
 import {Observe} from './observe.js';
 import {BackLinks} from './backlinks.js';
-import {cast} from './asserts.js';
+import {Metadata} from './metadata.js';
+import {assert, cast} from './asserts.js';
 import {resolveDateAlias} from './date-aliases.js';
 
 export interface Document {
   refresh(): Promise<void>;
   save(): Promise<void>;
-  readonly aliases: string[];
+  readonly name: string;
+  readonly allNames: string[];
   readonly tree: MarkdownTree;
   readonly dirty: boolean;
   readonly observe: Observe<Document>;
@@ -35,6 +37,7 @@ export interface Library {
   getDocumentByTree(tree: MarkdownTree): Document|undefined;
   getAllNames(): Promise<string[]>;
   readonly backLinks: BackLinks;
+  readonly metadata: Metadata;
   sync(): Promise<void>;
 }
 
@@ -63,15 +66,19 @@ async function getFileHandleFromPath(
 export class FileSystemLibrary implements Library {
   constructor(private readonly directory: FileSystemDirectoryHandle) {}
   async getAllNames(): Promise<string[]> {
-    const result = [];
-    for await (const name of allFiles('', this.directory)) {
-      result.push(name);
+    const result = new Set<string>();
+    for (const document of this.cache.values()) {
+      for (const name of document.allNames) {
+        result.add(name);
+      }
     }
-    return result;
+    return [...result];
   }
   private cache: Map<string, Document> = new Map();
   backLinks = new BackLinks();
+  metadata = new Metadata();
   getDocumentByTree(tree: MarkdownTree): Document|undefined {
+    // TODO: index
     for (const document of this.cache.values()) {
       if (document.tree === tree) {
         return document;
@@ -102,8 +109,15 @@ export class FileSystemLibrary implements Library {
       } catch (e) {
         console.error(e);
       }
-      return {root: parseBlocks(text)!, lastModified};
+      const root = parseBlocks(text);
+      assert(root && root.type === 'document');
+      return {root, lastModified};
     };
+    const aliased = this.metadata.findByName(name);
+    if (aliased) {
+      const document = this.getDocumentByTree(aliased.viewModel.tree);
+      return cast(document);
+    }
     const cached = this.cache.get(name);
     if (cached) {
       if (forceRefresh) {
@@ -123,17 +137,31 @@ export class FileSystemLibrary implements Library {
       lastModified: number;
       dirty = false;
       observe: Observe<Document> = new Observe<Document>(this);
-      get aliases() { return [name]; }
+      get name() {
+        return this.allNames[0];
+      }
+      get allNames() {
+        return [
+          ...(this.metadata && [this.metadata]) ?? [],
+          name,
+        ];
+      }
+      get metadata() {
+        return library.metadata.get(this.tree.root);
+      }
       postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed') {
         if (node.type === 'paragraph') {
           library.backLinks.postEditUpdate(node as InlineViewModelNode, change);
+        }
+        if (node.type === 'code-block') {
+          library.metadata.postEditUpdate(node, change);
         }
       }
       async refresh() {
         const {root, lastModified} = await load(this.lastModified);
         if (root) {
           this.lastModified = lastModified;
-          this.tree.setRoot(this.tree.add<MarkdownNode>(root));
+          this.tree.setRoot(this.tree.add<DocumentNode>(root));
           this.tree.observe.notify();
         }
       }

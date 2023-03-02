@@ -59,7 +59,7 @@ export function* reverseDfs(node: ViewModelNode, limit?: ViewModelNode) {
   } while (true);
 }
 
-export function* dfs(node: ViewModelNode, root = node.viewModel.tree.root) {
+export function* dfs(node: ViewModelNode, root: ViewModelNode = node.viewModel.tree.root) {
   function next(next?: ViewModelNode) {
     return next && next !== root.viewModel.parent && (node = next);
   }

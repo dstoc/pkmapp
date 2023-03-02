@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type {MarkdownNode, InlineNode} from './node.js';
+import type {MarkdownNode, DocumentNode, InlineNode} from './node.js';
 
 import {parser as inlineParser} from './inline-parser.js';
 import {parseBlocks} from './block-parser.js';
@@ -218,8 +218,8 @@ export interface MarkdownTreeDelegate {
 }
 
 export class MarkdownTree {
-  constructor(root: MarkdownNode, private readonly delegate?: MarkdownTreeDelegate) {
-    this.root = this.addDom<MarkdownNode>(root);
+  constructor(root: DocumentNode, private readonly delegate?: MarkdownTreeDelegate) {
+    this.root = this.addDom<DocumentNode>(root);
     this.setRoot(this.root);
   }
 
@@ -227,11 +227,11 @@ export class MarkdownTree {
   private editCount = 0;
   private editStartVersion = 0;
   private editResumeObserve: () => void = () => void 0;
-  root: ViewModelNode;
+  root: ViewModelNode&DocumentNode;
   readonly observe = new Observe(this);
   removed: Set<ViewModelNode> = new Set();
 
-  setRoot(node: ViewModelNode) {
+  setRoot(node: DocumentNode&ViewModelNode) {
     assert(node.viewModel.tree === this);
     assert(!node.viewModel.parent);
     const finish = this.edit();
@@ -312,7 +312,7 @@ export class MarkdownTree {
   }
 
   serialize(node?: ViewModelNode): MarkdownNode {
-    if (!node) node = this.root;
+    node = node ?? this.root;
     assert(node.viewModel.tree === this);
     assert(this.state === 'idle');
     const result: MaybeViewModelNode = {...node};
