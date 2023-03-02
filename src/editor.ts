@@ -107,6 +107,7 @@ export class Editor extends LitElement {
   }
   override updated() {
     if (this.name === undefined || this.name === this.document?.name) return;
+    this.name = this.document?.name;
     this.dispatchEvent(new CustomEvent('editor-navigate', {
       detail: {
         kind: 'replace',
