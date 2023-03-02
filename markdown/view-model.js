@@ -297,8 +297,7 @@ export class MarkdownTree {
         return result;
     }
     serialize(node) {
-        if (!node)
-            node = this.root;
+        node = node ?? this.root;
         assert(node.viewModel.tree === this);
         assert(this.state === 'idle');
         const result = { ...node };

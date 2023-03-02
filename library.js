@@ -16,7 +16,8 @@ import { serializeToString } from './markdown/block-serializer.js';
 import { MarkdownTree } from './markdown/view-model.js';
 import { Observe } from './observe.js';
 import { BackLinks } from './backlinks.js';
-import { cast } from './asserts.js';
+import { Metadata } from './metadata.js';
+import { assert, cast } from './asserts.js';
 import { resolveDateAlias } from './date-aliases.js';
 async function* allFiles(prefix, directory) {
     for await (const entry of directory.values()) {
@@ -41,15 +42,19 @@ export class FileSystemLibrary {
         this.directory = directory;
         this.cache = new Map();
         this.backLinks = new BackLinks();
+        this.metadata = new Metadata();
     }
     async getAllNames() {
-        const result = [];
-        for await (const name of allFiles('', this.directory)) {
-            result.push(name);
+        const result = new Set();
+        for (const document of this.cache.values()) {
+            for (const name of document.allNames) {
+                result.add(name);
+            }
         }
-        return result;
+        return [...result];
     }
     getDocumentByTree(tree) {
+        // TODO: index
         for (const document of this.cache.values()) {
             if (document.tree === tree) {
                 return document;
@@ -82,8 +87,15 @@ export class FileSystemLibrary {
             catch (e) {
                 console.error(e);
             }
-            return { root: parseBlocks(text), lastModified };
+            const root = parseBlocks(text);
+            assert(root && root.type === 'document');
+            return { root, lastModified };
         };
+        const aliased = this.metadata.findByName(name);
+        if (aliased) {
+            const document = this.getDocumentByTree(aliased.viewModel.tree);
+            return cast(document);
+        }
         const cached = this.cache.get(name);
         if (cached) {
             if (forceRefresh) {
@@ -102,10 +114,24 @@ export class FileSystemLibrary {
                 this.tree = new MarkdownTree(cast(root), this);
                 this.tree.observe.add(() => this.markDirty());
             }
-            get aliases() { return [name]; }
+            get name() {
+                return this.allNames[0];
+            }
+            get allNames() {
+                return [
+                    ...(this.metadata && [this.metadata]) ?? [],
+                    name,
+                ];
+            }
+            get metadata() {
+                return library.metadata.get(this.tree.root);
+            }
             postEditUpdate(node, change) {
                 if (node.type === 'paragraph') {
                     library.backLinks.postEditUpdate(node, change);
+                }
+                if (node.type === 'code-block') {
+                    library.metadata.postEditUpdate(node, change);
                 }
             }
             async refresh() {

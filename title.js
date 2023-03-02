@@ -22,6 +22,8 @@ import { findNextEditable } from './markdown/view-model-util.js';
 import { state, property, css, customElement, html, LitElement } from './deps/lit.js';
 import { contextProvided } from './deps/lit-labs-context.js';
 import { libraryContext } from './app-context.js';
+import { getLogicalContainingBlock } from './block-util.js';
+import { Observers, Observer } from './observe.js';
 let Title = class Title extends LitElement {
     static get styles() {
         return css `
@@ -34,12 +36,15 @@ let Title = class Title extends LitElement {
     render() {
         if (!this.node)
             return ``;
+        this.observers?.clear();
         let containers = [];
         let next = this.node;
         while (next) {
             containers.unshift(next);
             next = getLogicalContainingBlock(next);
         }
+        this.observers = new Observers(...containers.map(container => new Observer(() => container.viewModel.observe, (target, observer) => target.add(observer), (target, observer) => target.remove(observer), () => this.requestUpdate())));
+        this.observers.update();
         return html `
       ${containers.map(node => html `» <a class=item @click=${() => this.onItemClick(node)}>${getTitle(node, this.library)}</a> `)}
     `;
@@ -73,25 +78,9 @@ function getTitle(node, library) {
             return node.content;
         case 'document':
             const document = library.getDocumentByTree(node.viewModel.tree);
-            return document?.aliases[0] ?? 'no-document';
+            return document?.name ?? 'no-document';
         default:
             assert(false);
     }
-}
-// TODO: dedupe with `logicalContainingBlock` in editor.ts
-function getLogicalContainingBlock(node) {
-    let next = node.viewModel.parent;
-    while (next) {
-        switch (next.type) {
-            case 'list-item':
-            case 'section':
-            case 'document':
-                return next;
-            default:
-                next = next.viewModel.parent;
-                continue;
-        }
-    }
-    return;
 }
 //# sourceMappingURL=title.js.map

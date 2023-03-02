@@ -80,5 +80,8 @@ export class Observers {
         for (const observer of this.observers)
             observer.update(clear);
     }
+    clear() {
+        this.update(true);
+    }
 }
 //# sourceMappingURL=observe.js.map

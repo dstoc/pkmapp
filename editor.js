@@ -33,6 +33,7 @@ import { Observer, Observers } from './observe.js';
 import { getContainingTransclusion } from './markdown/transclusion.js';
 import { maybeEditBlockSelectionIndent, editInlineIndent } from './indent-util.js';
 import { getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn } from './block-selection-util.js';
+import { getLogicalContainingBlock } from './block-util.js';
 let Editor = class Editor extends LitElement {
     static get styles() {
         return [
@@ -80,6 +81,19 @@ let Editor = class Editor extends LitElement {
     </div>
     <pkm-autocomplete></pkm-autocomplete>`;
     }
+    updated() {
+        if (this.name === undefined || this.name === this.document?.name)
+            return;
+        this.dispatchEvent(new CustomEvent('editor-navigate', {
+            detail: {
+                kind: 'replace',
+                document: this.document,
+                root: this.root,
+            },
+            bubbles: true,
+            composed: true,
+        }));
+    }
     async connectedCallback() {
         super.connectedCallback();
         await this.updateComplete;
@@ -101,15 +115,17 @@ let Editor = class Editor extends LitElement {
             this.document = document;
             this.root = root;
             // TODO: is this still needed here?
-            normalizeTree(this.document.tree);
-            const node = findNextEditable(this.root, this.root);
+            normalizeTree(document.tree);
+            const node = findNextEditable(root, root);
             if (node) {
                 focusNode(this.markdownRenderer.hostContext, node, 0);
             }
+            this.name = this.document.name;
             this.status = 'loaded';
             if (fireEvent)
                 this.dispatchEvent(new CustomEvent('editor-navigate', {
                     detail: {
+                        kind: 'navigate',
                         document,
                         root,
                     },
@@ -452,7 +468,7 @@ let Editor = class Editor extends LitElement {
             ...inTopLevelDocument && activeNode && activeInline ? [{
                     description: 'Focus on block',
                     execute: async () => {
-                        this.root = logicalContainingBlock(activeNode);
+                        this.root = getLogicalContainingBlock(activeNode);
                         focusNode(cast(activeInline.hostContext), activeNode, startIndex);
                         return [];
                     },
@@ -461,7 +477,7 @@ let Editor = class Editor extends LitElement {
                     description: 'Focus on containing block',
                     execute: async () => {
                         if (this.root?.viewModel.parent)
-                            this.root = logicalContainingBlock(this.root.viewModel.parent);
+                            this.root = getLogicalContainingBlock(this.root.viewModel.parent);
                         if (activeNode && activeInline)
                             focusNode(cast(activeInline.hostContext), activeNode, startIndex);
                         return [];
@@ -566,15 +582,6 @@ Editor = __decorate([
     customElement('pkm-editor')
 ], Editor);
 export { Editor };
-function logicalContainingBlock(context) {
-    let next = context;
-    while (next) {
-        if (next.type === 'section' || next.type === 'list-item' || next.type === 'document')
-            return next;
-        next = next.viewModel.parent;
-    }
-    return context;
-}
 function performLogicalInsertion(context, nodes) {
     const { parent, nextSibling } = nextLogicalInsertionPoint(context);
     if (parent.type == 'list') {
