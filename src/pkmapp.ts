@@ -74,6 +74,7 @@ export class PkmApp extends LitElement {
     task();
   }
   private onEditorNavigate({detail: navigation}: CustomEvent<EditorNavigation>) {
+    // TODO: use root name (metadata)
     const name = navigation.document.name;
     document.title = `${name} - pkmapp`;
     const url = new URL(this.initialLocation.toString());

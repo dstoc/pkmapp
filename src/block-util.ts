@@ -14,12 +14,12 @@
 
 import {ViewModelNode} from './markdown/view-model.js';
 
-export type LogicalContainingBlock = ViewModelNode&{type: 'list-item'|'section'|'document'};
-
-export function isLogicalContainingBlock(node?: ViewModelNode): node is LogicalContainingBlock {
+export function isLogicalContainingBlock(node?: ViewModelNode) {
   switch (node?.type) {
-    case 'list-item':
     case 'section':
+     if (!node.viewModel.previousSibling && (node.viewModel.parent?.type === 'list-item' || node.viewModel.parent?.type === 'document')) return false;
+     return true;
+    case 'list-item':
     case 'document':
       return true;
     default:
@@ -27,7 +27,7 @@ export function isLogicalContainingBlock(node?: ViewModelNode): node is LogicalC
   }
 }
 
-export function getLogicalContainingBlock(node?: ViewModelNode): LogicalContainingBlock|undefined {
+export function getLogicalContainingBlock(node?: ViewModelNode) {
   let next = node?.viewModel.parent;
   while (next) {
     if (isLogicalContainingBlock(next)) return next

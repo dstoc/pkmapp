@@ -12,41 +12,146 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type {CodeBlockNode} from './markdown/node.js';
+import type {CodeBlockNode, SectionNode} from './markdown/node.js';
 import type {ViewModelNode} from './markdown/view-model.js';
-import type {LogicalContainingBlock} from './block-util.js';
 import {isLogicalContainingBlock} from './block-util.js';
+import {assert} from './asserts.js';
+
+class SetBiMap<T> {
+  private index = new Map<string, Set<T>>;
+  private reverse = new Map<T, Set<string>>;
+  // TODO: add a normalized (toLower) map
+  values() {
+    return this.index.keys();
+  }
+  getValues(target: T) {
+    return this.reverse.get(target);
+  }
+  getTargets(value: string) {
+    return this.index.get(value);
+  }
+  add(target: T, value: string) {
+    let targets = this.index.get(value);
+    if (!targets) {
+      targets = new Set();
+      this.index.set(value, targets);
+    }
+    targets.add(target);
+    let values = this.reverse.get(target);
+    if (!values) {
+      values = new Set();
+      this.reverse.set(target, values);
+    }
+    values.add(value);
+  }
+  remove(target: T, value: string) {
+    let targets = this.index.get(value);
+    targets?.delete(target);
+    if (targets?.size === 0) this.index.delete(value);
+    let values = this.reverse.get(target);
+    values?.delete(value);
+    if (values?.size === 0) this.reverse.delete(target);
+  }
+  update(target: T, values: Iterable<string>) {
+    const stale = new Set(this.reverse.get(target));
+    for (const value of values) {
+      this.add(target, value);
+      stale.delete(value);
+    }
+    for (const value of stale) {
+      this.remove(target, value);
+    }
+  }
+}
+
+class ProviderMap<Provider, Target, Value> {
+  private values = new Map<Target, Value>();
+  private targets = new Map<Provider, Target>();
+  constructor(readonly changed: (target: Target, value?: Value, newValue?: Value) => void) {
+  }
+  update(provider: Provider, target?: Target, value?: Value) {
+    const previousTarget = this.targets.get(provider);
+    const previousValue = previousTarget ? this.values.get(previousTarget) : undefined;
+    const targetChanged = previousTarget !== target;
+    const valueChanged = previousValue !== value;
+    if (previousTarget && (targetChanged || value == undefined)) {
+      this.targets.delete(provider);
+      this.values.delete(previousTarget);
+    }
+    if (value !== undefined && (targetChanged || valueChanged)) {
+      assert(target);
+      this.targets.set(provider, target);
+      this.values.set(target, value);
+    }
+    if (targetChanged) {
+      if (previousTarget) {
+        this.changed(previousTarget, undefined, previousValue)
+      }
+      if (value !== undefined) {
+        assert(target);
+        this.changed(target, value, undefined);
+      }
+    } else if (valueChanged) {
+      assert(target);
+      this.changed(target, value, previousValue);
+    }
+  }
+}
+
+type Section = ViewModelNode&SectionNode;
 
 export class Metadata {
-  private data = new Map<ViewModelNode, string>();
-  private reverse = new Map<ViewModelNode, LogicalContainingBlock>();
-  private names = new Map<string, LogicalContainingBlock>();
-  // TODO: sections, tags
-  get(node: LogicalContainingBlock) {
-    return this.data.get(node);
+  private meta = new ProviderMap<ViewModelNode, ViewModelNode, string>(
+    (target, value) => {
+      this.nameMap.update(target, value !== undefined ? [value] : []);
+      target.viewModel.observe.notify();
+    });
+  private nameMap = new SetBiMap<ViewModelNode>();
+  private sectionNameMap = new SetBiMap<Section>();
+
+  getAllNames() {
+    return [...this.nameMap.values(), ...this.sectionNameMap.values()];
+  }
+  getNames(node: ViewModelNode) {
+    if (node.type !== 'section' && node.viewModel.firstChild?.type === 'section') {
+      node = node.viewModel.firstChild;
+    }
+    const result = [...this.nameMap.getValues(node)?.values() ?? []];
+    if (node.type === 'section') result.push(node.content);
+    return result;
   }
   findByName(name: string) {
-    return this.names.get(name);
-  }
-  postEditUpdate(node: ViewModelNode&CodeBlockNode, change: 'connected'|'disconnected'|'changed') {
-    const container = node.viewModel.parent;
-    const previousContainer = this.reverse.get(node);
-    const isMetadata = node.info === 'meta';
-    if (previousContainer && (previousContainer !== container || !isMetadata || change === 'disconnected')) {
-      this.reverse.delete(node);
-      const name = this.data.get(previousContainer);
-      if (name !== undefined) {
-        this.names.delete(name);
+    const [section] = this.sectionNameMap.getTargets(name)?.values() ?? [];
+    if (section) {
+      if (!isLogicalContainingBlock(section)) {
+        return section.viewModel.parent;
       }
-      this.data.delete(previousContainer);
-      previousContainer.viewModel.observe.notify();
+      return section;
     }
-    if (isMetadata && change !== 'disconnected' && isLogicalContainingBlock(container)) {
-      const name = node.content;
-      this.reverse.set(node, container);
-      this.data.set(container, name);
-      this.names.set(name, container);
-      container.viewModel.observe.notify();
+    const [result] = this.nameMap.getTargets(name)?.values() ?? [];
+    if (result && !isLogicalContainingBlock(result)) {
+      return result.viewModel.parent;
+    }
+    return result;
+  }
+  updateSection(node: Section, change: 'connected'|'disconnected'|'changed') {
+    if (change === 'disconnected') {
+      this.sectionNameMap.update(node, []);
+    } else {
+      this.sectionNameMap.update(node, [node.content]);
+    }
+    if (change === 'changed' && !isLogicalContainingBlock(node)) {
+      node.viewModel.parent?.viewModel.observe.notify();
+    }
+  }
+  updateCodeblock(node: ViewModelNode&CodeBlockNode, change: 'connected'|'disconnected'|'changed') {
+    const parent = node.viewModel.parent;
+    const isMetadata = change !== 'disconnected' && node.info === 'meta';
+    const valid = isMetadata && (isLogicalContainingBlock(parent) || parent?.type === 'section');
+    if (valid) {
+      this.meta.update(node, parent, node.content);
+    } else {
+      this.meta.update(node);
     }
   }
 }

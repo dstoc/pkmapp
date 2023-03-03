@@ -18,8 +18,9 @@ import {findNextEditable} from './markdown/view-model-util.js';
 import {state, property, css, customElement, html, LitElement} from './deps/lit.js';
 import {contextProvided} from './deps/lit-labs-context.js';
 import {libraryContext} from './app-context.js';
-import {LogicalContainingBlock, getLogicalContainingBlock} from './block-util.js';
+import {getLogicalContainingBlock} from './block-util.js';
 import {Observers, Observer} from './observe.js';
+import type {ViewModelNode} from './markdown/view-model.js';
 
 @customElement('pkm-title')
 export class Title extends LitElement {
@@ -32,7 +33,7 @@ export class Title extends LitElement {
     `;
   }
   @property()
-  node?: LogicalContainingBlock;
+  node?: ViewModelNode;
   @contextProvided({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
@@ -42,7 +43,7 @@ export class Title extends LitElement {
     if (!this.node) return ``;
     this.observers?.clear();
     let containers = [];
-    let next: LogicalContainingBlock|undefined = this.node;
+    let next: ViewModelNode|undefined = this.node;
     while (next) {
       containers.unshift(next);
       next = getLogicalContainingBlock(next);
@@ -59,7 +60,7 @@ export class Title extends LitElement {
       ${containers.map(node => html`» <a class=item @click=${() => this.onItemClick(node)}>${getTitle(node, this.library)}</a> `)}
     `;
   }
-  private onItemClick(node: LogicalContainingBlock) {
+  private onItemClick(node: ViewModelNode) {
     this.dispatchEvent(new CustomEvent('title-item-click', {
       detail: node,
       bubbles: true,
@@ -73,16 +74,17 @@ declare global {
     'pkm-title': Title;
   }
   interface HTMLElementEventMap {
-    'title-item-click': CustomEvent<LogicalContainingBlock>;
+    'title-item-click': CustomEvent<ViewModelNode>;
   }
 }
-function getTitle(node: LogicalContainingBlock, library: Library): string {
+function getTitle(node: ViewModelNode, library: Library): string {
   switch (node.type) {
     case 'list-item':
       const inline = findNextEditable(node, node, false);
       // TODO: convert nodes to text
       return inline?.content.substring(0, 10) ?? 'no-inline';
     case 'section':
+      // TODO: use metadata
       return node.content;
     case 'document':
       const document = library.getDocumentByTree(node.viewModel.tree);
