@@ -75,6 +75,7 @@ export class PkmApp extends LitElement {
   }
   private onEditorNavigate({detail: navigation}: CustomEvent<EditorNavigation>) {
     const name = navigation.document.name;
+    document.title = `${name} - pkmapp`;
     const url = new URL(this.initialLocation.toString());
     url.pathname = new URL(resolve('./' + name)).pathname;
     url.searchParams.delete('path');
