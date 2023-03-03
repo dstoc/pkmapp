@@ -129,22 +129,23 @@ export class Editor extends LitElement {
     const oldStatus = this.status;
     this.status = 'loading';
     this.document = undefined;
+    this.root = undefined;
+    this.name = undefined;
     try {
-      const document = await this.library.getDocument(name, true);
-      const root = document.tree.root;
+      const {document, root} = await this.library.find(name);
       if (this.document === document && this.root === root) {
         this.status = oldStatus;
         return;
       }
       this.document = document;
       this.root = root;
+      this.name = this.document.name;
       // TODO: is this still needed here?
       normalizeTree(document.tree);
       const node = findNextEditable(root, root);
       if (node) {
         focusNode(this.markdownRenderer.hostContext, node, 0);
       }
-      this.name = this.document.name;
       this.status = 'loaded';
       if (fireEvent) this.dispatchEvent(new CustomEvent('editor-navigate', {
         detail: {

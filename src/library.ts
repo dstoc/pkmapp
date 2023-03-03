@@ -33,7 +33,7 @@ export interface Document {
 }
 
 export interface Library {
-  getDocument(name: string, forceRefresh?: boolean): Promise<Document>;
+  find(name: string): Promise<{document: Document, root: ViewModelNode}>;
   getDocumentByTree(tree: MarkdownTree): Document|undefined;
   getAllNames(): Promise<string[]>;
   readonly backLinks: BackLinks;
@@ -72,6 +72,9 @@ export class FileSystemLibrary implements Library {
         result.add(name);
       }
     }
+    for (const name of this.metadata.getAllNames()) {
+      result.add(name);
+    }
     return [...result];
   }
   private cache: Map<string, Document> = new Map();
@@ -88,11 +91,28 @@ export class FileSystemLibrary implements Library {
   }
   async sync() {
     for await (const name of allFiles('', this.directory)) {
-      const document = await this.getDocument(name);
+      const document = await this.loadDocument(name);
       await document.refresh();
     }
   }
-  async getDocument(name: string, forceRefresh = false): Promise<Document> {
+  async find(name: string) {
+    name = resolveDateAlias(name) ?? name;
+    const root = this.metadata.findByName(name);
+    if (root) {
+      const document = cast(this.getDocumentByTree(root.viewModel.tree));
+      return {
+        document,
+        root, 
+      };
+    } else {
+      const document = await this.loadDocument(name, true);
+      return {
+        document,
+        root: document.tree.root,
+      };
+    }
+  }
+  private async loadDocument(name: string, forceRefresh = false): Promise<Document> {
     name = resolveDateAlias(name) ?? name;
     const fileName = name + '.md';
     const load = async (ifModifiedSince: number) => {
@@ -142,19 +162,19 @@ export class FileSystemLibrary implements Library {
       }
       get allNames() {
         return [
-          ...(this.metadata && [this.metadata]) ?? [],
+          ...library.metadata.getNames(this.tree.root),
           name,
         ];
-      }
-      get metadata() {
-        return library.metadata.get(this.tree.root);
       }
       postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed') {
         if (node.type === 'paragraph') {
           library.backLinks.postEditUpdate(node as InlineViewModelNode, change);
         }
         if (node.type === 'code-block') {
-          library.metadata.postEditUpdate(node, change);
+          library.metadata.updateCodeblock(node, change);
+        }
+        if (node.type === 'section') {
+          library.metadata.updateSection(node, change);
         }
       }
       async refresh() {
