@@ -51,6 +51,9 @@ export class FileSystemLibrary {
                 result.add(name);
             }
         }
+        for (const name of this.metadata.getAllNames()) {
+            result.add(name);
+        }
         return [...result];
     }
     getDocumentByTree(tree) {
@@ -64,11 +67,29 @@ export class FileSystemLibrary {
     }
     async sync() {
         for await (const name of allFiles('', this.directory)) {
-            const document = await this.getDocument(name);
+            const document = await this.loadDocument(name);
             await document.refresh();
         }
     }
-    async getDocument(name, forceRefresh = false) {
+    async find(name) {
+        name = resolveDateAlias(name) ?? name;
+        const root = this.metadata.findByName(name);
+        if (root) {
+            const document = cast(this.getDocumentByTree(root.viewModel.tree));
+            return {
+                document,
+                root,
+            };
+        }
+        else {
+            const document = await this.loadDocument(name, true);
+            return {
+                document,
+                root: document.tree.root,
+            };
+        }
+    }
+    async loadDocument(name, forceRefresh = false) {
         name = resolveDateAlias(name) ?? name;
         const fileName = name + '.md';
         const load = async (ifModifiedSince) => {
@@ -119,19 +140,19 @@ export class FileSystemLibrary {
             }
             get allNames() {
                 return [
-                    ...(this.metadata && [this.metadata]) ?? [],
+                    ...library.metadata.getNames(this.tree.root),
                     name,
                 ];
-            }
-            get metadata() {
-                return library.metadata.get(this.tree.root);
             }
             postEditUpdate(node, change) {
                 if (node.type === 'paragraph') {
                     library.backLinks.postEditUpdate(node, change);
                 }
                 if (node.type === 'code-block') {
-                    library.metadata.postEditUpdate(node, change);
+                    library.metadata.updateCodeblock(node, change);
+                }
+                if (node.type === 'section') {
+                    library.metadata.updateSection(node, change);
                 }
             }
             async refresh() {

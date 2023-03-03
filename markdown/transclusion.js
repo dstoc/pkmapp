@@ -50,8 +50,8 @@ let MarkdownTransclusion = class MarkdownTransclusion extends LitElement {
     `;
     }
     async load(name) {
-        const document = await this.library.getDocument(name);
-        this.root = document.tree.root;
+        const { root } = await this.library.find(name);
+        this.root = root;
     }
     maybeUpdateFocus() {
         if (!this.isConnected)

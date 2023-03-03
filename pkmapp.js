@@ -70,7 +70,9 @@ let PkmApp = class PkmApp extends LitElement {
         task();
     }
     onEditorNavigate({ detail: navigation }) {
+        // TODO: use root name (metadata)
         const name = navigation.document.name;
+        document.title = `${name} - pkmapp`;
         const url = new URL(this.initialLocation.toString());
         url.pathname = new URL(resolve('./' + name)).pathname;
         url.searchParams.delete('path');

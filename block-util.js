@@ -13,8 +13,11 @@
 // limitations under the License.
 export function isLogicalContainingBlock(node) {
     switch (node?.type) {
-        case 'list-item':
         case 'section':
+            if (!node.viewModel.previousSibling && (node.viewModel.parent?.type === 'list-item' || node.viewModel.parent?.type === 'document'))
+                return false;
+            return true;
+        case 'list-item':
         case 'document':
             return true;
         default:

@@ -75,6 +75,7 @@ function getTitle(node, library) {
             // TODO: convert nodes to text
             return inline?.content.substring(0, 10) ?? 'no-inline';
         case 'section':
+            // TODO: use metadata
             return node.content;
         case 'document':
             const document = library.getDocumentByTree(node.viewModel.tree);

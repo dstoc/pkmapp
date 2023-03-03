@@ -12,38 +12,147 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { isLogicalContainingBlock } from './block-util.js';
+import { assert } from './asserts.js';
+class SetBiMap {
+    constructor() {
+        this.index = new Map;
+        this.reverse = new Map;
+    }
+    // TODO: add a normalized (toLower) map
+    values() {
+        return this.index.keys();
+    }
+    getValues(target) {
+        return this.reverse.get(target);
+    }
+    getTargets(value) {
+        return this.index.get(value);
+    }
+    add(target, value) {
+        let targets = this.index.get(value);
+        if (!targets) {
+            targets = new Set();
+            this.index.set(value, targets);
+        }
+        targets.add(target);
+        let values = this.reverse.get(target);
+        if (!values) {
+            values = new Set();
+            this.reverse.set(target, values);
+        }
+        values.add(value);
+    }
+    remove(target, value) {
+        let targets = this.index.get(value);
+        targets?.delete(target);
+        if (targets?.size === 0)
+            this.index.delete(value);
+        let values = this.reverse.get(target);
+        values?.delete(value);
+        if (values?.size === 0)
+            this.reverse.delete(target);
+    }
+    update(target, values) {
+        const stale = new Set(this.reverse.get(target));
+        for (const value of values) {
+            this.add(target, value);
+            stale.delete(value);
+        }
+        for (const value of stale) {
+            this.remove(target, value);
+        }
+    }
+}
+class ProviderMap {
+    constructor(changed) {
+        this.changed = changed;
+        this.values = new Map();
+        this.targets = new Map();
+    }
+    update(provider, target, value) {
+        const previousTarget = this.targets.get(provider);
+        const previousValue = previousTarget ? this.values.get(previousTarget) : undefined;
+        const targetChanged = previousTarget !== target;
+        const valueChanged = previousValue !== value;
+        if (previousTarget && (targetChanged || value == undefined)) {
+            this.targets.delete(provider);
+            this.values.delete(previousTarget);
+        }
+        if (value !== undefined && (targetChanged || valueChanged)) {
+            assert(target);
+            this.targets.set(provider, target);
+            this.values.set(target, value);
+        }
+        if (targetChanged) {
+            if (previousTarget) {
+                this.changed(previousTarget, undefined, previousValue);
+            }
+            if (value !== undefined) {
+                assert(target);
+                this.changed(target, value, undefined);
+            }
+        }
+        else if (valueChanged) {
+            assert(target);
+            this.changed(target, value, previousValue);
+        }
+    }
+}
 export class Metadata {
     constructor() {
-        this.data = new Map();
-        this.reverse = new Map();
-        this.names = new Map();
+        this.meta = new ProviderMap((target, value) => {
+            this.nameMap.update(target, value !== undefined ? [value] : []);
+            target.viewModel.observe.notify();
+        });
+        this.nameMap = new SetBiMap();
+        this.sectionNameMap = new SetBiMap();
     }
-    // TODO: sections, tags
-    get(node) {
-        return this.data.get(node);
+    getAllNames() {
+        return [...this.nameMap.values(), ...this.sectionNameMap.values()];
+    }
+    getNames(node) {
+        if (node.type !== 'section' && node.viewModel.firstChild?.type === 'section') {
+            node = node.viewModel.firstChild;
+        }
+        const result = [...this.nameMap.getValues(node)?.values() ?? []];
+        if (node.type === 'section')
+            result.push(node.content);
+        return result;
     }
     findByName(name) {
-        return this.names.get(name);
-    }
-    postEditUpdate(node, change) {
-        const container = node.viewModel.parent;
-        const previousContainer = this.reverse.get(node);
-        const isMetadata = node.info === 'meta';
-        if (previousContainer && (previousContainer !== container || !isMetadata || change === 'disconnected')) {
-            this.reverse.delete(node);
-            const name = this.data.get(previousContainer);
-            if (name !== undefined) {
-                this.names.delete(name);
+        const [section] = this.sectionNameMap.getTargets(name)?.values() ?? [];
+        if (section) {
+            if (!isLogicalContainingBlock(section)) {
+                return section.viewModel.parent;
             }
-            this.data.delete(previousContainer);
-            previousContainer.viewModel.observe.notify();
+            return section;
         }
-        if (isMetadata && change !== 'disconnected' && isLogicalContainingBlock(container)) {
-            const name = node.content;
-            this.reverse.set(node, container);
-            this.data.set(container, name);
-            this.names.set(name, container);
-            container.viewModel.observe.notify();
+        const [result] = this.nameMap.getTargets(name)?.values() ?? [];
+        if (result && !isLogicalContainingBlock(result)) {
+            return result.viewModel.parent;
+        }
+        return result;
+    }
+    updateSection(node, change) {
+        if (change === 'disconnected') {
+            this.sectionNameMap.update(node, []);
+        }
+        else {
+            this.sectionNameMap.update(node, [node.content]);
+        }
+        if (change === 'changed' && !isLogicalContainingBlock(node)) {
+            node.viewModel.parent?.viewModel.observe.notify();
+        }
+    }
+    updateCodeblock(node, change) {
+        const parent = node.viewModel.parent;
+        const isMetadata = change !== 'disconnected' && node.info === 'meta';
+        const valid = isMetadata && (isLogicalContainingBlock(parent) || parent?.type === 'section');
+        if (valid) {
+            this.meta.update(node, parent, node.content);
+        }
+        else {
+            this.meta.update(node);
         }
     }
 }
