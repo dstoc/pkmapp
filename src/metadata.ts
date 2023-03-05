@@ -20,7 +20,7 @@ import {assert} from './asserts.js';
 class SetBiMap<T> {
   private index = new Map<string, Set<T>>;
   private reverse = new Map<T, Set<string>>;
-  // TODO: add a normalized (toLower) map
+  private normalized = new Map<string, Set<T>>();
   values() {
     return this.index.keys();
   }
@@ -28,7 +28,7 @@ class SetBiMap<T> {
     return this.reverse.get(target);
   }
   getTargets(value: string) {
-    return this.index.get(value);
+    return this.normalized.get(value.toLowerCase());
   }
   add(target: T, value: string) {
     let targets = this.index.get(value);
@@ -43,6 +43,13 @@ class SetBiMap<T> {
       this.reverse.set(target, values);
     }
     values.add(value);
+    const normalizedValue = value.toLowerCase();
+    let normalizedTargets = this.normalized.get(normalizedValue);
+    if (!normalizedTargets) {
+      normalizedTargets = new Set();
+      this.normalized.set(normalizedValue, normalizedTargets);
+    }
+    normalizedTargets.add(target);
   }
   remove(target: T, value: string) {
     let targets = this.index.get(value);
@@ -51,6 +58,10 @@ class SetBiMap<T> {
     let values = this.reverse.get(target);
     values?.delete(value);
     if (values?.size === 0) this.reverse.delete(target);
+    const normalizedValue = value.toLowerCase();
+    let normalizedTargets = this.normalized.get(normalizedValue);
+    normalizedTargets?.delete(target);
+    if (normalizedTargets?.size === 0) this.normalized.delete(normalizedValue);
   }
   update(target: T, values: Iterable<string>) {
     const stale = new Set(this.reverse.get(target));
