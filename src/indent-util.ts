@@ -63,6 +63,7 @@ function unindent(node: ViewModelNode, root: ViewModelNode) {
   const target = path[0];
   const nextSibling = listItem.viewModel.nextSibling;
   const list = listItem.viewModel.parent!;
+  if (list.viewModel.nextSibling) return;
   const targetListItemSibling = list.viewModel.parent!;
   if (targetListItemSibling?.type === 'list-item') {
     listItem.viewModel.insertBefore(
