@@ -287,21 +287,9 @@ let Editor = class Editor extends LitElement {
             mdText = await navigator.clipboard.readText();
         }
         if (mdText) {
-            const root = parseBlocks(mdText + '\n');
-            if (!root)
-                return;
-            assert(root.type === 'document' && root.children);
-            const finishEditing = node.viewModel.tree.edit();
-            try {
-                const newNodes = root.children.map(newNode => node.viewModel.tree.add(newNode));
-                let newFocus = findFinalEditable(newNodes[0]);
-                performLogicalInsertion(node, newNodes);
-                if (newFocus)
-                    focusNode(cast(inline.hostContext), newFocus, Infinity);
-            }
-            finally {
-                finishEditing();
-            }
+            const newFocus = insertMarkdown(mdText, node);
+            if (newFocus)
+                focusNode(cast(inline.hostContext), newFocus, Infinity);
         }
         else {
             let text = await navigator.clipboard.readText();
@@ -451,6 +439,34 @@ let Editor = class Editor extends LitElement {
                     return [];
                 },
             },
+            ...activeInline?.hostContext?.hasSelection ? [{
+                    description: 'Send to',
+                    execute: async () => {
+                        return (await this.library.getAllNames()).map(name => ({
+                            description: name,
+                            execute: async () => (await sendTo(name, this.library, activeInline.hostContext, 'remove'), []),
+                        }));
+                    },
+                    executeFreeform: async (name) => (await sendTo(name, this.library, activeInline.hostContext, 'remove'), []),
+                }, {
+                    description: 'Send to and transclude',
+                    execute: async () => {
+                        return (await this.library.getAllNames()).map(name => ({
+                            description: name,
+                            execute: async () => (await sendTo(name, this.library, activeInline.hostContext, 'transclude'), []),
+                        }));
+                    },
+                    executeFreeform: async (name) => (await sendTo(name, this.library, activeInline.hostContext, 'transclude'), []),
+                }, {
+                    description: 'Send to and link',
+                    execute: async () => {
+                        return (await this.library.getAllNames()).map(name => ({
+                            description: name,
+                            execute: async () => (await sendTo(name, this.library, activeInline.hostContext, 'link'), []),
+                        }));
+                    },
+                    executeFreeform: async (name) => (await sendTo(name, this.library, activeInline.hostContext, 'link'), []),
+                }] : [],
             {
                 description: 'Backlinks',
                 execute: async () => {
@@ -586,7 +602,12 @@ Editor = __decorate([
 export { Editor };
 function performLogicalInsertion(context, nodes) {
     const { parent, nextSibling } = nextLogicalInsertionPoint(context);
-    if (parent.type == 'list') {
+    if (context.type === 'section') {
+        for (const node of nodes) {
+            node.viewModel.insertBefore(context);
+        }
+    }
+    else if (parent.type == 'list') {
         if (nodes.length === 1 && nodes[0].type === 'list') {
             const [node] = nodes;
             for (const child of children(node)) {
@@ -838,6 +859,56 @@ function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart
         return insertSiblingParagraph(inline.node, root, inputStart.index, context);
     }
     return false;
+}
+async function sendTo(name, library, hostContext, mode) {
+    const { root } = await library.find(name);
+    const markdown = serializeSelection(hostContext);
+    insertMarkdown(markdown, root.viewModel.lastChild ?? root);
+    const focus = cast(hostContext.selectionFocus);
+    // TODO: if the selection is a section, use that section's name
+    const targetName = name;
+    let replacement;
+    switch (mode) {
+        case 'remove':
+            break;
+        case 'transclude':
+            replacement = focus.viewModel.tree.add({
+                type: 'code-block',
+                info: 'tc',
+                content: targetName,
+            });
+            break;
+        case 'link':
+            replacement = focus.viewModel.tree.add({
+                type: 'paragraph',
+                content: `[${targetName}]`,
+            });
+            break;
+    }
+    const finish = focus.viewModel.tree.edit();
+    try {
+        replacement?.viewModel.insertBefore(cast(focus.viewModel.parent), focus);
+        maybeRemoveSelectedNodesIn(hostContext);
+    }
+    finally {
+        finish();
+    }
+}
+function insertMarkdown(markdown, node) {
+    const root = parseBlocks(markdown + '\n');
+    if (!root)
+        return;
+    assert(root.type === 'document' && root.children);
+    const finishEditing = node.viewModel.tree.edit();
+    try {
+        const newNodes = root.children.map(newNode => node.viewModel.tree.add(newNode));
+        let newFocus = findFinalEditable(newNodes[0]);
+        performLogicalInsertion(node, newNodes);
+        return newFocus;
+    }
+    finally {
+        finishEditing();
+    }
 }
 function copyMarkdownToClipboard(markdown) {
     const textType = 'text/plain';
