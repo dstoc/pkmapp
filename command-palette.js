@@ -18,12 +18,26 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 import { css, customElement, html, LitElement, query, state, property } from './deps/lit.js';
+import { cast } from './asserts.js';
+export class SimpleCommandBundle {
+    constructor(description, commands, freeform) {
+        this.description = description;
+        this.commands = commands;
+        this.freeform = freeform;
+    }
+    async getCommands(input) {
+        const pattern = new RegExp(input.replace(/(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'), 'i');
+        const commands = this.commands.filter(({ description }) => pattern.test(description));
+        if (this.freeform)
+            commands.push({ ...this.freeform, description: input });
+        return commands;
+    }
+}
 let CommandPalette = class CommandPalette extends LitElement {
     constructor() {
         super(...arguments);
         this.noHeader = false;
         this.activeIndex = 0;
-        this.items = [];
         this.activeItems = [];
     }
     static get styles() {
@@ -66,23 +80,12 @@ let CommandPalette = class CommandPalette extends LitElement {
     `;
     }
     render() {
-        const search = this.input?.value ?? '';
-        if (search != this.activeSearch) {
-            this.activeSearch = search;
-            this.activeIndex = 0;
-        }
-        const pattern = new RegExp(search.replace(/(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'), 'i');
-        this.activeItems = this.items.filter((item) => {
-            return pattern.test(item.description);
-        });
-        this.activeIndex =
-            Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
         return html `
       <input
           type=text
           @keydown=${this.handleInputKeyDown}
-          @input=${() => this.requestUpdate()}
-          placeholder=${this.pendingCommand?.description ?? 'Search commands...'}></input>
+          @input=${() => this.onInput()}
+          placeholder=${this.bundle?.description ?? ''}></input>
       <div id=separator></div>
       <div id=items>
         ${this.activeItems.map((item, idx) => html `
@@ -94,6 +97,16 @@ let CommandPalette = class CommandPalette extends LitElement {
         `)}
       </div>
     `;
+    }
+    async onInput() {
+        const search = this.input?.value ?? '';
+        if (search != this.activeSearch) {
+            this.activeSearch = search;
+            this.activeIndex = 0;
+        }
+        this.activeItems = this.bundle ? await this.bundle.getCommands(search, 100) : [];
+        this.activeIndex =
+            Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
     }
     handleInputKeyDown(e) {
         switch (e.key) {
@@ -111,8 +124,7 @@ let CommandPalette = class CommandPalette extends LitElement {
                 return;
         }
     }
-    reset() {
-        this.pendingCommand = undefined;
+    async reset() {
         this.input.value = '';
         this.activeIndex = 0;
         this.activeSearch = undefined;
@@ -121,34 +133,28 @@ let CommandPalette = class CommandPalette extends LitElement {
     handleItemClick() {
         this.commit();
     }
-    setInput(input) {
+    async setInput(input) {
         this.input.value = input;
-        this.requestUpdate();
+        await this.onInput();
     }
     async commit() {
         const selected = this.activeItems[this.activeIndex];
-        let next = [];
-        if (selected) {
-            next = await selected.execute();
-        }
-        else if (this.pendingCommand?.executeFreeform && this.activeSearch !== undefined) {
-            next = await this.pendingCommand.executeFreeform(this.activeSearch);
-        }
-        if (next.length) {
-            this.trigger(next, selected);
+        const next = await selected.execute(selected);
+        if (next) {
+            await this.trigger(next);
         }
         else {
             this.dispatchEvent(new CustomEvent('commit'));
         }
     }
-    async triggerArgument(selected) {
-        this.trigger(await selected.execute(), selected);
+    async trigger(bundle) {
+        await this.reset();
+        this.bundle = bundle;
+        await this.onInput();
     }
-    trigger(commands, pending) {
-        this.reset();
-        this.pendingCommand = pending;
-        this.items = commands;
-        this.requestUpdate();
+    async triggerCommand(command) {
+        const bundle = await command.execute(command);
+        await this.trigger(cast(bundle));
     }
     next() {
         this.activeIndex++;
@@ -164,14 +170,14 @@ __decorate([
     state()
 ], CommandPalette.prototype, "activeIndex", void 0);
 __decorate([
+    state()
+], CommandPalette.prototype, "bundle", void 0);
+__decorate([
+    state()
+], CommandPalette.prototype, "activeItems", void 0);
+__decorate([
     query('input')
 ], CommandPalette.prototype, "input", void 0);
-__decorate([
-    state()
-], CommandPalette.prototype, "pendingCommand", void 0);
-__decorate([
-    state()
-], CommandPalette.prototype, "items", void 0);
 CommandPalette = __decorate([
     customElement('pkm-command-palette')
 ], CommandPalette);

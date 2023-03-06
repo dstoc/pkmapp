@@ -22,6 +22,7 @@ import './command-palette.js';
 import { contextProvided } from './deps/lit-labs-context.js';
 import { libraryContext } from './app-context.js';
 import { css, query, customElement, html, LitElement, property, state } from './deps/lit.js';
+import { SimpleCommandBundle } from './command-palette.js';
 import { focusNode } from './markdown/host-context.js';
 let Autocomplete = class Autocomplete extends LitElement {
     constructor() {
@@ -97,7 +98,8 @@ let Autocomplete = class Autocomplete extends LitElement {
     }
     getLinkInsertionCommand(inline) {
         const node = inline.node;
-        const execute = async (arg) => {
+        const execute = async (command) => {
+            const arg = command.description;
             const finish = node.viewModel.tree.edit();
             try {
                 const newEndIndex = this.startIndex + arg.length;
@@ -112,15 +114,17 @@ let Autocomplete = class Autocomplete extends LitElement {
             finally {
                 finish();
             }
-            return [];
+            return undefined;
         };
         return {
-            execute: async () => (await this.library.getAllNames()).map(name => ({
-                description: name,
-                execute: () => execute(name),
-            })),
-            executeFreeform: execute,
-            description: 'Link',
+            description: 'Link...',
+            execute: async () => {
+                const commands = (await this.library.getAllNames()).map(name => ({
+                    description: name,
+                    execute,
+                }));
+                return new SimpleCommandBundle('Link', commands, { execute });
+            },
         };
     }
     getSlashCommandWrapper(inline, command) {
@@ -136,7 +140,7 @@ let Autocomplete = class Autocomplete extends LitElement {
                 });
                 this.endIndex = this.startIndex;
                 focusNode(inline.hostContext, node, this.startIndex);
-                return command.execute();
+                return command.execute(command);
             },
             description: command.description,
         };
@@ -157,10 +161,10 @@ let Autocomplete = class Autocomplete extends LitElement {
                     oldEndIndex: cursorIndex,
                     newText: ']',
                 });
-                this.palette.triggerArgument(this.getLinkInsertionCommand(inline));
+                this.palette.triggerCommand(this.getLinkInsertionCommand(inline));
             }
             else if (newText === '/') {
-                this.palette.trigger([this.getSlashCommandWrapper(inline, this.getLinkInsertionCommand(inline))]);
+                this.palette.trigger(new SimpleCommandBundle('Run command...', [this.getSlashCommandWrapper(inline, this.getLinkInsertionCommand(inline))]));
                 this.activate(inline, cursorIndex);
             }
         }

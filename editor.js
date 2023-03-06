@@ -22,6 +22,7 @@ import './autocomplete.js';
 import './title.js';
 import { libraryContext } from './app-context.js';
 import { assert, cast } from './asserts.js';
+import { SimpleCommandBundle } from './command-palette.js';
 import { contextProvided } from './deps/lit-labs-context.js';
 import { css, customElement, html, LitElement, property, query, state } from './deps/lit.js';
 import { parseBlocks } from './markdown/block-parser.js';
@@ -399,88 +400,92 @@ let Editor = class Editor extends LitElement {
         const activeNode = activeInline?.node;
         const inTopLevelDocument = activeNode?.viewModel.tree === this.root?.viewModel.tree ?? false;
         const transclusion = activeInline && getContainingTransclusion(activeInline);
-        return [
+        return new SimpleCommandBundle('Choose command...', [
             {
                 description: 'Find, Open, Create...',
                 execute: async () => {
-                    return (await this.library.getAllNames()).map(name => ({
+                    const action = async (command) => void this.navigateByName(command.description, true);
+                    const commands = (await this.library.getAllNames()).map(name => ({
                         description: name,
-                        execute: async () => (this.navigateByName(name, true), []),
+                        execute: action,
                     }));
+                    return new SimpleCommandBundle('Find, Open, Create...', commands, { execute: action });
                 },
-                executeFreeform: async (file) => (this.navigateByName(file, true), []),
             },
             {
                 description: 'Force open',
                 execute: async () => {
-                    return (await this.library.getAllNames()).map(name => ({
+                    const action = async (command) => void this.navigateByName(command.description, true);
+                    const commands = (await this.library.getAllNames()).map(name => ({
                         description: name,
-                        execute: async () => (this.navigateByName(name, true), []),
+                        execute: action,
                     }));
+                    return new SimpleCommandBundle('Force open', commands, { execute: action });
                 },
-                executeFreeform: async (file) => (this.navigateByName(file, true), []),
             },
             {
                 description: 'Sync all',
-                execute: async () => {
-                    await this.library.sync();
-                    return [];
-                },
+                execute: async () => void await this.library.sync(),
             },
             {
                 description: 'Force save',
-                execute: async () => (this.document?.save(), [])
+                execute: async () => void this.document?.save(),
             },
             {
                 description: 'Copy all as markdown',
                 execute: async () => {
                     const markdown = serializeToString(this.document.tree.root);
                     copyMarkdownToClipboard(markdown);
-                    return [];
+                    return undefined;
                 },
             },
             ...activeInline?.hostContext?.hasSelection ? [{
-                    description: 'Send to',
+                    description: 'Send to...',
                     execute: async () => {
-                        return (await this.library.getAllNames()).map(name => ({
+                        const action = async (command) => void await sendTo(command.description, this.library, activeInline.hostContext, 'remove');
+                        const commands = (await this.library.getAllNames()).map(name => ({
                             description: name,
-                            execute: async () => (await sendTo(name, this.library, activeInline.hostContext, 'remove'), []),
+                            execute: action,
                         }));
+                        return new SimpleCommandBundle('Send to...', commands, { execute: action });
                     },
-                    executeFreeform: async (name) => (await sendTo(name, this.library, activeInline.hostContext, 'remove'), []),
                 }, {
                     description: 'Send to and transclude',
                     execute: async () => {
-                        return (await this.library.getAllNames()).map(name => ({
+                        const action = async (command) => void await sendTo(command.description, this.library, activeInline.hostContext, 'transclude');
+                        const commands = (await this.library.getAllNames()).map(name => ({
                             description: name,
-                            execute: async () => (await sendTo(name, this.library, activeInline.hostContext, 'transclude'), []),
+                            execute: action,
                         }));
+                        return new SimpleCommandBundle('Send to and transclude...', commands, { execute: action });
                     },
-                    executeFreeform: async (name) => (await sendTo(name, this.library, activeInline.hostContext, 'transclude'), []),
                 }, {
                     description: 'Send to and link',
                     execute: async () => {
-                        return (await this.library.getAllNames()).map(name => ({
+                        const action = async (command) => void await sendTo(command.description, this.library, activeInline.hostContext, 'link');
+                        const commands = (await this.library.getAllNames()).map(name => ({
                             description: name,
-                            execute: async () => (await sendTo(name, this.library, activeInline.hostContext, 'link'), []),
+                            execute: action,
                         }));
+                        return new SimpleCommandBundle('Send to and transclude...', commands, { execute: action });
                     },
-                    executeFreeform: async (name) => (await sendTo(name, this.library, activeInline.hostContext, 'link'), []),
                 }] : [],
             {
                 description: 'Backlinks',
                 execute: async () => {
-                    return this.library.backLinks.getBacklinksByDocument(this.document, this.library).map(name => ({
+                    const action = async (command) => void this.navigateByName(command.description, true);
+                    const commands = this.library.backLinks.getBacklinksByDocument(this.document, this.library).map(name => ({
                         description: name,
-                        execute: async () => (this.navigateByName(name, true), []),
+                        execute: action,
                     }));
+                    return new SimpleCommandBundle('Open Backlink', commands);
                 }
             },
             ...activeNode && startIndex !== undefined && endIndex !== undefined ? [{
                     description: 'Paste as markdown',
                     execute: async () => {
                         this.triggerPaste(activeInline, activeNode, { startIndex, oldEndIndex: endIndex }, true);
-                        return [];
+                        return undefined;
                     },
                 }] : [],
             ...inTopLevelDocument && activeNode && activeInline ? [{
@@ -488,7 +493,7 @@ let Editor = class Editor extends LitElement {
                     execute: async () => {
                         this.root = getLogicalContainingBlock(activeNode);
                         focusNode(cast(activeInline.hostContext), activeNode, startIndex);
-                        return [];
+                        return undefined;
                     },
                 }] : [],
             ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
@@ -498,7 +503,7 @@ let Editor = class Editor extends LitElement {
                             this.root = getLogicalContainingBlock(this.root.viewModel.parent);
                         if (activeNode && activeInline)
                             focusNode(cast(activeInline.hostContext), activeNode, startIndex);
-                        return [];
+                        return undefined;
                     },
                 }] : [],
             ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
@@ -507,7 +512,7 @@ let Editor = class Editor extends LitElement {
                         this.root = this.document?.tree.root;
                         if (activeNode)
                             focusNode(cast(activeInline.hostContext), activeNode, startIndex);
-                        return [];
+                        return undefined;
                     },
                 }] : [],
             ...transclusion ? [{
@@ -517,28 +522,29 @@ let Editor = class Editor extends LitElement {
                         transclusion.node.viewModel.remove();
                         finished();
                         // TODO: focus
-                        return [];
+                        return undefined;
                     },
                 }] : [],
             ...activeNode ? [{
-                    description: 'Insert transclusion',
+                    description: 'Insert transclusion...',
                     execute: async () => {
-                        return (await this.library.getAllNames()).map(target => ({
+                        const action = async (command) => {
+                            const finished = activeNode.viewModel.tree.edit();
+                            const newParagraph = activeNode.viewModel.tree.add({
+                                type: 'code-block',
+                                info: 'tc',
+                                content: command.description,
+                            });
+                            newParagraph.viewModel.insertBefore(cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
+                            finished();
+                            focusNode(activeInline.hostContext, newParagraph);
+                            return undefined;
+                        };
+                        const commands = (await this.library.getAllNames()).map(target => ({
                             description: target,
-                            execute: async () => {
-                                const finished = activeNode.viewModel.tree.edit();
-                                const newParagraph = activeNode.viewModel.tree.add({
-                                    type: 'code-block',
-                                    info: 'tc',
-                                    content: target,
-                                });
-                                newParagraph.viewModel.insertBefore(cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
-                                finished();
-                                focusNode(activeInline.hostContext, newParagraph);
-                                // TODO: focus
-                                return [];
-                            },
+                            execute: action,
                         }));
+                        return new SimpleCommandBundle('Insert transclusion', commands, { execute: action });
                     },
                 }] : [],
             ...transclusion ? [{
@@ -553,7 +559,7 @@ let Editor = class Editor extends LitElement {
                         newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
                         finished();
                         focusNode(cast(transclusion.hostContext), newParagraph, 0);
-                        return [];
+                        return undefined;
                     },
                 }] : [],
             ...transclusion ? [{
@@ -568,10 +574,10 @@ let Editor = class Editor extends LitElement {
                         newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
                         finished();
                         focusNode(cast(transclusion.hostContext), newParagraph, 0);
-                        return [];
+                        return undefined;
                     },
                 }] : [],
-        ];
+        ]);
     }
 };
 __decorate([

@@ -49,8 +49,8 @@ let CommandPaletteDialog = class CommandPaletteDialog extends LitElement {
     commit() {
         this.dialog.close();
     }
-    trigger(commands) {
-        this.palette.trigger(commands);
+    trigger(bundle) {
+        this.palette.trigger(bundle);
         this.dialog.showModal();
     }
 };
