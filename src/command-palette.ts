@@ -13,17 +13,45 @@
 // limitations under the License.
 
 import {css, customElement, html, LitElement, query, state, property} from './deps/lit.js';
+import {cast} from './asserts.js';
+
+export interface CommandBundle {
+  readonly description: string;
+  getCommands(input: string, limit: number): Promise<Command[]>;
+}
 
 export interface Command {
   readonly description: string;
-  execute(): Promise<Command[]>;
-  readonly executeFreeform?: (argument: string) => Promise<Command[]>;
+  readonly icon?: string;
+  execute(command: Command): Promise<CommandBundle|undefined>;
+}
+
+export interface FreeformCommandTemplate {
+  readonly icon?: string;
+  execute(command: Command): Promise<CommandBundle|undefined>;
+}
+
+export class SimpleCommandBundle {
+  constructor(readonly description: string, private commands: Command[], private freeform?: FreeformCommandTemplate) {
+  }
+  async getCommands(input: string) {
+    const pattern = new RegExp(
+        input.replace(
+            /(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'),
+        'i');
+    const commands = this.commands.filter(({description}) => pattern.test(description));
+    if (this.freeform) commands.push({...this.freeform, description: input});
+    return commands;
+  }
 }
 
 @customElement('pkm-command-palette')
 export class CommandPalette extends LitElement {
   @property({attribute: true}) noHeader = false;
   @state() activeIndex = 0;
+  @state() bundle: CommandBundle|undefined;
+  @state() activeItems: Command[] = [];
+  private activeSearch?: string;
   @query('input') input!: HTMLInputElement;
   static override get styles() {
     return css`
@@ -64,33 +92,13 @@ export class CommandPalette extends LitElement {
       }
     `;
   }
-  @state() pendingCommand?: Command;
-  @state() items: Command[] = [];
-  activeSearch?: string;
-  activeItems: Command[] = [];
   override render() {
-    const search = this.input?.value ?? '';
-    if (search != this.activeSearch) {
-      this.activeSearch = search;
-      this.activeIndex = 0;
-    }
-    const pattern = new RegExp(
-        search.replace(
-            /(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'),
-        'i');
-    this.activeItems = this.items.filter((item) => {
-      return pattern.test(item.description);
-    });
-
-    this.activeIndex =
-        Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
     return html`
       <input
           type=text
           @keydown=${this.handleInputKeyDown}
-          @input=${() => this.requestUpdate()}
-          placeholder=${
-      this.pendingCommand?.description ?? 'Search commands...'}></input>
+          @input=${() => this.onInput()}
+          placeholder=${this.bundle?.description ?? ''}></input>
       <div id=separator></div>
       <div id=items>
         ${
@@ -105,6 +113,16 @@ export class CommandPalette extends LitElement {
         `)}
       </div>
     `;
+  }
+  private async onInput() {
+    const search = this.input?.value ?? '';
+    if (search != this.activeSearch) {
+      this.activeSearch = search;
+      this.activeIndex = 0;
+    }
+    this.activeItems = this.bundle ? await this.bundle.getCommands(search, 100) : [];
+    this.activeIndex =
+        Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
   }
   private handleInputKeyDown(e: KeyboardEvent) {
     switch (e.key) {
@@ -122,8 +140,7 @@ export class CommandPalette extends LitElement {
         return;
     }
   }
-  private reset() {
-    this.pendingCommand = undefined;
+  private async reset() {
     this.input.value = '';
     this.activeIndex = 0;
     this.activeSearch = undefined;
@@ -132,33 +149,27 @@ export class CommandPalette extends LitElement {
   private handleItemClick() {
     this.commit();
   }
-  setInput(input: string) {
+  async setInput(input: string) {
     this.input.value = input;
-    this.requestUpdate();
+    await this.onInput();
   }
   async commit() {
     const selected = this.activeItems[this.activeIndex];
-    let next: Command[] = [];
-    
-    if (selected) {
-      next = await selected.execute();
-    } else if (this.pendingCommand?.executeFreeform && this.activeSearch !== undefined) {
-      next = await this.pendingCommand.executeFreeform(this.activeSearch);
-    }
-    if (next.length) {
-      this.trigger(next, selected);
+    const next = await selected.execute(selected);
+    if (next) {
+      await this.trigger(next);
     } else {
       this.dispatchEvent(new CustomEvent('commit'))
     }
   }
-  async triggerArgument(selected: Command) {
-    this.trigger(await selected.execute(), selected)
+  async trigger(bundle: CommandBundle) {
+    await this.reset();
+    this.bundle = bundle;
+    await this.onInput();
   }
-  trigger(commands: Command[], pending?: Command) {
-    this.reset();
-    this.pendingCommand = pending;
-    this.items = commands;
-    this.requestUpdate();
+  async triggerCommand(command: Command) {
+    const bundle = await command.execute(command);
+    await this.trigger(cast(bundle));
   }
   next() {
     this.activeIndex++;

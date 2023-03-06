@@ -21,7 +21,7 @@ import {css, query, customElement, html, LitElement, property, state} from './de
 import {InlineKeyDown} from './markdown/inline-render.js';
 import {InlineViewModelNode} from './markdown/view-model.js';
 import {MarkdownInline} from './markdown/inline-render.js';
-import {Command, CommandPalette} from './command-palette';
+import {SimpleCommandBundle, Command, CommandPalette} from './command-palette.js';
 import {focusNode} from './markdown/host-context.js';
 import {Library} from './library.js';
 
@@ -100,9 +100,10 @@ export class Autocomplete extends LitElement {
     this.endIndex = index;
     document.addEventListener('pointerdown', () => this.abort(), {capture: true, once: true});
   }
-  private getLinkInsertionCommand(inline: MarkdownInline) {
+  private getLinkInsertionCommand(inline: MarkdownInline): Command {
     const node = inline.node!;
-    const execute = async (arg?: string): Promise<Command[]> => {
+    const execute = async (command: Command) => {
+      const arg = command.description;
       const finish = node.viewModel.tree.edit();
       try {
         const newEndIndex = this.startIndex + arg!.length;
@@ -116,18 +117,20 @@ export class Autocomplete extends LitElement {
       } finally {
         finish();
       }
-      return [];
+      return undefined;
     };
     return {
-      execute: async () => (await this.library!.getAllNames()).map(name => ({
-        description: name,
-        execute: () => execute(name), 
-      })),
-      executeFreeform: execute,
-      description: 'Link',
+      description: 'Link...',
+      execute: async () => {
+        const commands = (await this.library!.getAllNames()).map(name => ({
+          description: name,
+          execute, 
+        }));
+        return new SimpleCommandBundle('Link', commands, {execute});
+      },
     };
   }
-  getSlashCommandWrapper(inline: MarkdownInline, command: Command) {
+  getSlashCommandWrapper(inline: MarkdownInline, command: Command): Command {
     const node = inline.node!;
     return {
       execute: async () => {
@@ -140,7 +143,7 @@ export class Autocomplete extends LitElement {
         });
         this.endIndex = this.startIndex;
         focusNode(inline.hostContext!, node!, this.startIndex);
-        return command.execute();
+        return command.execute(command);
       },
       description: command.description,
     };
@@ -161,9 +164,9 @@ export class Autocomplete extends LitElement {
           oldEndIndex: cursorIndex,
           newText: ']',
         });
-        this.palette.triggerArgument(this.getLinkInsertionCommand(inline));
+        this.palette.triggerCommand(this.getLinkInsertionCommand(inline));
       } else if (newText === '/') {
-        this.palette.trigger([this.getSlashCommandWrapper(inline, this.getLinkInsertionCommand(inline))]);
+        this.palette.trigger(new SimpleCommandBundle('Run command...', [this.getSlashCommandWrapper(inline, this.getLinkInsertionCommand(inline))]));
         this.activate(inline, cursorIndex);
       }
     } else if (newText === ']') {

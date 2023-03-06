@@ -15,7 +15,7 @@
 import './command-palette.js';
 
 import {css, customElement, html, LitElement, query} from './deps/lit.js';
-import {CommandPalette, Command} from './command-palette.js';
+import {CommandPalette, CommandBundle} from './command-palette.js';
 
 @customElement('pkm-command-palette-dialog')
 export class CommandPaletteDialog extends LitElement {
@@ -50,8 +50,8 @@ export class CommandPaletteDialog extends LitElement {
   private commit() {
     this.dialog.close();
   }
-  trigger(commands: Command[]) {
-    this.palette.trigger(commands);
+  trigger(bundle: CommandBundle) {
+    this.palette.trigger(bundle);
     this.dialog.showModal();
   }
 }
