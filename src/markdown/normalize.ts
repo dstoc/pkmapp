@@ -119,4 +119,11 @@ export function normalizeTree(tree: MarkdownTree) {
       }
     }
   }
+  if (!tree.root.viewModel.firstChild) {
+    const child = tree.add({
+      type: 'paragraph',
+      content: '',
+    });
+    child.viewModel.insertBefore(tree.root);
+  }
 }
