@@ -19,6 +19,7 @@ import {assert, cast} from './asserts.js';
 import {focusNode} from './markdown/host-context.js';
 import {findPreviousEditable, findNextEditable} from './markdown/view-model-util.js';
 import {MarkdownInline} from './markdown/inline-render.js';
+import {children} from './markdown/view-model-util.js';
 
 export function getBlockSelectionTarget(element: Element&{hostContext?: HostContext, node?: ViewModelNode}) {
   if (element.hostContext?.hasSelection) return element;
@@ -50,6 +51,11 @@ export function maybeRemoveSelectedNodesIn(hostContext: HostContext) {
     for (const node of nodes) {
       node.viewModel.previousSibling && context.push(node.viewModel.previousSibling);
       node.viewModel.parent && context.push(node.viewModel.parent);
+      if (node.type === 'section' && node.viewModel.parent) {
+        for (const child of children(node)) {
+          child.viewModel.insertBefore(cast(node.viewModel.parent), node);
+        }
+      }
       node.viewModel.remove();
     }
     let didFocus = false;
