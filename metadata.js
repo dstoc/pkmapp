@@ -17,8 +17,8 @@ class SetBiMap {
     constructor() {
         this.index = new Map;
         this.reverse = new Map;
+        this.normalized = new Map();
     }
-    // TODO: add a normalized (toLower) map
     values() {
         return this.index.keys();
     }
@@ -26,7 +26,7 @@ class SetBiMap {
         return this.reverse.get(target);
     }
     getTargets(value) {
-        return this.index.get(value);
+        return this.normalized.get(value.toLowerCase());
     }
     add(target, value) {
         let targets = this.index.get(value);
@@ -41,6 +41,13 @@ class SetBiMap {
             this.reverse.set(target, values);
         }
         values.add(value);
+        const normalizedValue = value.toLowerCase();
+        let normalizedTargets = this.normalized.get(normalizedValue);
+        if (!normalizedTargets) {
+            normalizedTargets = new Set();
+            this.normalized.set(normalizedValue, normalizedTargets);
+        }
+        normalizedTargets.add(target);
     }
     remove(target, value) {
         let targets = this.index.get(value);
@@ -51,6 +58,11 @@ class SetBiMap {
         values?.delete(value);
         if (values?.size === 0)
             this.reverse.delete(target);
+        const normalizedValue = value.toLowerCase();
+        let normalizedTargets = this.normalized.get(normalizedValue);
+        normalizedTargets?.delete(target);
+        if (normalizedTargets?.size === 0)
+            this.normalized.delete(normalizedValue);
     }
     update(target, values) {
         const stale = new Set(this.reverse.get(target));
