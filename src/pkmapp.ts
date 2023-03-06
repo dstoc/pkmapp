@@ -40,10 +40,7 @@ export class PkmApp extends LitElement {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'p' && e.ctrlKey) {
         e.preventDefault();
-        this.commandPalette.trigger([
-          // ...this.getCommands(),
-          ...this.editor.getCommands(),
-        ]);
+        this.commandPalette.trigger(this.editor.getCommands());
       }
     });
     window.addEventListener('popstate', (e) => {
