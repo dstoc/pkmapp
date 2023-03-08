@@ -21,6 +21,7 @@ import {BackLinks} from './backlinks.js';
 import {Metadata} from './metadata.js';
 import {assert, cast} from './asserts.js';
 import {resolveDateAlias} from './date-aliases.js';
+import {getLogicalContainingBlock} from './block-util.js';
 
 export interface Document {
   refresh(): Promise<void>;
@@ -34,6 +35,7 @@ export interface Document {
 
 export interface Library {
   find(name: string): Promise<{document: Document, root: ViewModelNode}>;
+  findAll(name: string): Promise<{document: Document, root: ViewModelNode}[]>;
   getDocumentByTree(tree: MarkdownTree): Document|undefined;
   getAllNames(): Promise<string[]>;
   readonly backLinks: BackLinks;
@@ -95,22 +97,58 @@ export class FileSystemLibrary implements Library {
       await document.refresh();
     }
   }
-  async find(name: string) {
+  private findByName(name: string) {
+    const result = this.metadata.findByName(name);
+    if (this.cache.has(name)) {
+      result.push(cast(this.cache.get(name)).tree.root);
+    }
+    return result;
+  }
+  async findAll(name: string, create = false) {
     name = resolveDateAlias(name) ?? name;
-    const root = this.metadata.findByName(name);
-    if (root) {
-      const document = cast(this.getDocumentByTree(root.viewModel.tree));
-      return {
-        document,
-        root, 
-      };
-    } else {
+
+    type Result = {document: Document, root: ViewModelNode};
+    const parts = name.split('/');
+    const blocks: Result[][] = [];
+    for (let i = 0; i < parts.length; i++) {
+      blocks[i] = this.findByName(parts[i]).map(root => {
+        return {
+          document: cast(this.getDocumentByTree(root.viewModel.tree)),
+          root,
+        }
+      });
+      if (i > 0) {
+        blocks[i] = blocks[i].filter(item => {
+          let next: ViewModelNode|undefined;
+          do {
+            next = getLogicalContainingBlock(next ?? item.root);
+            if (next) {
+              const prev = blocks[i - 1].find(({root}) => root === next);
+              if (prev) return true;
+            }
+          } while (next);
+          return false;
+        });
+      }
+    }
+    if (create && parts.length === 1 && blocks[0].length === 0) {
       const document = await this.loadDocument(name, true);
-      return {
+      return [{
         document,
         root: document.tree.root,
-      };
+      }];
     }
+    const results = blocks[blocks.length - 1];
+    if (this.cache.has(name)) {
+      const document = cast(this.cache.get(name));
+      results.push({document, root: document.tree.root});
+    }
+    return results;
+  }
+  // TODO: rename findOrCreate?
+  async find(name: string) {
+    const [result] = await this.findAll(name, true);
+    return result;
   }
   private async loadDocument(name: string, forceRefresh = false): Promise<Document> {
     name = resolveDateAlias(name) ?? name;
@@ -133,11 +171,6 @@ export class FileSystemLibrary implements Library {
       assert(root && root.type === 'document');
       return {root, lastModified};
     };
-    const aliased = this.metadata.findByName(name);
-    if (aliased) {
-      const document = this.getDocumentByTree(aliased.viewModel.tree);
-      return cast(document);
-    }
     const cached = this.cache.get(name);
     if (cached) {
       if (forceRefresh) {

@@ -24,6 +24,7 @@ import {MarkdownInline} from './markdown/inline-render.js';
 import {SimpleCommandBundle, Command, CommandPalette} from './command-palette.js';
 import {focusNode} from './markdown/host-context.js';
 import {Library} from './library.js';
+import {BlockCommandBundle} from './block-command-bundle.js';
 
 @customElement('pkm-autocomplete')
 export class Autocomplete extends LitElement {
@@ -102,8 +103,7 @@ export class Autocomplete extends LitElement {
   }
   private getLinkInsertionCommand(inline: MarkdownInline): Command {
     const node = inline.node!;
-    const execute = async (command: Command) => {
-      const arg = command.description;
+    const action = async ({name: arg}) => {
       const finish = node.viewModel.tree.edit();
       try {
         const newEndIndex = this.startIndex + arg!.length;
@@ -122,11 +122,7 @@ export class Autocomplete extends LitElement {
     return {
       description: 'Link...',
       execute: async () => {
-        const commands = (await this.library!.getAllNames()).map(name => ({
-          description: name,
-          execute, 
-        }));
-        return new SimpleCommandBundle('Link', commands, {execute});
+        return new BlockCommandBundle('Link', this.library, action, action);
       },
     };
   }
