@@ -37,6 +37,7 @@ import {Autocomplete} from './autocomplete.js';
 import {maybeEditBlockSelectionIndent, editInlineIndent} from './indent-util.js';
 import {getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn} from './block-selection-util.js';
 import {getLogicalContainingBlock} from './block-util.js';
+import {BlockCommandBundle} from './block-command-bundle.js';
 
 export interface EditorNavigation {
   kind: 'navigate'|'replace';
@@ -137,36 +138,23 @@ export class Editor extends LitElement {
         this.status = oldStatus;
         return;
       }
-      this.document = document;
-      this.root = root;
-      this.name = this.document.name;
-      // TODO: is this still needed here?
-      normalizeTree(document.tree);
-      const node = findNextEditable(root, root);
-      if (node) {
-        focusNode(this.markdownRenderer.hostContext, node, 0);
-      }
-      this.status = 'loaded';
-      if (fireEvent) this.dispatchEvent(new CustomEvent('editor-navigate', {
-        detail: {
-          kind: 'navigate',
-          document,
-          root,
-        },
-        bubbles: true,
-        composed: true,
-      }));
+      this.navigate(document, root, fireEvent);
     } catch (e) {
       this.status = 'error';
       console.error(e);
     }
   }
   navigate(document: Document, root: ViewModelNode, fireEvent = false) {
-    if (this.document === document && this.root === root) return;
+    if (this.document === document && this.root === root) {
+      if (this.status === 'loading') this.status = 'loaded';
+      return;
+    }
     assert(document.tree === root.viewModel.tree);
     assert(root.viewModel.connected);
     this.document = document;
     this.root = root;
+    this.name = this.document.name;
+    this.status = 'loaded';
     const node = findNextEditable(this.root, this.root);
     if (node) {
       focusNode(this.markdownRenderer.hostContext, node, 0);
@@ -405,12 +393,9 @@ export class Editor extends LitElement {
       {
         description: 'Find, Open, Create...',
         execute: async () => {
-          const action = async (command: Command) => void this.navigateByName(command.description, true);
-          const commands = (await this.library.getAllNames()).map(name => ({
-            description: name,
-            execute: action,
-          }));
-          return new SimpleCommandBundle('Find, Open, Create...', commands, {execute: action});
+          return new BlockCommandBundle('Find, Open, Create', this.library,
+              async ({document, root}) => void this.navigate(document, root, true),
+              async ({name}) => void this.navigateByName(name, true));
         },
       },
       {
@@ -443,32 +428,23 @@ export class Editor extends LitElement {
       ...activeInline?.hostContext?.hasSelection ? [{
         description: 'Send to...',
         execute: async () => {
-          const action = async (command: Command) => void await sendTo(command.description, this.library, activeInline.hostContext!, 'remove');
-          const commands = (await this.library.getAllNames()).map(name => ({
-            description: name,
-            execute: action,
-          }));
-          return new SimpleCommandBundle('Send to...', commands, {execute: action});
+          return new BlockCommandBundle('Send to', this.library,
+              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'remove'),
+              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'remove'));
         },
       }, {
-        description: 'Send to and transclude',
+        description: 'Send to and transclude...',
         execute: async () => {
-          const action = async (command: Command) => void await sendTo(command.description, this.library, activeInline.hostContext!, 'transclude');
-          const commands = (await this.library.getAllNames()).map(name => ({
-            description: name,
-            execute: action,
-          }));
-          return new SimpleCommandBundle('Send to and transclude...', commands, {execute: action});
+          return new BlockCommandBundle('Send to and transclude', this.library,
+              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'transclude'),
+              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'transclude'));
         },
       }, {
-        description: 'Send to and link',
+        description: 'Send to and link...',
         execute: async () => {
-          const action = async (command: Command) => void await sendTo(command.description, this.library, activeInline.hostContext!, 'link');
-          const commands = (await this.library.getAllNames()).map(name => ({
-            description: name,
-            execute: action,
-          }));
-          return new SimpleCommandBundle('Send to and transclude...', commands, {execute: action});
+          return new BlockCommandBundle('Send to and link', this.library,
+              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'link'),
+              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'link'));
         },
       }] : [],
       {
@@ -527,12 +503,12 @@ export class Editor extends LitElement {
       ...activeNode ? [{
         description: 'Insert transclusion...',
         execute: async () => {
-          const action = async (command: Command) => {
+          const action = async ({name}: {name: string}) => {
             const finished = activeNode.viewModel.tree.edit();
             const newParagraph = activeNode.viewModel.tree.add({
               type: 'code-block',
               info: 'tc',
-              content: command.description,
+              content: name,
             });
             newParagraph.viewModel.insertBefore(
                 cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
@@ -540,11 +516,7 @@ export class Editor extends LitElement {
             focusNode(activeInline.hostContext!, newParagraph);
             return undefined;
           };
-          const commands = (await this.library.getAllNames()).map(target => ({
-            description: target,
-            execute: action,
-          }));
-          return new SimpleCommandBundle('Insert transclusion', commands, {execute: action});
+          return new BlockCommandBundle('Insert transclusion', this.library, action, action);
         },
       }] : [],
       ...transclusion ? [{
@@ -869,8 +841,10 @@ function handleInlineInputAsBlockEdit(
   return false;
 }
 
-async function sendTo(name: string, library: Library, hostContext: HostContext, mode: 'remove'|'transclude'|'link') {
-  const {root} = await library.find(name)
+async function sendTo({root, name}: {root?: ViewModelNode, name: string}, library: Library, hostContext: HostContext, mode: 'remove'|'transclude'|'link') {
+  if (!root) {
+    ({root} = await library.find(name));
+  }
   const markdown = serializeSelection(hostContext);
   insertMarkdown(markdown, root.viewModel.lastChild ?? root);
   const focus = cast(hostContext.selectionFocus);
@@ -926,7 +900,7 @@ function copyMarkdownToClipboard(markdown: string) {
     new ClipboardItem({
       [textType]: new Blob([markdown], {type: textType}),
       [mdType]: new Blob([markdown], {type: mdType}),
-    }),
+}),
   ]);
 }
 
