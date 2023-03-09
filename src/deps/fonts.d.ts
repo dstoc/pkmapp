@@ -14,3 +14,4 @@
 
 export let fira: CSSStyleSheet;
 export let opensans: CSSStyleSheet;
+export let notoemoji: CSSStyleSheet;

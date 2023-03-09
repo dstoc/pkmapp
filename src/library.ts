@@ -27,6 +27,7 @@ export interface Document {
   refresh(): Promise<void>;
   save(): Promise<void>;
   readonly name: string;
+  readonly fileName: string;
   readonly allNames: string[];
   readonly tree: MarkdownTree;
   readonly dirty: boolean;
@@ -67,17 +68,13 @@ async function getFileHandleFromPath(
 
 export class FileSystemLibrary implements Library {
   constructor(private readonly directory: FileSystemDirectoryHandle) {}
-  async getAllNames(): Promise<string[]> {
-    const result = new Set<string>();
+  async getAllNames() {
+    const result = [];
+    result.push(...this.metadata.getAllNames());
     for (const document of this.cache.values()) {
-      for (const name of document.allNames) {
-        result.add(name);
-      }
+      result.push(document.fileName);
     }
-    for (const name of this.metadata.getAllNames()) {
-      result.add(name);
-    }
-    return [...result];
+    return result;
   }
   private cache: Map<string, Document> = new Map();
   backLinks = new BackLinks();
@@ -131,17 +128,13 @@ export class FileSystemLibrary implements Library {
         });
       }
     }
-    if (create && parts.length === 1 && blocks[0].length === 0) {
+    const results = blocks[blocks.length - 1];
+    if (create && parts.length === 1 && results.length === 0) {
       const document = await this.loadDocument(name, true);
       return [{
         document,
         root: document.tree.root,
       }];
-    }
-    const results = blocks[blocks.length - 1];
-    if (this.cache.has(name)) {
-      const document = cast(this.cache.get(name));
-      results.push({document, root: document.tree.root});
     }
     return results;
   }
@@ -198,6 +191,9 @@ export class FileSystemLibrary implements Library {
           ...library.metadata.getNames(this.tree.root),
           name,
         ];
+      }
+      get fileName() {
+        return name;
       }
       postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed') {
         if (node.type === 'paragraph') {

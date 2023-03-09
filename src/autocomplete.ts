@@ -46,6 +46,8 @@ export class Autocomplete extends LitElement {
         width: 500px;
         display: grid;
         padding: 0;
+        max-height: 300px;
+        overflow: scroll;
       }
     `;
   }
@@ -61,7 +63,7 @@ export class Autocomplete extends LitElement {
   library!: Library;
   override render() {
     return html`
-      <pkm-command-palette @commit=${this.abort} no-header></pkm-command-palette>
+      <pkm-command-palette @commit=${this.abort} collapsed></pkm-command-palette>
     `;
   }
   onInlineKeyDown({
@@ -103,7 +105,7 @@ export class Autocomplete extends LitElement {
   }
   private getLinkInsertionCommand(inline: MarkdownInline): Command {
     const node = inline.node!;
-    const action = async ({name: arg}) => {
+    const action = async ({name: arg}: {name: string}) => {
       const finish = node.viewModel.tree.edit();
       try {
         const newEndIndex = this.startIndex + arg!.length;
