@@ -25,14 +25,17 @@ export class CommandPaletteDialog extends LitElement {
     return css`
       dialog[open] {
         color: var(--root-color);
-        margin-top: 50px;
+        margin: 50px;
         background: red;
         background: var(--pkm-dialog-bgcolor);
         border: 3px solid var(--md-accent-color);
         border-radius: 10px;
-        width: 700px;
-        display: grid;
+        width: auto;
+        height: calc(100vh - 100px);
+        align-items: center;
         padding: 0;
+        overflow: hidden;
+        container-type: size;
       }
       dialog::backdrop {
         backdrop-filter: blur(3px);

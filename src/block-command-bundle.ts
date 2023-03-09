@@ -1,10 +1,12 @@
-import type {CommandBundle} from './command-palette.js';
+import type {Command, CommandBundle} from './command-palette.js';
 import type {Library, Document} from './library.js';
 import type {ViewModelNode} from './markdown/view-model.js';
 import {getLogicalContainingBlock} from './block-util.js';
 import {cast} from './asserts.js';
+import {html} from './deps/lit.js';
+import './markdown/block-render.js';
 
-type Result = {document: Document, root: ViewModelNode, name: string};
+type Result = {document: Document, root: ViewModelNode, name: string, description: string};
 
 export class BlockCommandBundle implements CommandBundle {
   constructor(
@@ -24,6 +26,7 @@ export class BlockCommandBundle implements CommandBundle {
         return blocks.map(item => ({
           ...item,
           name: this.library.metadata.getNames(item.root)[0] ?? item.document.name,
+          description: name,
         }));
       }))).flat();
       if (i > 0) {
@@ -35,6 +38,7 @@ export class BlockCommandBundle implements CommandBundle {
               const prev = constraints[i - 1].find(({root}) => root === next);
               if (prev) {
                 item.name = prev.name + '/' + item.name;
+                item.description = prev.description + '/' + item.description;
                 return true;
               }
             }
@@ -43,19 +47,27 @@ export class BlockCommandBundle implements CommandBundle {
         });
       }
     }
-    const commands = constraints[constraints.length - 1].map(item => ({
-      description: item.name,
+    const commands: Command[] = constraints[constraints.length - 1].map(item => ({
+      description: item.description,
       execute: async () => this.action(item),
+      icon: kindIcon(item),
+      preview: () => html`<md-block-render inert .block=${item.root}></md-block-render>`
     }));
-    if (this.freeformAction && parts.length == 1) {
+    if (this.freeformAction && parts.length == 1 && parts[0].length) {
       // TODO: don't add if there's a matching name
       commands.push({
         description: input,
+        icon: '🆕 ',
         execute: () => cast(this.freeformAction)({name: input}),
       });
     } 
     return commands;
   }
+}
+
+function kindIcon(item: Result) {
+  if (item.root.type === 'document') return '📚 ';
+  else return '📄 ';
 }
 
 function getFilter(input: string) {

@@ -121,7 +121,10 @@ export class Metadata {
   private sectionNameMap = new SetBiMap<Section>();
 
   getAllNames() {
-    return [...this.nameMap.values(), ...this.sectionNameMap.values()];
+    return [
+      ...this.nameMap.values(),
+      ...this.sectionNameMap.values(),
+    ];
   }
   getNames(node: ViewModelNode) {
     if (node.type !== 'section' && node.viewModel.firstChild?.type === 'section') {
