@@ -24,6 +24,7 @@ import { libraryContext } from './app-context.js';
 import { css, query, customElement, html, LitElement, property, state } from './deps/lit.js';
 import { SimpleCommandBundle } from './command-palette.js';
 import { focusNode } from './markdown/host-context.js';
+import { BlockCommandBundle } from './block-command-bundle.js';
 let Autocomplete = class Autocomplete extends LitElement {
     constructor() {
         super(...arguments);
@@ -49,12 +50,14 @@ let Autocomplete = class Autocomplete extends LitElement {
         width: 500px;
         display: grid;
         padding: 0;
+        max-height: 300px;
+        overflow: scroll;
       }
     `;
     }
     render() {
         return html `
-      <pkm-command-palette @commit=${this.abort} no-header></pkm-command-palette>
+      <pkm-command-palette @commit=${this.abort} collapsed></pkm-command-palette>
     `;
     }
     onInlineKeyDown({ detail: { inline, node, keyboardEvent }, }) {
@@ -98,8 +101,7 @@ let Autocomplete = class Autocomplete extends LitElement {
     }
     getLinkInsertionCommand(inline) {
         const node = inline.node;
-        const execute = async (command) => {
-            const arg = command.description;
+        const action = async ({ name: arg }) => {
             const finish = node.viewModel.tree.edit();
             try {
                 const newEndIndex = this.startIndex + arg.length;
@@ -119,11 +121,7 @@ let Autocomplete = class Autocomplete extends LitElement {
         return {
             description: 'Link...',
             execute: async () => {
-                const commands = (await this.library.getAllNames()).map(name => ({
-                    description: name,
-                    execute,
-                }));
-                return new SimpleCommandBundle('Link', commands, { execute });
+                return new BlockCommandBundle('Link', this.library, action, action);
             },
         };
     }

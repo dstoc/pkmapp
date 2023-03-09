@@ -13,5 +13,6 @@
 // limitations under the License.
 import fira from 'https://cdn.jsdelivr.net/npm/firacode@6.2.0/distr/fira_code.css' assert { type: 'css' };
 import opensans from 'https://fonts.googleapis.com/css2?family=Open+Sans&display=swap' assert { type: 'css' };
-export { fira, opensans };
+import notoemoji from 'https://fonts.googleapis.com/css2?family=Noto+Emoji&display=swap' assert { type: 'css' };
+export { fira, opensans, notoemoji };
 //# sourceMappingURL=fonts.js.map

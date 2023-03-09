@@ -19,6 +19,7 @@ import { BackLinks } from './backlinks.js';
 import { Metadata } from './metadata.js';
 import { assert, cast } from './asserts.js';
 import { resolveDateAlias } from './date-aliases.js';
+import { getLogicalContainingBlock } from './block-util.js';
 async function* allFiles(prefix, directory) {
     for await (const entry of directory.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
@@ -45,16 +46,12 @@ export class FileSystemLibrary {
         this.metadata = new Metadata();
     }
     async getAllNames() {
-        const result = new Set();
+        const result = [];
+        result.push(...this.metadata.getAllNames());
         for (const document of this.cache.values()) {
-            for (const name of document.allNames) {
-                result.add(name);
-            }
+            result.push(document.fileName);
         }
-        for (const name of this.metadata.getAllNames()) {
-            result.add(name);
-        }
-        return [...result];
+        return result;
     }
     getDocumentByTree(tree) {
         // TODO: index
@@ -71,23 +68,53 @@ export class FileSystemLibrary {
             await document.refresh();
         }
     }
-    async find(name) {
+    findByName(name) {
+        const result = this.metadata.findByName(name);
+        if (this.cache.has(name)) {
+            result.push(cast(this.cache.get(name)).tree.root);
+        }
+        return result;
+    }
+    async findAll(name, create = false) {
         name = resolveDateAlias(name) ?? name;
-        const root = this.metadata.findByName(name);
-        if (root) {
-            const document = cast(this.getDocumentByTree(root.viewModel.tree));
-            return {
-                document,
-                root,
-            };
+        const parts = name.split('/');
+        const blocks = [];
+        for (let i = 0; i < parts.length; i++) {
+            blocks[i] = this.findByName(parts[i]).map(root => {
+                return {
+                    document: cast(this.getDocumentByTree(root.viewModel.tree)),
+                    root,
+                };
+            });
+            if (i > 0) {
+                blocks[i] = blocks[i].filter(item => {
+                    let next;
+                    do {
+                        next = getLogicalContainingBlock(next ?? item.root);
+                        if (next) {
+                            const prev = blocks[i - 1].find(({ root }) => root === next);
+                            if (prev)
+                                return true;
+                        }
+                    } while (next);
+                    return false;
+                });
+            }
         }
-        else {
+        const results = blocks[blocks.length - 1];
+        if (create && parts.length === 1 && results.length === 0) {
             const document = await this.loadDocument(name, true);
-            return {
-                document,
-                root: document.tree.root,
-            };
+            return [{
+                    document,
+                    root: document.tree.root,
+                }];
         }
+        return results;
+    }
+    // TODO: rename findOrCreate?
+    async find(name) {
+        const [result] = await this.findAll(name, true);
+        return result;
     }
     async loadDocument(name, forceRefresh = false) {
         name = resolveDateAlias(name) ?? name;
@@ -112,11 +139,6 @@ export class FileSystemLibrary {
             assert(root && root.type === 'document');
             return { root, lastModified };
         };
-        const aliased = this.metadata.findByName(name);
-        if (aliased) {
-            const document = this.getDocumentByTree(aliased.viewModel.tree);
-            return cast(document);
-        }
         const cached = this.cache.get(name);
         if (cached) {
             if (forceRefresh) {
@@ -143,6 +165,9 @@ export class FileSystemLibrary {
                     ...library.metadata.getNames(this.tree.root),
                     name,
                 ];
+            }
+            get fileName() {
+                return name;
             }
             postEditUpdate(node, change) {
                 if (node.type === 'paragraph') {

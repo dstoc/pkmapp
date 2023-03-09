@@ -120,7 +120,10 @@ export class Metadata {
         this.sectionNameMap = new SetBiMap();
     }
     getAllNames() {
-        return [...this.nameMap.values(), ...this.sectionNameMap.values()];
+        return [
+            ...this.nameMap.values(),
+            ...this.sectionNameMap.values(),
+        ];
     }
     getNames(node) {
         if (node.type !== 'section' && node.viewModel.firstChild?.type === 'section') {
@@ -132,18 +135,19 @@ export class Metadata {
         return result;
     }
     findByName(name) {
-        const [section] = this.sectionNameMap.getTargets(name)?.values() ?? [];
-        if (section) {
+        const sections = [...this.sectionNameMap.getTargets(name)?.values() ?? []].map(section => {
             if (!isLogicalContainingBlock(section)) {
                 return section.viewModel.parent;
             }
             return section;
-        }
-        const [result] = this.nameMap.getTargets(name)?.values() ?? [];
-        if (result && !isLogicalContainingBlock(result)) {
-            return result.viewModel.parent;
-        }
-        return result;
+        });
+        const named = [...this.nameMap.getTargets(name)?.values() ?? []].map(result => {
+            if (result && !isLogicalContainingBlock(result)) {
+                return result.viewModel.parent;
+            }
+            return result;
+        });
+        return [...sections, ...named];
     }
     updateSection(node, change) {
         if (change === 'disconnected') {

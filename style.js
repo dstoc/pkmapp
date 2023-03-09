@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { fira } from './deps/fonts.js';
+import { fira, notoemoji } from './deps/fonts.js';
 import { css } from './deps/lit.js';
 export const styles = [
     css `
@@ -44,5 +44,6 @@ export const styles = [
     }
   `.styleSheet,
     fira,
+    notoemoji,
 ];
 //# sourceMappingURL=style.js.map
