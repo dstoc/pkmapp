@@ -5,6 +5,7 @@ import {getLogicalContainingBlock} from './block-util.js';
 import {cast} from './asserts.js';
 import {html} from './deps/lit.js';
 import './markdown/block-render.js';
+import './title.js';
 
 type Result = {document: Document, root: ViewModelNode, name: string, description: string};
 
@@ -51,7 +52,7 @@ export class BlockCommandBundle implements CommandBundle {
       description: item.description,
       execute: async () => this.action(item),
       icon: kindIcon(item),
-      preview: () => html`<md-block-render inert .block=${item.root}></md-block-render>`
+      preview: () => preview(item),
     }));
     if (this.freeformAction && parts.length == 1 && parts[0].length) {
       // TODO: don't add if there's a matching name
@@ -63,6 +64,14 @@ export class BlockCommandBundle implements CommandBundle {
     } 
     return commands;
   }
+}
+
+function preview(item: Result) {
+  return html`
+    <pkm-title .node=${item.root}></pkm-title>
+    <p>
+    <md-block-render .block=${item.root} style="margin-top: 1em"></md-block-render>
+  `;
 }
 
 function kindIcon(item: Result) {
