@@ -274,6 +274,7 @@ export class MarkdownInline extends LitElement {
   getSelection() {
     const selection: Selection =
         (this.getRootNode()! as Document).getSelection()!;
+    if (!selection.focusNode) return;
     return MarkdownInline.getSelectionRange(selection);
   }
   getCaretPosition() {
