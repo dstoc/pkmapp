@@ -20,6 +20,9 @@ import { Metadata } from './metadata.js';
 import { assert, cast } from './asserts.js';
 import { resolveDateAlias } from './date-aliases.js';
 import { getLogicalContainingBlock } from './block-util.js';
+function normalizeName(name) {
+    return name.toLowerCase();
+}
 async function* allFiles(prefix, directory) {
     for await (const entry of directory.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.md')) {
@@ -46,12 +49,14 @@ export class FileSystemLibrary {
         this.metadata = new Metadata();
     }
     async getAllNames() {
-        const result = [];
-        result.push(...this.metadata.getAllNames());
-        for (const document of this.cache.values()) {
-            result.push(document.fileName);
+        const result = new Set();
+        for (const name of this.metadata.getAllNames()) {
+            result.add(normalizeName(name));
         }
-        return result;
+        for (const document of this.cache.values()) {
+            result.add(normalizeName(document.fileName));
+        }
+        return [...result];
     }
     getDocumentByTree(tree) {
         // TODO: index
@@ -69,6 +74,7 @@ export class FileSystemLibrary {
         }
     }
     findByName(name) {
+        name = normalizeName(name);
         const result = this.metadata.findByName(name);
         if (this.cache.has(name)) {
             result.push(cast(this.cache.get(name)).tree.root);
@@ -139,7 +145,7 @@ export class FileSystemLibrary {
             assert(root && root.type === 'document');
             return { root, lastModified };
         };
-        const cached = this.cache.get(name);
+        const cached = this.cache.get(normalizeName(name));
         if (cached) {
             if (forceRefresh) {
                 await cached.refresh();
@@ -224,7 +230,7 @@ export class FileSystemLibrary {
                 }
             }
         };
-        this.cache.set(name, result);
+        this.cache.set(normalizeName(name), result);
         return result;
     }
 }
