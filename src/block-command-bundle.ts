@@ -27,7 +27,7 @@ export class BlockCommandBundle implements CommandBundle {
         return blocks.map(item => ({
           ...item,
           name: this.library.metadata.getNames(item.root)[0] ?? item.document.name,
-          description: name,
+          description: this.library.metadata.getNames(item.root)[0] ?? item.document.name,
         }));
       }))).flat();
       if (i > 0) {
@@ -48,7 +48,13 @@ export class BlockCommandBundle implements CommandBundle {
         });
       }
     }
-    const commands: Command[] = constraints[constraints.length - 1].map(item => ({
+    const seen = new Set<ViewModelNode>();
+    function once(item: Result) {
+      if (seen.has(item.root)) return false;
+      seen.add(item.root);
+      return true;
+    }
+    const commands: Command[] = constraints[constraints.length - 1].filter(once).map(item => ({
       description: item.description,
       execute: async () => this.action(item),
       icon: kindIcon(item),
