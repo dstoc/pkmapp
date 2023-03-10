@@ -44,6 +44,10 @@ export interface Library {
   sync(): Promise<void>;
 }
 
+function normalizeName(name: string) {
+  return name.toLowerCase();
+}
+
 async function*
     allFiles(prefix: string, directory: FileSystemDirectoryHandle):
         AsyncGenerator<string, void, unknown> {
@@ -69,12 +73,14 @@ async function getFileHandleFromPath(
 export class FileSystemLibrary implements Library {
   constructor(private readonly directory: FileSystemDirectoryHandle) {}
   async getAllNames() {
-    const result = [];
-    result.push(...this.metadata.getAllNames());
-    for (const document of this.cache.values()) {
-      result.push(document.fileName);
+    const result = new Set<string>();
+    for (const name of this.metadata.getAllNames()) {
+      result.add(normalizeName(name));
     }
-    return result;
+    for (const document of this.cache.values()) {
+      result.add(normalizeName(document.fileName));
+    }
+    return [...result];
   }
   private cache: Map<string, Document> = new Map();
   backLinks = new BackLinks();
@@ -95,6 +101,7 @@ export class FileSystemLibrary implements Library {
     }
   }
   private findByName(name: string) {
+    name = normalizeName(name);
     const result = this.metadata.findByName(name);
     if (this.cache.has(name)) {
       result.push(cast(this.cache.get(name)).tree.root);
@@ -164,7 +171,7 @@ export class FileSystemLibrary implements Library {
       assert(root && root.type === 'document');
       return {root, lastModified};
     };
-    const cached = this.cache.get(name);
+    const cached = this.cache.get(normalizeName(name));
     if (cached) {
       if (forceRefresh) {
         await cached.refresh();
@@ -250,7 +257,7 @@ export class FileSystemLibrary implements Library {
         }
       }
     };
-    this.cache.set(name, result);
+    this.cache.set(normalizeName(name), result);
     return result;
   }
 }
