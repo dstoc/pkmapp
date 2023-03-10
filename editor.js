@@ -395,17 +395,6 @@ let Editor = class Editor extends LitElement {
                 },
             },
             {
-                description: 'Force open',
-                execute: async () => {
-                    const action = async (command) => void this.navigateByName(command.description, true);
-                    const commands = (await this.library.getAllNames()).map(name => ({
-                        description: name,
-                        execute: action,
-                    }));
-                    return new SimpleCommandBundle('Force open', commands, { execute: action });
-                },
-            },
-            {
                 description: 'Sync all',
                 execute: async () => void await this.library.sync(),
             },

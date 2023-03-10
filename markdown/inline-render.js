@@ -243,6 +243,8 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
     }
     getSelection() {
         const selection = this.getRootNode().getSelection();
+        if (!selection.focusNode)
+            return;
         return MarkdownInline_1.getSelectionRange(selection);
     }
     getCaretPosition() {

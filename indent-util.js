@@ -38,13 +38,15 @@ export function maybeEditBlockSelectionIndent(inline, mode) {
     }
 }
 export function editInlineIndent(inline, mode) {
-    const { start } = inline.getSelection();
+    const selection = inline.getSelection();
     const node = cast(inline.node);
     const hostContext = cast(inline.hostContext);
     const root = cast(hostContext.root);
     const finish = root.viewModel.tree.edit();
     try {
-        focusNode(hostContext, node, start.index);
+        if (selection) {
+            focusNode(hostContext, node, selection.start.index);
+        }
         if (mode === 'unindent') {
             unindent(node, root);
         }
