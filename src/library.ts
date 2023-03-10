@@ -26,6 +26,7 @@ import {getLogicalContainingBlock} from './block-util.js';
 export interface Document {
   refresh(): Promise<void>;
   save(): Promise<void>;
+  delete(): Promise<void>;
   readonly name: string;
   readonly fileName: string;
   readonly allNames: string[];
@@ -68,6 +69,16 @@ async function getFileHandleFromPath(
     directory = await directory.getDirectoryHandle(part, {create});
   }
   return directory.getFileHandle(name, {create});
+}
+
+async function deleteFile(
+    directory: FileSystemDirectoryHandle, path: string, create = false) {
+  const parts = path.split('/');
+  const name: string = parts.pop()!;
+  for (const part of parts) {
+    directory = await directory.getDirectoryHandle(part, {create});
+  }
+  return directory.removeEntry(name);
 }
 
 export class FileSystemLibrary implements Library {
@@ -186,6 +197,7 @@ export class FileSystemLibrary implements Library {
         this.tree = new MarkdownTree(cast(root), this);
         this.tree.observe.add(() => this.markDirty());
       }
+      state: 'active'|'deleted' = 'active';
       readonly tree: MarkdownTree;
       lastModified: number;
       dirty = false;
@@ -222,12 +234,21 @@ export class FileSystemLibrary implements Library {
         }
       }
       async save() {
+        if (this.state !== 'active') return;
         const text = serializeToString(this.tree.root);
         const handle = await getFileHandleFromPath(library.directory, fileName, true);
         const stream = await handle.createWritable();
         await stream.write(text);
         await stream.close();
         this.lastModified = new Date().getTime();
+      }
+      async delete() {
+        this.state = 'deleted';
+        this.tree.setRoot(this.tree.add<DocumentNode>({
+          type: 'document'
+        }));
+        library.cache.delete(normalizeName(this.fileName));
+        await deleteFile(library.directory, fileName);
       }
       private pendingModifications = 0;
       async markDirty() {
