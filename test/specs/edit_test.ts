@@ -49,7 +49,7 @@ describe('main', () => {
   beforeEach(async () => {
     await state.fs.setFile('test.md', '');
     await state.main.runCommand('sync');
-    await state.main.runCommand('force open', 'test');
+    await state.main.runCommand('open', 'test');
     await state.main.status('loaded');
     const inline = $('>>>[contenteditable]');
     await inline.click();
