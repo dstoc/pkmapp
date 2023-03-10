@@ -41,6 +41,14 @@ async function getFileHandleFromPath(directory, path, create = false) {
     }
     return directory.getFileHandle(name, { create });
 }
+async function deleteFile(directory, path, create = false) {
+    const parts = path.split('/');
+    const name = parts.pop();
+    for (const part of parts) {
+        directory = await directory.getDirectoryHandle(part, { create });
+    }
+    return directory.removeEntry(name);
+}
 export class FileSystemLibrary {
     constructor(directory) {
         this.directory = directory;
@@ -156,6 +164,7 @@ export class FileSystemLibrary {
         const library = this;
         const result = new class {
             constructor() {
+                this.state = 'active';
                 this.dirty = false;
                 this.observe = new Observe(this);
                 this.pendingModifications = 0;
@@ -195,12 +204,22 @@ export class FileSystemLibrary {
                 }
             }
             async save() {
+                if (this.state !== 'active')
+                    return;
                 const text = serializeToString(this.tree.root);
                 const handle = await getFileHandleFromPath(library.directory, fileName, true);
                 const stream = await handle.createWritable();
                 await stream.write(text);
                 await stream.close();
                 this.lastModified = new Date().getTime();
+            }
+            async delete() {
+                this.state = 'deleted';
+                this.tree.setRoot(this.tree.add({
+                    type: 'document'
+                }));
+                library.cache.delete(normalizeName(this.fileName));
+                await deleteFile(library.directory, fileName);
             }
             async markDirty() {
                 // TODO: The tree could be in an inconsistent state, don't trigger the

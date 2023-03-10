@@ -410,6 +410,27 @@ let Editor = class Editor extends LitElement {
                     return undefined;
                 },
             },
+            ...(this.document && this.root === this.document.tree.root) ? [{
+                    description: 'Delete document',
+                    execute: async () => {
+                        return new SimpleCommandBundle('Delete document?', [
+                            {
+                                description: 'No',
+                                execute: async () => void 0,
+                            },
+                            {
+                                description: 'Yes',
+                                execute: async () => {
+                                    const tree = this.document.tree;
+                                    const document = this.library.getDocumentByTree(tree);
+                                    await document?.delete();
+                                    await this.navigateByName('index', true);
+                                    return undefined;
+                                }
+                            },
+                        ]);
+                    },
+                }] : [],
             ...activeInline?.hostContext?.hasSelection ? [{
                     description: 'Send to...',
                     execute: async () => {
