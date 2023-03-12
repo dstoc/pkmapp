@@ -336,7 +336,10 @@ export class Editor extends LitElement {
           newText = '';
         } else if (inputEvent.inputType === 'deleteContentBackward') {
           newText = '';
-          startIndex = Math.max(0, startIndex - 1);
+          if (startIndex === oldEndIndex) {
+            startIndex--;
+          }
+          startIndex = Math.max(0, startIndex);
         } else {
           newText = inputEvent.data ?? '';
         }
