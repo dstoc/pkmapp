@@ -148,7 +148,7 @@ export class FileSystemLibrary implements Library {
     }
     const results = blocks[blocks.length - 1];
     if (create && parts.length === 1 && results.length === 0) {
-      const document = await this.loadDocument(name, true);
+      const document = await this.loadDocument(name);
       return [{
         document,
         root: document.tree.root,
@@ -161,7 +161,7 @@ export class FileSystemLibrary implements Library {
     const [result] = await this.findAll(name, true);
     return result;
   }
-  private async loadDocument(name: string, forceRefresh = false): Promise<Document> {
+  private async loadDocument(name: string): Promise<Document> {
     name = resolveDateAlias(name) ?? name;
     const fileName = name + '.md';
     const load = async (ifModifiedSince: number) => {
@@ -184,9 +184,6 @@ export class FileSystemLibrary implements Library {
     };
     const cached = this.cache.get(normalizeName(name));
     if (cached) {
-      if (forceRefresh) {
-        await cached.refresh();
-      }
       return cached;
     }
     const {root, lastModified} = await load(0);
