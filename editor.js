@@ -35,7 +35,7 @@ import { getContainingTransclusion } from './markdown/transclusion.js';
 import { maybeEditBlockSelectionIndent, editInlineIndent } from './indent-util.js';
 import { getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn } from './block-selection-util.js';
 import { getLogicalContainingBlock } from './block-util.js';
-import { BlockCommandBundle } from './block-command-bundle.js';
+import { blockPreview, blockIcon, BlockCommandBundle } from './block-command-bundle.js';
 let Editor = class Editor extends LitElement {
     static get styles() {
         return [
@@ -104,19 +104,61 @@ let Editor = class Editor extends LitElement {
             await this.navigateByName(this.defaultName, true);
         }
     }
+    async createAndNavigateByName(name, fireEvent = false) {
+        const document = await this.library.newDocument(name);
+        this.navigate(document, document.tree.root, fireEvent);
+    }
     async navigateByName(name, fireEvent = false) {
-        const oldStatus = this.status;
+        const old = {
+            status: this.status,
+            document: this.document,
+            root: this.root,
+            name: this.name,
+        };
         this.status = 'loading';
         this.document = undefined;
         this.root = undefined;
         this.name = undefined;
         try {
-            const { document, root } = await this.library.find(name);
-            if (this.document === document && this.root === root) {
-                this.status = oldStatus;
-                return;
+            const results = await this.library.findAll(name);
+            if (results.length === 1) {
+                const [{ document, root }] = results;
+                if (this.document === document && this.root === root) {
+                    Object.assign(this, old);
+                    return;
+                }
+                this.navigate(document, root, fireEvent);
             }
-            this.navigate(document, root, fireEvent);
+            else if (results.length > 1) {
+                Object.assign(this, old);
+                this.dispatchEvent(new CustomEvent('editor-commands', {
+                    detail: new SimpleCommandBundle(`Which "${name}"?`, results.map(({ document, root }) => ({
+                        description: document.name,
+                        execute: async () => void this.navigate(document, root, fireEvent),
+                        icon: blockIcon({ root }),
+                        preview: () => blockPreview({ root }),
+                    }))),
+                    bubbles: true,
+                    composed: true,
+                }));
+            }
+            else {
+                Object.assign(this, old);
+                this.dispatchEvent(new CustomEvent('editor-commands', {
+                    detail: new SimpleCommandBundle(`"${name}" does not exist, create it?`, [
+                        {
+                            description: 'Yes',
+                            execute: async () => void this.createAndNavigateByName(name, fireEvent),
+                        },
+                        {
+                            description: 'No',
+                            execute: async () => void 0,
+                        }
+                    ]),
+                    bubbles: true,
+                    composed: true,
+                }));
+            }
         }
         catch (e) {
             this.status = 'error';
@@ -332,7 +374,10 @@ let Editor = class Editor extends LitElement {
                 }
                 else if (inputEvent.inputType === 'deleteContentBackward') {
                     newText = '';
-                    startIndex = Math.max(0, startIndex - 1);
+                    if (startIndex === oldEndIndex) {
+                        startIndex--;
+                    }
+                    startIndex = Math.max(0, startIndex);
                 }
                 else {
                     newText = inputEvent.data ?? '';
@@ -391,7 +436,7 @@ let Editor = class Editor extends LitElement {
             {
                 description: 'Find, Open, Create...',
                 execute: async () => {
-                    return new BlockCommandBundle('Find, Open, Create', this.library, async ({ document, root }) => void this.navigate(document, root, true), async ({ name }) => void this.navigateByName(name, true));
+                    return new BlockCommandBundle('Find, Open, Create', this.library, async ({ document, root }) => void this.navigate(document, root, true), async ({ name }) => void this.createAndNavigateByName(name, true));
                 },
             },
             {
@@ -841,7 +886,11 @@ function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart
 }
 async function sendTo({ root, name }, library, hostContext, mode) {
     if (!root) {
-        ({ root } = await library.find(name));
+        // TODO: We shouldn't need to make the call here, but TS can't
+        // figure out `root` that root is defined if we reassign it...
+        const root = (await library.newDocument(name)).tree.root;
+        sendTo({ root, name }, library, hostContext, mode);
+        return;
     }
     const markdown = serializeSelection(hostContext);
     insertMarkdown(markdown, root.viewModel.lastChild ?? root);

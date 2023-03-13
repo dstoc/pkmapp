@@ -52,11 +52,10 @@ export class BlockCommandBundle {
         const commands = constraints[constraints.length - 1].filter(once).map(item => ({
             description: item.description,
             execute: async () => this.action(item),
-            icon: kindIcon(item),
-            preview: () => preview(item),
+            icon: blockIcon(item),
+            preview: () => blockPreview(item),
         }));
         if (this.freeformAction && parts.length == 1 && parts[0].length) {
-            // TODO: don't add if there's a matching name
             commands.push({
                 description: input,
                 icon: '🆕 ',
@@ -66,15 +65,15 @@ export class BlockCommandBundle {
         return commands;
     }
 }
-function preview(item) {
+export function blockPreview({ root }) {
     return html `
-    <pkm-title .node=${item.root}></pkm-title>
+    <pkm-title .node=${root}></pkm-title>
     <p>
-    <md-block-render .block=${item.root} style="margin-top: 1em"></md-block-render>
+    <md-block-render .block=${root} style="margin-top: 1em"></md-block-render>
   `;
 }
-function kindIcon(item) {
-    if (item.root.type === 'document')
+export function blockIcon({ root }) {
+    if (root.type === 'document')
         return '📚 ';
     else
         return '📄 ';

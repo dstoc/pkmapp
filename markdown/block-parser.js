@@ -13,6 +13,7 @@
 // limitations under the License.
 import Parser from '../deps/tree-sitter.js';
 import { resolve } from '../resolve.js';
+import { cast } from '../asserts.js';
 await Parser.init({
     locateFile(path) {
         return resolve(`./deps/${path}`);
@@ -23,7 +24,7 @@ const parser = new Parser();
 parser.setLanguage(blocks);
 export function parseBlocks(markdown) {
     const tree = parser.parse(markdown);
-    return convertNode(tree.rootNode);
+    return cast(convertNode(tree.rootNode));
 }
 function* convertNodes(nodes) {
     for (const node of nodes) {

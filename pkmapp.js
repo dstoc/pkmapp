@@ -52,7 +52,10 @@ let PkmApp = class PkmApp extends LitElement {
             return html `pkmapp`;
         }
         return html `
-      <pkm-editor @editor-navigate=${this.onEditorNavigate} .defaultName=${defaultName}></pkm-editor>
+      <pkm-editor
+          @editor-navigate=${this.onEditorNavigate}
+          @editor-commands=${this.onCommands}
+          .defaultName=${defaultName}></pkm-editor>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
     }
@@ -65,6 +68,9 @@ let PkmApp = class PkmApp extends LitElement {
             }
         };
         task();
+    }
+    onCommands({ detail: commands }) {
+        this.commandPalette.trigger(commands);
     }
     onEditorNavigate({ detail: navigation }) {
         // TODO: use root name (metadata)

@@ -33,6 +33,28 @@ async function* allFiles(prefix, directory) {
         }
     }
 }
+async function createNewFile(directory, name, content) {
+    let n = 0;
+    while (true) {
+        const resultName = `${name}${n > 0 ? '-' + String(n) : ''}`;
+        const filename = `${resultName}.md`;
+        try {
+            await directory.getFileHandle(filename);
+            n++;
+            continue;
+        }
+        catch (e) {
+            if (e.name !== 'NotFoundError') {
+                throw e;
+            }
+        }
+        const file = await directory.getFileHandle(filename, { create: true });
+        const writable = await file.createWritable();
+        await writable.write(content);
+        await writable.close();
+        return resultName;
+    }
+}
 async function getFileHandleFromPath(directory, path, create = false) {
     const parts = path.split('/');
     const name = parts.pop();
@@ -62,7 +84,9 @@ export class FileSystemLibrary {
             result.add(normalizeName(name));
         }
         for (const document of this.cache.values()) {
-            result.add(normalizeName(document.fileName));
+            if (normalizeName(document.name) === normalizeName(document.filename)) {
+                result.add(normalizeName(document.filename));
+            }
         }
         return [...result];
     }
@@ -78,18 +102,22 @@ export class FileSystemLibrary {
     async sync() {
         for await (const name of allFiles('', this.directory)) {
             const document = await this.loadDocument(name);
+            assert(document);
             await document.refresh();
         }
     }
     findByName(name) {
         name = normalizeName(name);
-        const result = this.metadata.findByName(name);
+        const result = new Set(this.metadata.findByName(name));
         if (this.cache.has(name)) {
-            result.push(cast(this.cache.get(name)).tree.root);
+            const document = cast(this.cache.get(name));
+            if (document.name === document.filename) {
+                result.add(document.tree.root);
+            }
         }
-        return result;
+        return [...result];
     }
-    async findAll(name, create = false) {
+    async findAll(name) {
         name = resolveDateAlias(name) ?? name;
         const parts = name.split('/');
         const blocks = [];
@@ -115,142 +143,134 @@ export class FileSystemLibrary {
                 });
             }
         }
-        const results = blocks[blocks.length - 1];
-        if (create && parts.length === 1 && results.length === 0) {
-            const document = await this.loadDocument(name, true);
-            return [{
-                    document,
-                    root: document.tree.root,
-                }];
+        return blocks[blocks.length - 1];
+    }
+    async newDocument(name) {
+        const content = `# ${name}`;
+        const filename = await createNewFile(this.directory, name.toLowerCase(), content);
+        return cast(await this.loadDocument(filename));
+    }
+    async load(name, ifModifiedSince) {
+        let text = '';
+        let lastModified = new Date().getTime();
+        try {
+            const filename = name + '.md';
+            const handle = await getFileHandleFromPath(this.directory, filename);
+            const file = await handle.getFile();
+            // TODO: also check that the content has actually changed
+            if (ifModifiedSince >= file.lastModified)
+                return { lastModified: file.lastModified };
+            const decoder = new TextDecoder();
+            text = decoder.decode(await file.arrayBuffer());
+            lastModified = file.lastModified;
         }
-        return results;
+        catch (e) {
+            console.error(e);
+            return undefined;
+        }
+        const root = parseBlocks(text);
+        assert(root && root.type === 'document');
+        return { root, lastModified };
     }
-    // TODO: rename findOrCreate?
-    async find(name) {
-        const [result] = await this.findAll(name, true);
-        return result;
-    }
-    async loadDocument(name, forceRefresh = false) {
+    async loadDocument(name) {
         name = resolveDateAlias(name) ?? name;
-        const fileName = name + '.md';
-        const load = async (ifModifiedSince) => {
-            let text = '';
-            let lastModified = new Date().getTime();
-            try {
-                const handle = await getFileHandleFromPath(this.directory, fileName);
-                const file = await handle.getFile();
-                // TODO: also check that the content has actually changed
-                if (ifModifiedSince >= file.lastModified)
-                    return { lastModified: file.lastModified };
-                const decoder = new TextDecoder();
-                text = decoder.decode(await file.arrayBuffer());
-                lastModified = file.lastModified;
-            }
-            catch (e) {
-                console.error(e);
-            }
-            const root = parseBlocks(text);
-            assert(root && root.type === 'document');
-            return { root, lastModified };
-        };
         const cached = this.cache.get(normalizeName(name));
         if (cached) {
-            if (forceRefresh) {
-                await cached.refresh();
-            }
             return cached;
         }
-        const { root, lastModified } = await load(0);
+        const { root, lastModified } = await this.load(name, 0) ?? {};
+        if (!root || lastModified == null)
+            return;
         const library = this;
-        const result = new class {
-            constructor() {
-                this.state = 'active';
-                this.dirty = false;
-                this.observe = new Observe(this);
-                this.pendingModifications = 0;
-                this.lastModified = lastModified;
-                this.tree = new MarkdownTree(cast(root), this);
-                this.tree.observe.add(() => this.markDirty());
-            }
-            get name() {
-                return this.allNames[0];
-            }
-            get allNames() {
-                return [
-                    ...library.metadata.getNames(this.tree.root),
-                    name,
-                ];
-            }
-            get fileName() {
-                return name;
-            }
-            postEditUpdate(node, change) {
-                if (node.type === 'paragraph') {
-                    library.backLinks.postEditUpdate(node, change);
-                }
-                if (node.type === 'code-block') {
-                    library.metadata.updateCodeblock(node, change);
-                }
-                if (node.type === 'section') {
-                    library.metadata.updateSection(node, change);
-                }
-            }
-            async refresh() {
-                const { root, lastModified } = await load(this.lastModified);
-                if (root) {
-                    this.lastModified = lastModified;
-                    this.tree.setRoot(this.tree.add(root));
-                    this.tree.observe.notify();
-                }
-            }
-            async save() {
-                if (this.state !== 'active')
-                    return;
-                const text = serializeToString(this.tree.root);
-                const handle = await getFileHandleFromPath(library.directory, fileName, true);
-                const stream = await handle.createWritable();
-                await stream.write(text);
-                await stream.close();
-                this.lastModified = new Date().getTime();
-            }
-            async delete() {
-                this.state = 'deleted';
-                this.tree.setRoot(this.tree.add({
-                    type: 'document'
-                }));
-                library.cache.delete(normalizeName(this.fileName));
-                await deleteFile(library.directory, fileName);
-            }
-            async markDirty() {
-                // TODO: The tree could be in an inconsistent state, don't trigger the
-                // the observer until the edit is finished, or wait for normalization.
-                await 0;
-                this.dirty = true;
-                this.observe.notify();
-                if (this.pendingModifications++)
-                    return;
-                while (true) {
-                    const preSave = this.pendingModifications;
-                    // Save immediately on the fist iteration, may help keep tests fast.
-                    await this.save();
-                    if (this.pendingModifications === preSave) {
-                        this.pendingModifications = 0;
-                        this.dirty = false;
-                        this.observe.notify();
-                        return;
-                    }
-                    // Wait for an idle period with no modifications.
-                    let preIdle = NaN;
-                    do {
-                        preIdle = this.pendingModifications;
-                        // TODO: maybe a timeout is better?
-                        await new Promise((resolve) => requestIdleCallback(resolve));
-                    } while (preIdle != this.pendingModifications);
-                }
-            }
-        };
+        const result = new FileSystemDocument(library, lastModified, root, name);
         this.cache.set(normalizeName(name), result);
         return result;
+    }
+}
+class FileSystemDocument {
+    constructor(library, lastModified, root, filename) {
+        this.library = library;
+        this.lastModified = lastModified;
+        this.filename = filename;
+        this.state = 'active';
+        this.dirty = false;
+        this.observe = new Observe(this);
+        this.pendingModifications = 0;
+        this.tree = new MarkdownTree(cast(root), this);
+        this.tree.observe.add(() => this.markDirty());
+    }
+    get name() {
+        return this.library.metadata.getPreferredName(this.tree.root) ?? this.filename;
+    }
+    get allNames() {
+        const names = [
+            ...this.library.metadata.getNames(this.tree.root),
+        ];
+        return names.length ? names : [this.filename];
+    }
+    postEditUpdate(node, change) {
+        if (node.type === 'paragraph') {
+            this.library.backLinks.postEditUpdate(node, change);
+        }
+        if (node.type === 'code-block') {
+            this.library.metadata.updateCodeblock(node, change);
+        }
+        if (node.type === 'section') {
+            this.library.metadata.updateSection(node, change);
+        }
+    }
+    async refresh() {
+        const { root, lastModified } = cast(await this.library.load(this.filename, this.lastModified));
+        if (root) {
+            this.lastModified = lastModified;
+            this.tree.setRoot(this.tree.add(root));
+            this.tree.observe.notify();
+        }
+    }
+    async save() {
+        if (this.state !== 'active')
+            return;
+        const text = serializeToString(this.tree.root);
+        const handle = await getFileHandleFromPath(this.library.directory, this.filename + '.md', true);
+        const stream = await handle.createWritable();
+        await stream.write(text);
+        await stream.close();
+        this.lastModified = new Date().getTime();
+    }
+    async delete() {
+        this.state = 'deleted';
+        this.tree.setRoot(this.tree.add({
+            type: 'document'
+        }));
+        this.library.cache.delete(normalizeName(this.filename));
+        await deleteFile(this.library.directory, this.filename + '.md');
+    }
+    async markDirty() {
+        // TODO: The tree could be in an inconsistent state, don't trigger the
+        // the observer until the edit is finished, or wait for normalization.
+        await 0;
+        this.dirty = true;
+        this.observe.notify();
+        if (this.pendingModifications++)
+            return;
+        while (true) {
+            const preSave = this.pendingModifications;
+            // Save immediately on the fist iteration, may help keep tests fast.
+            await this.save();
+            if (this.pendingModifications === preSave) {
+                this.pendingModifications = 0;
+                this.dirty = false;
+                this.observe.notify();
+                return;
+            }
+            // Wait for an idle period with no modifications.
+            let preIdle = NaN;
+            do {
+                preIdle = this.pendingModifications;
+                // TODO: maybe a timeout is better?
+                await new Promise((resolve) => requestIdleCallback(resolve));
+            } while (preIdle != this.pendingModifications);
+        }
     }
 }
 //# sourceMappingURL=library.js.map
