@@ -26,6 +26,7 @@ import {styles} from './style.js';
 import {getDirectory, setDirectory} from './directory-db.js';
 import {EditorNavigation} from './editor.js';
 import {resolve} from './resolve.js';
+import {CommandBundle} from './command-palette.js';
 
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
@@ -56,7 +57,10 @@ export class PkmApp extends LitElement {
       return html`pkmapp`;
     }
     return html`
-      <pkm-editor @editor-navigate=${this.onEditorNavigate} .defaultName=${defaultName}></pkm-editor>
+      <pkm-editor
+          @editor-navigate=${this.onEditorNavigate}
+          @editor-commands=${this.onCommands}
+          .defaultName=${defaultName}></pkm-editor>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
   }
@@ -69,6 +73,9 @@ export class PkmApp extends LitElement {
       }
     };
     task();
+  }
+  private onCommands({detail: commands}: CustomEvent<CommandBundle>) {
+    this.commandPalette.trigger(commands);
   }
   private onEditorNavigate({detail: navigation}: CustomEvent<EditorNavigation>) {
     // TODO: use root name (metadata)

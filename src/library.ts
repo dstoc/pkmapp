@@ -28,7 +28,7 @@ export interface Document {
   save(): Promise<void>;
   delete(): Promise<void>;
   readonly name: string;
-  readonly fileName: string;
+  readonly filename: string;
   readonly allNames: string[];
   readonly tree: MarkdownTree;
   readonly dirty: boolean;
@@ -36,8 +36,8 @@ export interface Document {
 }
 
 export interface Library {
-  find(name: string): Promise<{document: Document, root: ViewModelNode}>;
   findAll(name: string): Promise<{document: Document, root: ViewModelNode}[]>;
+  newDocument(name: string): Promise<Document>;
   getDocumentByTree(tree: MarkdownTree): Document|undefined;
   getAllNames(): Promise<string[]>;
   readonly backLinks: BackLinks;
@@ -58,6 +58,28 @@ async function*
     } else if (entry.kind === 'directory') {
       yield* allFiles(prefix + entry.name + '/', entry);
     }
+  }
+}
+
+async function createNewFile(directory: FileSystemDirectoryHandle, name: string, content: string) {
+  let n = 0;
+  while (true) {
+    const resultName = `${name}${n > 0 ? '-' + String(n) : ''}`;
+    const filename = `${resultName}.md`
+    try {
+      await directory.getFileHandle(filename);
+      n++;
+      continue;
+    } catch (e) {
+      if ((e as DOMException).name !== 'NotFoundError') {
+        throw e;
+      }
+    }
+    const file = await directory.getFileHandle(filename, {create: true});
+    const writable = await file.createWritable();
+    await writable.write(content);
+    await writable.close();
+    return resultName;
   }
 }
 
@@ -82,20 +104,20 @@ async function deleteFile(
 }
 
 export class FileSystemLibrary implements Library {
-  constructor(private readonly directory: FileSystemDirectoryHandle) {}
+  constructor(readonly directory: FileSystemDirectoryHandle) {}
   async getAllNames() {
     const result = new Set<string>();
     for (const name of this.metadata.getAllNames()) {
       result.add(normalizeName(name));
     }
     for (const document of this.cache.values()) {
-      if (normalizeName(document.name) === normalizeName(document.fileName)) {
-        result.add(normalizeName(document.fileName));
+      if (normalizeName(document.name) === normalizeName(document.filename)) {
+        result.add(normalizeName(document.filename));
       }
     }
     return [...result];
   }
-  private cache: Map<string, Document> = new Map();
+  cache: Map<string, Document> = new Map();
   backLinks = new BackLinks();
   metadata = new Metadata();
   getDocumentByTree(tree: MarkdownTree): Document|undefined {
@@ -110,18 +132,22 @@ export class FileSystemLibrary implements Library {
   async sync() {
     for await (const name of allFiles('', this.directory)) {
       const document = await this.loadDocument(name);
+      assert(document);
       await document.refresh();
     }
   }
   private findByName(name: string) {
     name = normalizeName(name);
-    const result = this.metadata.findByName(name);
+    const result = new Set(this.metadata.findByName(name));
     if (this.cache.has(name)) {
-      result.push(cast(this.cache.get(name)).tree.root);
+      const document = cast(this.cache.get(name));
+      if (document.name === document.filename) {
+        result.add(document.tree.root);
+      }
     }
-    return result;
+    return [...result];
   }
-  async findAll(name: string, create = false) {
+  async findAll(name: string) {
     name = resolveDateAlias(name) ?? name;
 
     type Result = {document: Document, root: ViewModelNode};
@@ -148,136 +174,131 @@ export class FileSystemLibrary implements Library {
         });
       }
     }
-    const results = blocks[blocks.length - 1];
-    if (create && parts.length === 1 && results.length === 0) {
-      const document = await this.loadDocument(name);
-      return [{
-        document,
-        root: document.tree.root,
-      }];
+    return blocks[blocks.length - 1];
+  }
+  async newDocument(name: string): Promise<Document> {
+    const content = `# ${name}`;
+    const filename = await createNewFile(this.directory, name.toLowerCase(), content);
+    return cast(await this.loadDocument(filename));
+  }
+  async load(name: string, ifModifiedSince: number) {
+    let text = '';
+    let lastModified = new Date().getTime();
+    try {
+      const filename = name + '.md';
+      const handle = await getFileHandleFromPath(this.directory, filename);
+      const file = await handle.getFile();
+      // TODO: also check that the content has actually changed
+      if (ifModifiedSince >= file.lastModified) return {lastModified: file.lastModified};
+      const decoder = new TextDecoder();
+      text = decoder.decode(await file.arrayBuffer());
+      lastModified = file.lastModified;
+    } catch (e) {
+      console.error(e);
+      return undefined;
     }
-    return results;
+    const root = parseBlocks(text);
+    assert(root && root.type === 'document');
+    return {root, lastModified};
   }
-  // TODO: rename findOrCreate?
-  async find(name: string) {
-    const [result] = await this.findAll(name, true);
-    return result;
-  }
-  private async loadDocument(name: string): Promise<Document> {
+  private async loadDocument(name: string): Promise<Document|undefined> {
     name = resolveDateAlias(name) ?? name;
-    const fileName = name + '.md';
-    const load = async (ifModifiedSince: number) => {
-      let text = '';
-      let lastModified = new Date().getTime();
-      try {
-        const handle = await getFileHandleFromPath(this.directory, fileName);
-        const file = await handle.getFile();
-        // TODO: also check that the content has actually changed
-        if (ifModifiedSince >= file.lastModified) return {lastModified: file.lastModified};
-        const decoder = new TextDecoder();
-        text = decoder.decode(await file.arrayBuffer());
-        lastModified = file.lastModified;
-      } catch (e) {
-        console.error(e);
-      }
-      const root = parseBlocks(text);
-      assert(root && root.type === 'document');
-      return {root, lastModified};
-    };
     const cached = this.cache.get(normalizeName(name));
     if (cached) {
       return cached;
     }
-    const {root, lastModified} = await load(0);
+    const {root, lastModified} = await this.load(name, 0) ?? {};
+    if (!root || lastModified == null) return;
     const library = this;
-    const result = new class implements Document {
-      constructor() {
-        this.lastModified = lastModified;
-        this.tree = new MarkdownTree(cast(root), this);
-        this.tree.observe.add(() => this.markDirty());
-      }
-      state: 'active'|'deleted' = 'active';
-      readonly tree: MarkdownTree;
-      lastModified: number;
-      dirty = false;
-      observe: Observe<Document> = new Observe<Document>(this);
-      get name() {
-        return library.metadata.getPreferredName(this.tree.root) ?? this.fileName;
-      }
-      get allNames() {
-        const names = [
-          ...library.metadata.getNames(this.tree.root),
-        ];
-        return names.length ? names : [this.fileName];
-      }
-      get fileName() {
-        return name;
-      }
-      postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed') {
-        if (node.type === 'paragraph') {
-          library.backLinks.postEditUpdate(node as InlineViewModelNode, change);
-        }
-        if (node.type === 'code-block') {
-          library.metadata.updateCodeblock(node, change);
-        }
-        if (node.type === 'section') {
-          library.metadata.updateSection(node, change);
-        }
-      }
-      async refresh() {
-        const {root, lastModified} = await load(this.lastModified);
-        if (root) {
-          this.lastModified = lastModified;
-          this.tree.setRoot(this.tree.add<DocumentNode>(root));
-          this.tree.observe.notify();
-        }
-      }
-      async save() {
-        if (this.state !== 'active') return;
-        const text = serializeToString(this.tree.root);
-        const handle = await getFileHandleFromPath(library.directory, fileName, true);
-        const stream = await handle.createWritable();
-        await stream.write(text);
-        await stream.close();
-        this.lastModified = new Date().getTime();
-      }
-      async delete() {
-        this.state = 'deleted';
-        this.tree.setRoot(this.tree.add<DocumentNode>({
-          type: 'document'
-        }));
-        library.cache.delete(normalizeName(this.fileName));
-        await deleteFile(library.directory, fileName);
-      }
-      private pendingModifications = 0;
-      async markDirty() {
-        // TODO: The tree could be in an inconsistent state, don't trigger the
-        // the observer until the edit is finished, or wait for normalization.
-        await 0;
-        this.dirty = true;
-        this.observe.notify();
-        if (this.pendingModifications++) return;
-        while (true) {
-          const preSave = this.pendingModifications;
-          // Save immediately on the fist iteration, may help keep tests fast.
-          await this.save();
-          if (this.pendingModifications === preSave) {
-            this.pendingModifications = 0;
-            this.dirty = false;
-            this.observe.notify();
-            return;
-          }
-          // Wait for an idle period with no modifications.
-          let preIdle = NaN;
-          do {
-            preIdle = this.pendingModifications;
-            // TODO: maybe a timeout is better?
-            await new Promise((resolve) => requestIdleCallback(resolve));
-          } while (preIdle != this.pendingModifications);
-        }
-      }
-    };
+    const result = new FileSystemDocument(library, lastModified, root, name);
     this.cache.set(normalizeName(name), result);
     return result;
+  }
+}
+
+class FileSystemDocument implements Document {
+  constructor(
+      private library: FileSystemLibrary,
+      private lastModified: number,
+      root: DocumentNode,
+      readonly filename: string) {
+    this.tree = new MarkdownTree(cast(root), this);
+    this.tree.observe.add(() => this.markDirty());
+  }
+  state: 'active'|'deleted' = 'active';
+  readonly tree: MarkdownTree;
+  dirty = false;
+  observe: Observe<Document> = new Observe<Document>(this);
+  get name() {
+    return this.library.metadata.getPreferredName(this.tree.root) ?? this.filename;
+  }
+  get allNames() {
+    const names = [
+      ...this.library.metadata.getNames(this.tree.root),
+    ];
+    return names.length ? names : [this.filename];
+  }
+  postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed') {
+    if (node.type === 'paragraph') {
+      this.library.backLinks.postEditUpdate(node as InlineViewModelNode, change);
+    }
+    if (node.type === 'code-block') {
+      this.library.metadata.updateCodeblock(node, change);
+    }
+    if (node.type === 'section') {
+      this.library.metadata.updateSection(node, change);
+    }
+  }
+  async refresh() {
+    const {root, lastModified} = cast(await this.library.load(this.filename, this.lastModified));
+    if (root) {
+      this.lastModified = lastModified;
+      this.tree.setRoot(this.tree.add<DocumentNode>(root));
+      this.tree.observe.notify();
+    }
+  }
+  async save() {
+    if (this.state !== 'active') return;
+    const text = serializeToString(this.tree.root);
+    const handle = await getFileHandleFromPath(this.library.directory, this.filename + '.md', true);
+    const stream = await handle.createWritable();
+    await stream.write(text);
+    await stream.close();
+    this.lastModified = new Date().getTime();
+  }
+  async delete() {
+    this.state = 'deleted';
+    this.tree.setRoot(this.tree.add<DocumentNode>({
+      type: 'document'
+    }));
+    this.library.cache.delete(normalizeName(this.filename));
+    await deleteFile(this.library.directory, this.filename + '.md');
+  }
+  private pendingModifications = 0;
+  async markDirty() {
+    // TODO: The tree could be in an inconsistent state, don't trigger the
+    // the observer until the edit is finished, or wait for normalization.
+    await 0;
+    this.dirty = true;
+    this.observe.notify();
+    if (this.pendingModifications++) return;
+    while (true) {
+      const preSave = this.pendingModifications;
+      // Save immediately on the fist iteration, may help keep tests fast.
+      await this.save();
+      if (this.pendingModifications === preSave) {
+        this.pendingModifications = 0;
+        this.dirty = false;
+        this.observe.notify();
+        return;
+      }
+      // Wait for an idle period with no modifications.
+      let preIdle = NaN;
+      do {
+        preIdle = this.pendingModifications;
+        // TODO: maybe a timeout is better?
+        await new Promise((resolve) => requestIdleCallback(resolve));
+      } while (preIdle != this.pendingModifications);
+    }
   }
 }
