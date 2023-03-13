@@ -89,7 +89,9 @@ export class FileSystemLibrary implements Library {
       result.add(normalizeName(name));
     }
     for (const document of this.cache.values()) {
-      result.add(normalizeName(document.fileName));
+      if (normalizeName(document.name) === normalizeName(document.fileName)) {
+        result.add(normalizeName(document.fileName));
+      }
     }
     return [...result];
   }
@@ -200,13 +202,13 @@ export class FileSystemLibrary implements Library {
       dirty = false;
       observe: Observe<Document> = new Observe<Document>(this);
       get name() {
-        return this.allNames[0];
+        return library.metadata.getPreferredName(this.tree.root) ?? this.fileName;
       }
       get allNames() {
-        return [
+        const names = [
           ...library.metadata.getNames(this.tree.root),
-          name,
         ];
+        return names.length ? names : [this.fileName];
       }
       get fileName() {
         return name;
