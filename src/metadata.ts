@@ -126,6 +126,14 @@ export class Metadata {
       ...this.sectionNameMap.values(),
     ];
   }
+  getPreferredName(node: ViewModelNode) {
+    if (node.type !== 'section' && node.viewModel.firstChild?.type === 'section') {
+      node = node.viewModel.firstChild;
+    }
+    if (node.type === 'section') return node.content;
+    const [result] = this.nameMap.getValues(node)?.values() ?? [];
+    return result;
+  }
   getNames(node: ViewModelNode) {
     if (node.type !== 'section' && node.viewModel.firstChild?.type === 'section') {
       node = node.viewModel.firstChild;
