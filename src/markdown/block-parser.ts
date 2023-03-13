@@ -15,6 +15,7 @@
 import Parser from '../deps/tree-sitter.js';
 import type {MarkdownNode, ParagraphNode} from './node.js';
 import {resolve} from '../resolve.js';
+import {cast} from '../asserts.js';
 
 await Parser.init({
   locateFile(path: string) {
@@ -27,7 +28,7 @@ parser.setLanguage(blocks);
 
 export function parseBlocks(markdown: string) {
   const tree = parser.parse(markdown);
-  return convertNode(tree.rootNode);
+  return cast(convertNode(tree.rootNode));
 }
 
 function*

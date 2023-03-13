@@ -58,7 +58,8 @@ export class MarkdownTransclusion extends LitElement {
     `;
   }
   async load(name: string) {
-    const {root} = await this.library.find(name);
+    // TODO: disambiguate if there's more than one result
+    const [{root}] = await this.library.findAll(name);
     this.root = root;
   }
   maybeUpdateFocus() {
