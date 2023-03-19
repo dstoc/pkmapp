@@ -5,9 +5,9 @@
       "dom"
     ],
     "esModuleInterop": true,
-    "target": "es2020",
-    "module": "es2022",
-    "moduleResolution": "node",
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "allowJs": true,
     "outDir": "build",
     "plugins": [
@@ -16,8 +16,9 @@
         "strict": true
       }
     ],
-    "allowUnreachableCode": false,
     "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "allowUnreachableCode": false,
     "inlineSources": true,
     "noEmitOnError": false,
     "noErrorTruncation": false,

@@ -132,6 +132,10 @@ export class FileSystemLibrary implements Library {
   async sync() {
     for await (const name of allFiles('', this.directory)) {
       const document = await this.loadDocument(name);
+      if (!document) {
+        console.error(`Could not load: ${name}`);
+        continue;
+      }
       assert(document);
       await document.refresh();
     }
