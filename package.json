@@ -31,7 +31,7 @@
     "eslint": "^8.27.0",
     "eslint-config-google": "^0.14.0",
     "lit": "^2.3.0",
-    "tree-sitter-cli": "^0.20.6",
+    "tree-sitter-cli": "^0.20.7",
     "tree-sitter-markdown": "github:MDeiml/tree-sitter-markdown",
     "ts-lit-plugin": "^1.2.1",
     "ts-node": "^10.9.1",
