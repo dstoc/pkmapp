@@ -90,6 +90,7 @@ export class MarkdownInline extends LitElement {
           font-size: var(--focus-invalid, 0);
         }
         md-span[type='shortcut_link'],
+        md-span[type='uri_autolink'],
         md-span[type='inline_link'] {
           color: blue;
           cursor: pointer;
@@ -385,7 +386,7 @@ export class MarkdownSpan extends LitElement {
     if (this.active) return;
     const node = this.node;
     if (!node) return;
-    if (node.type === 'inline_link' || node.type === 'shortcut_link') {
+    if (node.type === 'inline_link' || node.type === 'shortcut_link' || node.type === 'uri_autolink') {
       // Prevent focus before link click.
       event.preventDefault();
     }
@@ -394,14 +395,14 @@ export class MarkdownSpan extends LitElement {
     if (this.active) return;
     const node = this.node;
     if (!node) return;
-    if (node.type !== 'inline_link' && node.type !== 'shortcut_link') return;
+    if (node.type !== 'inline_link' && node.type !== 'shortcut_link' && node.type !== 'uri_autolink') return;
     event.preventDefault();
     const text =
         node.namedChildren.find((node) => node.type === 'link_text')?.text ??
         '';
     const destination =
-        node.namedChildren.find((node) => node.type === 'link_destination')
-            ?.text ??
+        node.namedChildren.find((node) => node.type === 'link_destination')?.text ??
+        (node.type === 'uri_autolink' ? node.text.slice(1, -1) : null) ??
         text;
     const inlineLinkClick: InlineLinkClick = {
       type: this.node!.type,
