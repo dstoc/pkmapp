@@ -16,15 +16,17 @@
 
 [ -d node_modules/emscripten-sdk-npm/emsdk ] || npx emsdk-checkout || exit 1
 # From tree-sitter/cli/emscripten-version
-npx emsdk install 2.0.24 || exit 1
-npx emsdk activate 2.0.24 || exit 1
+npx emsdk install 3.1.29 || exit 1
+npx emsdk activate 3.1.29 || exit 1
 source node_modules/emscripten-sdk-npm/emsdk/emsdk_env.sh || exit 1
 (
+  unset NODE
   cd build/deps/
   npx tree-sitter-cli build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown || exit 1
   npx tree-sitter-cli build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
 )
 (
+  unset NODE
   cd third_party/tree-sitter || exit 1
   script/build-wasm || exit 1
 )
