@@ -22,8 +22,8 @@ source node_modules/emscripten-sdk-npm/emsdk/emsdk_env.sh || exit 1
 (
   unset NODE
   cd build/deps/
-  npx tree-sitter-cli build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown || exit 1
-  npx tree-sitter-cli build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
+  ../../node_modules/.bin/tree-sitter build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown || exit 1
+  ../../node_modules/.bin/tree-sitter build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
 )
 (
   unset NODE
