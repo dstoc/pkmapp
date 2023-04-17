@@ -192,7 +192,12 @@ let Editor = class Editor extends LitElement {
             }));
     }
     onInlineLinkClick({ detail: { destination }, }) {
-        this.navigateByName(destination, true);
+        if (/^(\w)+:/i.test(destination)) {
+            window.open(destination);
+        }
+        else {
+            this.navigateByName(destination, true);
+        }
     }
     onTitleItemClick({ detail }) {
         this.root = detail;

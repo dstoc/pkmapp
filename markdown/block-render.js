@@ -211,10 +211,12 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
           border-radius: 10px;
         }
         md-span[type='shortcut_link'],
+        md-span[type='uri_autolink'],
         md-span[type='inline_link'] {
           color: var(--md-accent-color);
         }
         md-span[type='shortcut_link'] a,
+        md-span[type='uri_autolink'],
         md-span[type='inline_link'] a {
           color: var(--md-accent-color);
           text-decoration: none;
