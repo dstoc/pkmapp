@@ -102,10 +102,6 @@ export class FileSystemLibrary {
     async sync() {
         for await (const name of allFiles('', this.directory)) {
             const document = await this.loadDocument(name);
-            if (!document) {
-                console.error(`Could not load: ${name}`);
-                continue;
-            }
             assert(document);
             await document.refresh();
         }
@@ -115,7 +111,7 @@ export class FileSystemLibrary {
         const result = new Set(this.metadata.findByName(name));
         if (this.cache.has(name)) {
             const document = cast(this.cache.get(name));
-            if (document.name === document.filename) {
+            if (document.name === document.filename || document.filename === 'index') {
                 result.add(document.tree.root);
             }
         }
@@ -150,6 +146,7 @@ export class FileSystemLibrary {
         return blocks[blocks.length - 1];
     }
     async newDocument(name) {
+        name = resolveDateAlias(name) ?? name;
         const content = `# ${name}`;
         const filename = await createNewFile(this.directory, name.toLowerCase(), content);
         return cast(await this.loadDocument(filename));
@@ -177,7 +174,6 @@ export class FileSystemLibrary {
         return { root, lastModified };
     }
     async loadDocument(name) {
-        name = resolveDateAlias(name) ?? name;
         const cached = this.cache.get(normalizeName(name));
         if (cached) {
             return cached;
