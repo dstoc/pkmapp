@@ -18,12 +18,26 @@
 # From tree-sitter/cli/emscripten-version
 npx emsdk install 3.1.29 || exit 1
 npx emsdk activate 3.1.29 || exit 1
+PKMAPP_ROOT=$PWD
 source node_modules/emscripten-sdk-npm/emsdk/emsdk_env.sh || exit 1
 (
   unset NODE
+  (
+    export EXTENSION_TAGS=1
+    export EXTENSION_GFM=1
+    export NO_DEFAULT_EXTENSIONS=1
+    (
+      cd $PKMAPP_ROOT/node_modules/tree-sitter-markdown/tree-sitter-markdown
+      $PKMAPP_ROOT/node_modules/.bin/tree-sitter generate || exit 1
+    )
+    (
+      cd $PKMAPP_ROOT/node_modules/tree-sitter-markdown/tree-sitter-markdown-inline
+      $PKMAPP_ROOT/node_modules/.bin/tree-sitter generate || exit 1
+    )
+  )
   cd build/deps/
-  ../../node_modules/.bin/tree-sitter build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown || exit 1
-  ../../node_modules/.bin/tree-sitter build-wasm ../../node_modules/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
+  $PKMAPP_ROOT/node_modules/.bin/tree-sitter build-wasm $PKMAPP_ROOT/node_modules/tree-sitter-markdown/tree-sitter-markdown || exit 1
+  $PKMAPP_ROOT/node_modules/.bin/tree-sitter build-wasm $PKMAPP_ROOT/node_modules/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
 )
 (
   unset NODE
