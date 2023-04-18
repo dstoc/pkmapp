@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import type {CodeBlockNode, SectionNode} from './markdown/node.js';
-import type {ViewModelNode} from './markdown/view-model.js';
-import {isLogicalContainingBlock} from './block-util.js';
+import {InlineViewModelNode, ViewModelNode} from './markdown/view-model.js';
+import {dfs} from './markdown/inline-parser.js';
+import {getLogicalContainingBlock, isLogicalContainingBlock} from './block-util.js';
 import {assert} from './asserts.js';
 
 class SetBiMap<T> {
@@ -118,11 +119,13 @@ export class Metadata {
       target.viewModel.observe.notify();
     });
   private nameMap = new SetBiMap<ViewModelNode>();
+  private tagMap = new SetBiMap<InlineViewModelNode>();
   private sectionNameMap = new SetBiMap<Section>();
 
   getAllNames() {
     return [
       ...this.nameMap.values(),
+      ...this.tagMap.values(),
       ...this.sectionNameMap.values(),
     ];
   }
@@ -155,7 +158,8 @@ export class Metadata {
       }
       return result;
     });
-    return [...sections, ...named];
+    const tagged = [...this.tagMap.getTargets(name)?.values() ?? []].map(node => getLogicalContainingBlock(node)!);
+    return [...sections, ...named, ...tagged];
   }
   updateSection(node: Section, change: 'connected'|'disconnected'|'changed') {
     if (change === 'disconnected') {
@@ -175,6 +179,18 @@ export class Metadata {
       this.meta.update(node, parent, node.content);
     } else {
       this.meta.update(node);
+    }
+  }
+  updateInlineNode(node: InlineViewModelNode, change: 'connected'|'disconnected'|'changed') {
+    if (change === 'disconnected') {
+      this.tagMap.update(node, []);
+    } else {
+      const tags = new Set<string>();
+      for (const next of dfs(node.viewModel.inlineTree.rootNode)) {
+        if (next.type !== 'tag') continue;
+        tags.add(next.text);
+      }
+      this.tagMap.update(node, tags);
     }
   }
 }

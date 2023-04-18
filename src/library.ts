@@ -248,6 +248,9 @@ class FileSystemDocument implements Document {
     if (node.type === 'section') {
       this.library.metadata.updateSection(node, change);
     }
+    if (node.type === 'paragraph') {
+      this.library.metadata.updateInlineNode(node as InlineViewModelNode, change);
+    }
   }
   async refresh() {
     const {root, lastModified} = cast(await this.library.load(this.filename, this.lastModified));
