@@ -221,6 +221,11 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
           color: var(--md-accent-color);
           text-decoration: none;
         }
+        md-span[type='tag'] {
+          border-radius: 3px;
+          padding: 3px;
+          background: var(--md-tag-bgcolor);
+        }
       `,
         ];
     }

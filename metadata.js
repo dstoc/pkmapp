@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { isLogicalContainingBlock } from './block-util.js';
+import { dfs } from './markdown/inline-parser.js';
+import { getLogicalContainingBlock, isLogicalContainingBlock } from './block-util.js';
 import { assert } from './asserts.js';
 class SetBiMap {
     constructor() {
@@ -117,11 +118,13 @@ export class Metadata {
             target.viewModel.observe.notify();
         });
         this.nameMap = new SetBiMap();
+        this.tagMap = new SetBiMap();
         this.sectionNameMap = new SetBiMap();
     }
     getAllNames() {
         return [
             ...this.nameMap.values(),
+            ...this.tagMap.values(),
             ...this.sectionNameMap.values(),
         ];
     }
@@ -156,7 +159,8 @@ export class Metadata {
             }
             return result;
         });
-        return [...sections, ...named];
+        const tagged = [...this.tagMap.getTargets(name)?.values() ?? []].map(node => getLogicalContainingBlock(node));
+        return [...sections, ...named, ...tagged];
     }
     updateSection(node, change) {
         if (change === 'disconnected') {
@@ -178,6 +182,20 @@ export class Metadata {
         }
         else {
             this.meta.update(node);
+        }
+    }
+    updateInlineNode(node, change) {
+        if (change === 'disconnected') {
+            this.tagMap.update(node, []);
+        }
+        else {
+            const tags = new Set();
+            for (const next of dfs(node.viewModel.inlineTree.rootNode)) {
+                if (next.type !== 'tag')
+                    continue;
+                tags.add(next.text);
+            }
+            this.tagMap.update(node, tags);
         }
     }
 }
