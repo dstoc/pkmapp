@@ -32,6 +32,7 @@ export const styles = [
       --pkm-dialog-bgcolor: #f2f2f2;
       --root-color: black;
       --root-background-color: white;
+      --md-tag-bgcolor: var(--md-accent-color);
     }
     @media (prefers-color-scheme: dark) {
       :root {

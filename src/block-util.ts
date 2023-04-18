@@ -30,7 +30,7 @@ export function isLogicalContainingBlock(node?: ViewModelNode) {
 export function getLogicalContainingBlock(node?: ViewModelNode) {
   let next = node?.viewModel.parent;
   while (next) {
-    if (isLogicalContainingBlock(next)) return next
+    if (isLogicalContainingBlock(next)) return next;
     next = next.viewModel.parent;
   }
   return;
