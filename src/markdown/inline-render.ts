@@ -15,6 +15,7 @@
 import {contextProvided} from '../deps/lit-labs-context.js';
 import {css, customElement, html, LitElement, property, query, queryAll, repeat, TemplateResult} from '../deps/lit.js';
 import Parser from '../deps/tree-sitter.js';
+import {cast} from '../asserts.js';
 
 import {HostContext, hostContext} from './host-context.js';
 import {InlineViewModelNode, ViewModelNode} from './view-model.js';
@@ -89,11 +90,13 @@ export class MarkdownInline extends LitElement {
           visibility: var(--focus-invalid, collapse);
           font-size: var(--focus-invalid, 0);
         }
+        a,
         md-span[type='shortcut_link'],
         md-span[type='uri_autolink'],
         md-span[type='inline_link'] {
           color: blue;
           cursor: pointer;
+          text-decoration: inherit;
         }
         md-span[type='emphasis'] {
           font-style: italic;
@@ -206,22 +209,30 @@ export class MarkdownInline extends LitElement {
   protected override createRenderRoot() {
     return this;
   }
+  /**
+   * Given a `node` and an `offset` in that node, find the containing md-span and the
+   * index within that span.
+   */
   static nodeOffsetToInputPoint(node: Node, offset: number): InlineInputPoint {
     if (node instanceof MarkdownInline) {
       return {index: 0};
     }
-    let previous = node.previousSibling;
-    while (previous && previous.nodeType !== Node.ELEMENT_NODE) {
-      previous = previous.previousSibling;
+    let parent = node.parentElement;
+    while (!(parent instanceof MarkdownSpan)) {
+      parent = parent?.parentElement!;
     }
-    let index: number;
-    if (previous) {
-      index = (previous as MarkdownSpan).node!.endIndex + offset;
-    } else {
-      index = (node.parentElement as MarkdownSpan).node!.startIndex + offset;
+    const walker = document.createTreeWalker(parent, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    walker.currentNode = node;
+    let previous = walker.previousNode();
+    while (previous && previous !== parent && !(previous instanceof MarkdownSpan)) {
+      if (previous.nodeType === Node.TEXT_NODE) {
+        offset += (previous as Text).length;
+      }
+      previous = walker.previousNode();
     }
+    let index = (cast(previous) as MarkdownSpan).node!.startIndex + offset;
     return {
-      span: node.parentElement as MarkdownSpan,
+      span: parent as MarkdownSpan,
       index,
     };
   }
@@ -386,7 +397,7 @@ export class MarkdownSpan extends LitElement {
     if (this.active) return;
     const node = this.node;
     if (!node) return;
-    if (node.type === 'inline_link' || node.type === 'shortcut_link' || node.type === 'uri_autolink') {
+    if (event.target instanceof HTMLAnchorElement || node.type === 'inline_link' || node.type === 'shortcut_link' || node.type === 'uri_autolink') {
       // Prevent focus before link click.
       event.preventDefault();
     }
@@ -395,19 +406,27 @@ export class MarkdownSpan extends LitElement {
     if (this.active) return;
     const node = this.node;
     if (!node) return;
-    if (node.type !== 'inline_link' && node.type !== 'shortcut_link' && node.type !== 'uri_autolink') return;
+    let inlineLinkClick: InlineLinkClick;
+    if (event.target instanceof HTMLAnchorElement) {
+      inlineLinkClick = {
+        type: 'magic_link',
+        destination: event.target.href,
+      };
+    } else {
+      if (node.type !== 'inline_link' && node.type !== 'shortcut_link' && node.type !== 'uri_autolink') return;
+      const text =
+          node.namedChildren.find((node) => node.type === 'link_text')?.text ??
+          '';
+      const destination =
+          node.namedChildren.find((node) => node.type === 'link_destination')?.text ??
+          (node.type === 'uri_autolink' ? node.text.slice(1, -1) : null) ??
+          text;
+      inlineLinkClick = {
+        type: this.node!.type,
+        destination,
+      };
+    }
     event.preventDefault();
-    const text =
-        node.namedChildren.find((node) => node.type === 'link_text')?.text ??
-        '';
-    const destination =
-        node.namedChildren.find((node) => node.type === 'link_destination')?.text ??
-        (node.type === 'uri_autolink' ? node.text.slice(1, -1) : null) ??
-        text;
-    const inlineLinkClick: InlineLinkClick = {
-      type: this.node!.type,
-      destination,
-    };
     this.dispatchEvent(new CustomEvent('inline-link-click', {
       detail: inlineLinkClick,
       bubbles: true,
@@ -449,7 +468,7 @@ export class MarkdownSpan extends LitElement {
       } else {
         const text = node.text.substring(
             index - node.startIndex, node.endIndex - node.startIndex);
-        results.push({result: html`${text}`});
+        results.push({result: this.renderText(text)});
         index = node.endIndex;
       }
     }
@@ -462,6 +481,22 @@ export class MarkdownSpan extends LitElement {
       return item.result;
     });
     return content;
+  }
+  private renderText(content: string): TemplateResult {
+    // TODO: skip if the parent (ancestor?) is already a link
+    // TODO: Prefixes should come from configuration.
+    const parts = content.split(/(\b(?:https?:\/|go|b|cl)\/[^\s]*[\w\/=?])/u);
+    if (parts.length === 0) {
+      return html`${parts[0]}`;
+    }
+    return html`${parts.map((value, index) => {
+      if (index % 2 === 0) {
+        return html`${value}`;
+      } else {
+        const target = value.startsWith('http') ? value : `http://${value}`;
+        return html`<a href=${target} target="_blank" rel="noopener noreferrer">${value}</a>`;
+      }
+    })}`
   }
 }
 
