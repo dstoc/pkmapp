@@ -210,6 +210,7 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
           padding: 10px;
           border-radius: 10px;
         }
+        a,
         md-span[type='shortcut_link'],
         md-span[type='uri_autolink'],
         md-span[type='inline_link'] {
