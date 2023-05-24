@@ -40,8 +40,14 @@ export class MarkdownTransclusion extends LitElement {
 
   @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
 
+  override update(changedProperties: Map<string, any>) {
+    super.update(changedProperties);
+    if (changedProperties.has('node')) {
+      this.root = undefined;
+      if (this.node) this.load(this.node.content.trim());
+    }
+  }
   override render() {
-    if (!this.root && this.node) this.load(this.node.content.trim());
     return this.root ? html`
       ⮴ ${this.node?.content.trim()}
       <md-block-render .block=${this.root}></md-block-render>
