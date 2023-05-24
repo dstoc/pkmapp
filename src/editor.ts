@@ -38,6 +38,7 @@ import {maybeEditBlockSelectionIndent, editInlineIndent} from './indent-util.js'
 import {getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn} from './block-selection-util.js';
 import {getLogicalContainingBlock} from './block-util.js';
 import {blockPreview, blockIcon, BlockCommandBundle} from './block-command-bundle.js';
+import {getLanguageTools} from './language-tool-bundle.js';
 
 export interface EditorNavigation {
   kind: 'navigate'|'replace';
@@ -608,6 +609,7 @@ export class Editor extends LitElement {
           return undefined;
         },
       }] : [],
+      ...activeInline?.hostContext?.hasSelection ? getLanguageTools(() => serializeSelection(activeInline.hostContext!)) : [],
     ]);
   }
 }
@@ -939,7 +941,7 @@ async function sendTo({root, name}: {root?: ViewModelNode, name: string}, librar
 }
 
 function insertMarkdown(markdown: string, node: ViewModelNode) {
-  const root = parseBlocks(markdown + '\n');
+  const {node: root} = parseBlocks(markdown + '\n');
   if (!root) return;
   assert(root.type === 'document' && root.children);
   const finishEditing = node.viewModel.tree.edit();
