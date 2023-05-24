@@ -21,20 +21,21 @@ export interface CommandBundle {
   getCommands(input: string, limit: number): Promise<Command[]>;
 }
 
-export interface Command {
+export interface Command extends FreeformCommandTemplate {
   readonly description: string;
-  readonly icon?: string;
-  execute(command: Command): Promise<CommandBundle|undefined>;
   readonly preview?: () => TemplateResult;
 }
 
 export interface FreeformCommandTemplate {
   readonly icon?: string;
-  execute(command: Command): Promise<CommandBundle|undefined>;
+  execute(command: Command, updatePreview: (template: TemplateResult) => void): Promise<CommandBundle|undefined>;
 }
 
 export class SimpleCommandBundle {
   constructor(readonly description: string, private commands: Command[], private freeform?: FreeformCommandTemplate) {
+  }
+  async execute() {
+    return this;
   }
   async getCommands(input: string) {
     const pattern = new RegExp(
@@ -53,6 +54,7 @@ export class CommandPalette extends LitElement {
   @state() activeIndex = 0;
   @state() bundle: CommandBundle|undefined;
   @state() activeItems: Command[] = [];
+  @state() previewOverride?: TemplateResult;
   private activeSearch?: string;
   @query('input') input!: HTMLInputElement;
   @query('#items') items!: HTMLElement;
@@ -72,12 +74,15 @@ export class CommandPalette extends LitElement {
         font-family: var(--root-font);
       }
       input, #items {
-        margin: 10px;
+        padding: 10px;
       }
       #separator, #preview-separator {
         height: 100%;
         background: var(--md-accent-color);
         opacity: 0.25;
+      }
+      input {
+        grid-area: input;
       }
       #separator {
         grid-area: sep;
@@ -171,10 +176,8 @@ export class CommandPalette extends LitElement {
               item.description}</div>
         `)}
       </div>
-      ${preview ? html`
-        <div id=preview-separator></div>
-        <div id=preview>${preview?.()}</div>
-      ` : ''}
+      <div id=preview-separator></div>
+      <div id=preview>${this.previewOverride ?? preview?.()}</div>
     `;
   }
   private async onInput() {
@@ -209,6 +212,7 @@ export class CommandPalette extends LitElement {
     this.activeIndex = 0;
     this.activeSearch = undefined;
     this.activeItems = [];
+    this.previewOverride = undefined;
   }
   private handleItemClick() {
     this.commit();
@@ -219,7 +223,21 @@ export class CommandPalette extends LitElement {
   }
   async commit() {
     const selected = this.activeItems[this.activeIndex];
-    const next = await selected.execute(selected);
+    this.requestUpdate();
+    const animation = this.input.animate({
+      background: [
+        'linear-gradient(45deg, transparent, var(--md-accent-color), transparent)',
+        'linear-gradient(45deg, transparent, var(--md-accent-color), transparent)',
+      ],
+      backgroundSize: ['200%', '200%'],
+      backgroundPositionX: ['0%', '200%'],
+    }, {
+      duration: 1000,
+      iterations: Infinity,
+      easing: 'ease-in-out',
+    });
+    const next = await selected.execute(selected, template => this.previewOverride = template);
+    animation.cancel();
     if (next) {
       await this.trigger(next);
     } else {
@@ -232,7 +250,7 @@ export class CommandPalette extends LitElement {
     await this.onInput();
   }
   async triggerCommand(command: Command) {
-    const bundle = await command.execute(command);
+    const bundle = await command.execute(command, template => this.previewOverride = template);
     await this.trigger(cast(bundle));
   }
   next() {

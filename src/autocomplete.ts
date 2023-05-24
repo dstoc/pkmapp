@@ -131,7 +131,7 @@ export class Autocomplete extends LitElement {
   getSlashCommandWrapper(inline: MarkdownInline, command: Command): Command {
     const node = inline.node!;
     return {
-      execute: async () => {
+      execute: async (_command, updatePreview) => {
         node.viewModel.edit({
           // TODO: numbers are too contextual
           startIndex: this.startIndex - 1,
@@ -141,7 +141,7 @@ export class Autocomplete extends LitElement {
         });
         this.endIndex = this.startIndex;
         focusNode(inline.hostContext!, node!, this.startIndex);
-        return command.execute(command);
+        return command.execute(command, updatePreview);
       },
       description: command.description,
     };

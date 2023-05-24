@@ -198,7 +198,7 @@ export class FileSystemLibrary implements Library {
       console.error(e);
       return undefined;
     }
-    const root = parseBlocks(text);
+    const {node: root} = parseBlocks(text);
     assert(root && root.type === 'document');
     return {root, lastModified};
   }

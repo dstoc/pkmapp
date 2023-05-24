@@ -26,9 +26,14 @@ const blocks = await Parser.Language.load(resolve('./deps/tree-sitter-markdown.w
 const parser = new Parser();
 parser.setLanguage(blocks);
 
-export function parseBlocks(markdown: string) {
-  const tree = parser.parse(markdown);
-  return cast(convertNode(tree.rootNode));
+export type Tree = Parser.Tree;
+
+export function parseBlocks(markdown: string, tree?: Parser.Tree, edit?: Parser.Edit) {
+  if (tree) {
+    tree.edit(cast(edit));
+  }
+  tree = parser.parse(markdown);
+  return {node: cast(convertNode(tree.rootNode)), tree};
 }
 
 function*
