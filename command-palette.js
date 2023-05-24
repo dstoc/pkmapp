@@ -26,6 +26,9 @@ export class SimpleCommandBundle {
         this.commands = commands;
         this.freeform = freeform;
     }
+    async execute() {
+        return this;
+    }
     async getCommands(input) {
         const pattern = new RegExp(input.replace(/(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'), 'i');
         const commands = this.commands.filter(({ description }) => pattern.test(description));
@@ -57,12 +60,15 @@ let CommandPalette = class CommandPalette extends LitElement {
         font-family: var(--root-font);
       }
       input, #items {
-        margin: 10px;
+        padding: 10px;
       }
       #separator, #preview-separator {
         height: 100%;
         background: var(--md-accent-color);
         opacity: 0.25;
+      }
+      input {
+        grid-area: input;
       }
       #separator {
         grid-area: sep;
@@ -153,10 +159,8 @@ let CommandPalette = class CommandPalette extends LitElement {
             @pointermove=${() => this.activeIndex = idx}><span class=icon>${item.icon}</span>${item.description}</div>
         `)}
       </div>
-      ${preview ? html `
-        <div id=preview-separator></div>
-        <div id=preview>${preview?.()}</div>
-      ` : ''}
+      <div id=preview-separator></div>
+      <div id=preview>${this.previewOverride ?? preview?.()}</div>
     `;
     }
     async onInput() {
@@ -191,6 +195,7 @@ let CommandPalette = class CommandPalette extends LitElement {
         this.activeIndex = 0;
         this.activeSearch = undefined;
         this.activeItems = [];
+        this.previewOverride = undefined;
     }
     handleItemClick() {
         this.commit();
@@ -201,7 +206,21 @@ let CommandPalette = class CommandPalette extends LitElement {
     }
     async commit() {
         const selected = this.activeItems[this.activeIndex];
-        const next = await selected.execute(selected);
+        this.requestUpdate();
+        const animation = this.input.animate({
+            background: [
+                'linear-gradient(45deg, transparent, var(--md-accent-color), transparent)',
+                'linear-gradient(45deg, transparent, var(--md-accent-color), transparent)',
+            ],
+            backgroundSize: ['200%', '200%'],
+            backgroundPositionX: ['0%', '200%'],
+        }, {
+            duration: 1000,
+            iterations: Infinity,
+            easing: 'ease-in-out',
+        });
+        const next = await selected.execute(selected, template => this.previewOverride = template);
+        animation.cancel();
         if (next) {
             await this.trigger(next);
         }
@@ -215,7 +234,7 @@ let CommandPalette = class CommandPalette extends LitElement {
         await this.onInput();
     }
     async triggerCommand(command) {
-        const bundle = await command.execute(command);
+        const bundle = await command.execute(command, template => this.previewOverride = template);
         await this.trigger(cast(bundle));
     }
     next() {
@@ -243,6 +262,9 @@ __decorate([
 __decorate([
     state()
 ], CommandPalette.prototype, "activeItems", void 0);
+__decorate([
+    state()
+], CommandPalette.prototype, "previewOverride", void 0);
 __decorate([
     query('input')
 ], CommandPalette.prototype, "input", void 0);

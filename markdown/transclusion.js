@@ -31,9 +31,15 @@ let MarkdownTransclusion = class MarkdownTransclusion extends LitElement {
             this.maybeUpdateFocus();
         };
     }
+    update(changedProperties) {
+        super.update(changedProperties);
+        if (changedProperties.has('node')) {
+            this.root = undefined;
+            if (this.node)
+                this.load(this.node.content.trim());
+        }
+    }
     render() {
-        if (!this.root && this.node)
-            this.load(this.node.content.trim());
         return this.root ? html `
       ⮴ ${this.node?.content.trim()}
       <md-block-render .block=${this.root}></md-block-render>

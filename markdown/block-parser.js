@@ -22,9 +22,12 @@ await Parser.init({
 const blocks = await Parser.Language.load(resolve('./deps/tree-sitter-markdown.wasm'));
 const parser = new Parser();
 parser.setLanguage(blocks);
-export function parseBlocks(markdown) {
-    const tree = parser.parse(markdown);
-    return cast(convertNode(tree.rootNode));
+export function parseBlocks(markdown, tree, edit) {
+    if (tree) {
+        tree.edit(cast(edit));
+    }
+    tree = parser.parse(markdown);
+    return { node: cast(convertNode(tree.rootNode)), tree };
 }
 function* convertNodes(nodes) {
     for (const node of nodes) {

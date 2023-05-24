@@ -200,7 +200,7 @@ export class InlineViewModel extends ViewModel {
         if (this.self.type !== 'paragraph')
             return;
         // TODO: Ensure there's a trailing new line?
-        const node = parseBlocks(this.self.content + '\n');
+        const { node } = parseBlocks(this.self.content + '\n');
         assert(node);
         assert(node.type === 'document' && node.children);
         return node.children;

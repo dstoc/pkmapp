@@ -36,6 +36,7 @@ import { maybeEditBlockSelectionIndent, editInlineIndent } from './indent-util.j
 import { getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn } from './block-selection-util.js';
 import { getLogicalContainingBlock } from './block-util.js';
 import { blockPreview, blockIcon, BlockCommandBundle } from './block-command-bundle.js';
+import { getLanguageTools } from './language-tool-bundle.js';
 let Editor = class Editor extends LitElement {
     static get styles() {
         return [
@@ -600,6 +601,7 @@ let Editor = class Editor extends LitElement {
                         return undefined;
                     },
                 }] : [],
+            ...activeInline?.hostContext?.hasSelection ? getLanguageTools(() => serializeSelection(activeInline.hostContext)) : [],
         ]);
     }
 };
@@ -930,7 +932,7 @@ async function sendTo({ root, name }, library, hostContext, mode) {
     }
 }
 function insertMarkdown(markdown, node) {
-    const root = parseBlocks(markdown + '\n');
+    const { node: root } = parseBlocks(markdown + '\n');
     if (!root)
         return;
     assert(root.type === 'document' && root.children);
