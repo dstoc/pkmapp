@@ -20,12 +20,14 @@ export function removeLeadingWhitespace(input: string, leading?: string) {
 }
 
 export function input(
-    strings: TemplateStringsArray, ...keys: string[][]): string[] {
+  strings: TemplateStringsArray,
+  ...keys: string[][]
+): string[] {
   const leading = /(\n +)/.exec(strings.join(''))?.[1];
   const result: string[] = [];
   for (let i = 0; i < strings.length; i++) {
     result.push(...removeLeadingWhitespace(strings[i], leading).split(''));
-    result.push(...keys[i] ?? []);
+    result.push(...(keys[i] ?? []));
   }
   return result;
 }

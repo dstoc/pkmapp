@@ -16,7 +16,7 @@ import {assert, cast} from './asserts.js';
 
 export class Observe<T> {
   private observers = new Set<(target: T) => void>();
-  private state: 'active'|'suspended'|'delegated';
+  private state: 'active' | 'suspended' | 'delegated';
   private resumed?: Promise<void>;
   constructor(readonly target: T, private delegate?: Observe<any>) {
     this.state = delegate ? 'delegated' : 'active';
@@ -25,11 +25,14 @@ export class Observe<T> {
     assert(this.state === 'active');
     this.state = 'suspended';
     let result: () => void;
-    this.resumed = new Promise((resolve) => result = () => {
-      this.state = 'active';
-      this.resumed = undefined;
-      resolve();
-    });
+    this.resumed = new Promise(
+      (resolve) =>
+        (result = () => {
+          this.state = 'active';
+          this.resumed = undefined;
+          resolve();
+        })
+    );
     return result!;
   }
   notify() {
@@ -52,10 +55,10 @@ export class Observe<T> {
 
 export class Observer<T, O> {
   constructor(
-      private target: () => T,
-      private add: (target: T, observer: (value: O) => void) => void,
-      private remove: (target: T, observer: (value: O) => void) => void,
-      private observer: (value: O) => void,
+    private target: () => T,
+    private add: (target: T, observer: (value: O) => void) => void,
+    private remove: (target: T, observer: (value: O) => void) => void,
+    private observer: (value: O) => void
   ) {}
   private cache?: T;
   update(clear = false) {

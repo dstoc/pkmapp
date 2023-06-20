@@ -18,30 +18,72 @@ import './title.js';
 
 import {libraryContext} from './app-context.js';
 import {assert, cast} from './asserts.js';
-import {Command, CommandBundle, SimpleCommandBundle} from './command-palette.js';
+import {
+  Command,
+  CommandBundle,
+  SimpleCommandBundle,
+} from './command-palette.js';
 import {contextProvided} from './deps/lit-labs-context.js';
-import {css, customElement, html, LitElement, property, query, state} from './deps/lit.js';
+import {
+  css,
+  customElement,
+  html,
+  LitElement,
+  property,
+  query,
+  state,
+} from './deps/lit.js';
 import {Document, Library} from './library.js';
 import {parseBlocks} from './markdown/block-parser.js';
 import {MarkdownRenderer} from './markdown/block-render.js';
 import {serializeToString} from './markdown/block-serializer.js';
 import {HostContext, focusNode} from './markdown/host-context.js';
-import {MarkdownInline, InlineInput, InlineKeyDown, InlineLinkClick} from './markdown/inline-render.js';
+import {
+  MarkdownInline,
+  InlineInput,
+  InlineKeyDown,
+  InlineLinkClick,
+} from './markdown/inline-render.js';
 import {InlineNode, MarkdownNode, ParagraphNode} from './markdown/node.js';
 import {normalizeTree} from './markdown/normalize.js';
-import {ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousEditable, reverseDfs, swapNodes} from './markdown/view-model-util.js';
-import {InlineEdit, InlineViewModel, InlineViewModelNode, ViewModelNode} from './markdown/view-model.js';
+import {
+  ancestors,
+  children,
+  findAncestor,
+  findFinalEditable,
+  findNextEditable,
+  findPreviousEditable,
+  reverseDfs,
+  swapNodes,
+} from './markdown/view-model-util.js';
+import {
+  InlineEdit,
+  InlineViewModel,
+  InlineViewModelNode,
+  ViewModelNode,
+} from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
-import {maybeEditBlockSelectionIndent, editInlineIndent} from './indent-util.js';
-import {getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn} from './block-selection-util.js';
+import {
+  maybeEditBlockSelectionIndent,
+  editInlineIndent,
+} from './indent-util.js';
+import {
+  getBlockSelectionTarget,
+  maybeRemoveSelectedNodes,
+  maybeRemoveSelectedNodesIn,
+} from './block-selection-util.js';
 import {getLogicalContainingBlock} from './block-util.js';
-import {blockPreview, blockIcon, BlockCommandBundle} from './block-command-bundle.js';
+import {
+  blockPreview,
+  blockIcon,
+  BlockCommandBundle,
+} from './block-command-bundle.js';
 import {getLanguageTools} from './language-tool-bundle.js';
 
 export interface EditorNavigation {
-  kind: 'navigate'|'replace';
+  kind: 'navigate' | 'replace';
   document: Document;
   root: ViewModelNode;
 }
@@ -50,7 +92,7 @@ export interface EditorNavigation {
 export class Editor extends LitElement {
   defaultName?: string;
   @property({type: String, reflect: true})
-  status: 'loading'|'loaded'|'error'|undefined;
+  status: 'loading' | 'loaded' | 'error' | undefined;
   @state() private document?: Document;
   @state() private root?: ViewModelNode;
   private name?: string;
@@ -60,9 +102,14 @@ export class Editor extends LitElement {
   library!: Library;
   @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
   @query('pkm-autocomplete') private autocomplete!: Autocomplete;
-  private observers = new Observers(new Observer(
-      () => this.document?.observe, (t, o) => t?.add(o), (t, o) => t?.remove(o),
-      () => this.requestUpdate()));
+  private observers = new Observers(
+    new Observer(
+      () => this.document?.observe,
+      (t, o) => t?.add(o),
+      (t, o) => t?.remove(o),
+      () => this.requestUpdate()
+    )
+  );
   static override get styles() {
     return [
       css`
@@ -93,32 +140,35 @@ export class Editor extends LitElement {
   override render() {
     this.observers.update();
     this.dirty = this.document?.dirty ?? false;
-    return html`
-    <div id=status>${this.document?.dirty ? '💽' : ''}</div>
-    <pkm-title
-      .node=${this.root}
-      @title-item-click=${this.onTitleItemClick}></pkm-title>
-    <div id=content>
-    <md-block-render
-      .block=${this.root}
-      @inline-input=${this.onInlineInput}
-      @inline-link-click=${this.onInlineLinkClick}
-      @inline-keydown=${this.onInlineKeyDown}></md-block-render>
-    </div>
-    <pkm-autocomplete></pkm-autocomplete>`;
+    return html` <div id="status">${this.document?.dirty ? '💽' : ''}</div>
+      <pkm-title
+        .node=${this.root}
+        @title-item-click=${this.onTitleItemClick}
+      ></pkm-title>
+      <div id="content">
+        <md-block-render
+          .block=${this.root}
+          @inline-input=${this.onInlineInput}
+          @inline-link-click=${this.onInlineLinkClick}
+          @inline-keydown=${this.onInlineKeyDown}
+        ></md-block-render>
+      </div>
+      <pkm-autocomplete></pkm-autocomplete>`;
   }
   override updated() {
     if (this.name === undefined || this.name === this.document?.name) return;
     this.name = this.document?.name;
-    this.dispatchEvent(new CustomEvent('editor-navigate', {
-      detail: {
-        kind: 'replace',
-        document: this.document,
-        root: this.root,
-      },
-      bubbles: true,
-      composed: true,
-    }));
+    this.dispatchEvent(
+      new CustomEvent('editor-navigate', {
+        detail: {
+          kind: 'replace',
+          document: this.document,
+          root: this.root,
+        },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
   override async connectedCallback() {
     super.connectedCallback();
@@ -153,32 +203,44 @@ export class Editor extends LitElement {
         this.navigate(document, root, fireEvent);
       } else if (results.length > 1) {
         Object.assign(this, old);
-        this.dispatchEvent(new CustomEvent('editor-commands', {
-          detail: new SimpleCommandBundle(`Which "${name}"?`, results.map(({document, root}) => ({
-            description: document.name,
-            execute: async () => void this.navigate(document, root, fireEvent),
-            icon: blockIcon({root}),
-            preview: () => blockPreview({root}),
-          }))),
-          bubbles: true,
-          composed: true,
-        }));
+        this.dispatchEvent(
+          new CustomEvent('editor-commands', {
+            detail: new SimpleCommandBundle(
+              `Which "${name}"?`,
+              results.map(({document, root}) => ({
+                description: document.name,
+                execute: async () =>
+                  void this.navigate(document, root, fireEvent),
+                icon: blockIcon({root}),
+                preview: () => blockPreview({root}),
+              }))
+            ),
+            bubbles: true,
+            composed: true,
+          })
+        );
       } else {
         Object.assign(this, old);
-        this.dispatchEvent(new CustomEvent('editor-commands', {
-          detail: new SimpleCommandBundle(`"${name}" does not exist, create it?`, [
-            {
-              description: 'Yes',
-              execute: async () => void this.createAndNavigateByName(name, fireEvent),
-            },
-            {
-              description: 'No',
-              execute: async () => void 0,
-            }
-          ]),
-          bubbles: true,
-          composed: true,
-        }));
+        this.dispatchEvent(
+          new CustomEvent('editor-commands', {
+            detail: new SimpleCommandBundle(
+              `"${name}" does not exist, create it?`,
+              [
+                {
+                  description: 'Yes',
+                  execute: async () =>
+                    void this.createAndNavigateByName(name, fireEvent),
+                },
+                {
+                  description: 'No',
+                  execute: async () => void 0,
+                },
+              ]
+            ),
+            bubbles: true,
+            composed: true,
+          })
+        );
       }
     } catch (e) {
       this.status = 'error';
@@ -200,18 +262,19 @@ export class Editor extends LitElement {
     if (node) {
       focusNode(this.markdownRenderer.hostContext, node, 0);
     }
-    if (fireEvent) this.dispatchEvent(new CustomEvent('editor-navigate', {
-      detail: {
-        document,
-        root,
-      },
-      bubbles: true,
-      composed: true,
-    }));
+    if (fireEvent)
+      this.dispatchEvent(
+        new CustomEvent('editor-navigate', {
+          detail: {
+            document,
+            root,
+          },
+          bubbles: true,
+          composed: true,
+        })
+      );
   }
-  onInlineLinkClick({
-    detail: {destination},
-  }: CustomEvent<InlineLinkClick>) {
+  onInlineLinkClick({detail: {destination}}: CustomEvent<InlineLinkClick>) {
     if (/^(\w)+:/i.test(destination)) {
       window.open(destination);
     } else {
@@ -222,23 +285,41 @@ export class Editor extends LitElement {
     this.root = detail;
   }
   onInlineKeyDown(event: CustomEvent<InlineKeyDown>) {
-    const {detail: {inline, node, keyboardEvent}} = event;
+    const {
+      detail: {inline, node, keyboardEvent},
+    } = event;
     const hostContext = cast(inline.hostContext);
     const finishEditing = node.viewModel.tree.edit();
     try {
       assert(inline.node);
       if (this.autocomplete.onInlineKeyDown(event)) {
         return;
-      } else if (['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(keyboardEvent.key)) {
+      } else if (
+        ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(
+          keyboardEvent.key
+        )
+      ) {
         keyboardEvent.preventDefault();
-        const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key) ? 'backward' : 'forward';
+        const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key)
+          ? 'backward'
+          : 'forward';
         const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
-        const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key) ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
-        const result = hostContext.hasSelection ? 0 : inline.moveCaret(alter, direction, granularity);
+        const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key)
+          ? 'line'
+          : keyboardEvent.ctrlKey
+          ? 'word'
+          : 'character';
+        const result = hostContext.hasSelection
+          ? 0
+          : inline.moveCaret(alter, direction, granularity);
         if (result === true) {
           hostContext.clearSelection();
         } else {
-          function updateFocus(element: Element&{hostContext?: HostContext}, node: ViewModelNode, offset: number) {
+          function updateFocus(
+            element: Element & {hostContext?: HostContext},
+            node: ViewModelNode,
+            offset: number
+          ) {
             // Retarget if there's any containing transclusion that has a selection.
             const target = getBlockSelectionTarget(element);
             if (target) {
@@ -250,9 +331,16 @@ export class Editor extends LitElement {
             }
             while (true) {
               const root = cast(cast(element.hostContext).root);
-              const next = direction === 'backward' ? findPreviousEditable(node, root) : findNextEditable(node, root);
+              const next =
+                direction === 'backward'
+                  ? findPreviousEditable(node, root)
+                  : findNextEditable(node, root);
               if (next) {
-                focusNode(cast(element.hostContext), next, direction === 'backward' ? -offset : offset);
+                focusNode(
+                  cast(element.hostContext),
+                  next,
+                  direction === 'backward' ? -offset : offset
+                );
                 return {node, element, next};
               } else {
                 const transclusion = getContainingTransclusion(element);
@@ -262,7 +350,11 @@ export class Editor extends LitElement {
               }
             }
           }
-          const {node: updatedNode, element, next} = updateFocus(inline, node, result);
+          const {
+            node: updatedNode,
+            element,
+            next,
+          } = updateFocus(inline, node, result);
           if (next && alter === 'extend') {
             const hostContext = cast(element.hostContext);
             if (hostContext.selectionAnchor) {
@@ -309,12 +401,15 @@ export class Editor extends LitElement {
     }
   }
   async triggerPaste(
-      inline: MarkdownInline,
-      node: InlineViewModelNode,
-      edit: {startIndex: number, oldEndIndex: number}, forceMarkdown = false) {
+    inline: MarkdownInline,
+    node: InlineViewModelNode,
+    edit: {startIndex: number; oldEndIndex: number},
+    forceMarkdown = false
+  ) {
     const content = await navigator.clipboard.read();
-    const mdItem =
-        content.find(item => item.types.includes('web text/markdown'));
+    const mdItem = content.find((item) =>
+      item.types.includes('web text/markdown')
+    );
     let mdText;
     if (mdItem) {
       const blob = await mdItem.getType('web text/markdown');
@@ -335,11 +430,15 @@ export class Editor extends LitElement {
       text = text.replace(/\n/g, ' ');
       const finishEditing = node.viewModel.tree.edit();
       try {
-        this.editInlineNode(node, {
-          ...edit,
-          newText: text,
-          newEndIndex: edit.oldEndIndex + text.length,
-        }, cast(inline.hostContext)); // TODO: wrong context
+        this.editInlineNode(
+          node,
+          {
+            ...edit,
+            newText: text,
+            newEndIndex: edit.oldEndIndex + text.length,
+          },
+          cast(inline.hostContext)
+        ); // TODO: wrong context
       } finally {
         finishEditing();
       }
@@ -353,7 +452,8 @@ export class Editor extends LitElement {
 
     // TODO: Most edit types could be handled here. E.g. insertText
     // could replace the selection.
-    const {hostContext: selectionHostContext} = getBlockSelectionTarget(inline) ?? {};
+    const {hostContext: selectionHostContext} =
+      getBlockSelectionTarget(inline) ?? {};
     selectionHostContext?.clearSelection();
     const finishEditing = inline.node.viewModel.tree.edit();
     try {
@@ -365,15 +465,19 @@ export class Editor extends LitElement {
       let startIndex;
       let oldEndIndex;
       let newEndIndex: number;
-      if (inputEvent.inputType === 'insertText' ||
-          inputEvent.inputType === 'insertReplacementText' ||
-          inputEvent.inputType === 'insertFromPaste' ||
-          inputEvent.inputType === 'deleteByCut' ||
-          inputEvent.inputType === 'deleteContentBackward') {
+      if (
+        inputEvent.inputType === 'insertText' ||
+        inputEvent.inputType === 'insertReplacementText' ||
+        inputEvent.inputType === 'insertFromPaste' ||
+        inputEvent.inputType === 'deleteByCut' ||
+        inputEvent.inputType === 'deleteContentBackward'
+      ) {
         startIndex = inputStart.index;
         oldEndIndex = inputEnd.index;
-        if (inputEvent.inputType === 'insertReplacementText' ||
-            inputEvent.inputType === 'insertFromPaste') {
+        if (
+          inputEvent.inputType === 'insertReplacementText' ||
+          inputEvent.inputType === 'insertFromPaste'
+        ) {
           this.triggerPaste(inline, inline.node, {startIndex, oldEndIndex});
           this.autocomplete.abort();
           return;
@@ -407,7 +511,11 @@ export class Editor extends LitElement {
       finishEditing();
     }
   }
-  private editInlineNode(node: InlineViewModelNode, edit: InlineEdit, hostContext: HostContext) {
+  private editInlineNode(
+    node: InlineViewModelNode,
+    edit: InlineEdit,
+    hostContext: HostContext
+  ) {
     const newNodes = node.viewModel.edit(edit);
     if (newNodes) {
       // TODO: is this needed?
@@ -418,8 +526,11 @@ export class Editor extends LitElement {
     } else {
       // TODO: generalize this (inline block mutation)
       const parent = node.viewModel.parent;
-      if (parent?.type === 'list-item' && parent.checked === undefined &&
-          /^\[( |x)] /.test(node.content)) {
+      if (
+        parent?.type === 'list-item' &&
+        parent.checked === undefined &&
+        /^\[( |x)] /.test(node.content)
+      ) {
         parent.viewModel.updateChecked(node.content[1] === 'x');
         node.viewModel.edit({
           newText: '',
@@ -432,23 +543,32 @@ export class Editor extends LitElement {
     }
   }
   getCommands(): CommandBundle {
-    const {inline: activeInline, startIndex, endIndex} =
-        this.markdownRenderer.getInlineSelection();
+    const {
+      inline: activeInline,
+      startIndex,
+      endIndex,
+    } = this.markdownRenderer.getInlineSelection();
     const activeNode = activeInline?.node;
-    const inTopLevelDocument = activeNode?.viewModel.tree === this.root?.viewModel.tree ?? false;
-    const transclusion = activeInline && getContainingTransclusion(activeInline);
+    const inTopLevelDocument =
+      activeNode?.viewModel.tree === this.root?.viewModel.tree ?? false;
+    const transclusion =
+      activeInline && getContainingTransclusion(activeInline);
     return new SimpleCommandBundle('Choose command...', [
       {
         description: 'Find, Open, Create...',
         execute: async () => {
-          return new BlockCommandBundle('Find, Open, Create', this.library,
-              async ({document, root}) => void this.navigate(document, root, true),
-              async ({name}) => void this.createAndNavigateByName(name, true));
+          return new BlockCommandBundle(
+            'Find, Open, Create',
+            this.library,
+            async ({document, root}) =>
+              void this.navigate(document, root, true),
+            async ({name}) => void this.createAndNavigateByName(name, true)
+          );
         },
       },
       {
         description: 'Sync all',
-        execute: async () => void await this.library.sync(),
+        execute: async () => void (await this.library.sync()),
       },
       {
         description: 'Force save',
@@ -462,160 +582,286 @@ export class Editor extends LitElement {
           return undefined;
         },
       },
-      ...(this.document && this.root === this.document.tree.root) ? [{
-        description: 'Delete document',
-        execute: async () => {
-          return new SimpleCommandBundle('Delete document?', [
+      ...(this.document && this.root === this.document.tree.root
+        ? [
             {
-              description: 'No',
-              execute: async () => void 0,
-            },
-            {
-              description: 'Yes',
+              description: 'Delete document',
               execute: async () => {
-                const tree = this.document!.tree;
-                const document = this.library.getDocumentByTree(tree);
-                await document?.delete();
-                await this.navigateByName('index', true);
-                return undefined;
-              }
+                return new SimpleCommandBundle('Delete document?', [
+                  {
+                    description: 'No',
+                    execute: async () => void 0,
+                  },
+                  {
+                    description: 'Yes',
+                    execute: async () => {
+                      const tree = this.document!.tree;
+                      const document = this.library.getDocumentByTree(tree);
+                      await document?.delete();
+                      await this.navigateByName('index', true);
+                      return undefined;
+                    },
+                  },
+                ]);
+              },
             },
-          ]);
-        },
-      }] : [],
-      ...activeInline?.hostContext?.hasSelection ? [{
-        description: 'Send to...',
-        execute: async () => {
-          return new BlockCommandBundle('Send to', this.library,
-              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'remove'),
-              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'remove'));
-        },
-      }, {
-        description: 'Send to and transclude...',
-        execute: async () => {
-          return new BlockCommandBundle('Send to and transclude', this.library,
-              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'transclude'),
-              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'transclude'));
-        },
-      }, {
-        description: 'Send to and link...',
-        execute: async () => {
-          return new BlockCommandBundle('Send to and link', this.library,
-              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'link'),
-              async (result) => void sendTo(result, this.library, activeInline.hostContext!, 'link'));
-        },
-      }] : [],
+          ]
+        : []),
+      ...(activeInline?.hostContext?.hasSelection
+        ? [
+            {
+              description: 'Send to...',
+              execute: async () => {
+                return new BlockCommandBundle(
+                  'Send to',
+                  this.library,
+                  async (result) =>
+                    void sendTo(
+                      result,
+                      this.library,
+                      activeInline.hostContext!,
+                      'remove'
+                    ),
+                  async (result) =>
+                    void sendTo(
+                      result,
+                      this.library,
+                      activeInline.hostContext!,
+                      'remove'
+                    )
+                );
+              },
+            },
+            {
+              description: 'Send to and transclude...',
+              execute: async () => {
+                return new BlockCommandBundle(
+                  'Send to and transclude',
+                  this.library,
+                  async (result) =>
+                    void sendTo(
+                      result,
+                      this.library,
+                      activeInline.hostContext!,
+                      'transclude'
+                    ),
+                  async (result) =>
+                    void sendTo(
+                      result,
+                      this.library,
+                      activeInline.hostContext!,
+                      'transclude'
+                    )
+                );
+              },
+            },
+            {
+              description: 'Send to and link...',
+              execute: async () => {
+                return new BlockCommandBundle(
+                  'Send to and link',
+                  this.library,
+                  async (result) =>
+                    void sendTo(
+                      result,
+                      this.library,
+                      activeInline.hostContext!,
+                      'link'
+                    ),
+                  async (result) =>
+                    void sendTo(
+                      result,
+                      this.library,
+                      activeInline.hostContext!,
+                      'link'
+                    )
+                );
+              },
+            },
+          ]
+        : []),
       {
         description: 'Backlinks',
         execute: async () => {
-          const action = async (command: Command) => void this.navigateByName(command.description, true);
-          const commands = this.library.backLinks.getBacklinksByDocument(this.document!, this.library).map(name => ({
-            description: name,
-            execute: action,
-          }));
+          const action = async (command: Command) =>
+            void this.navigateByName(command.description, true);
+          const commands = this.library.backLinks
+            .getBacklinksByDocument(this.document!, this.library)
+            .map((name) => ({
+              description: name,
+              execute: action,
+            }));
           return new SimpleCommandBundle('Open Backlink', commands);
-        }
+        },
       },
-      ...activeNode && startIndex !== undefined && endIndex !== undefined ? [{
-        description: 'Paste as markdown',
-        execute: async () => {
-          this.triggerPaste(
-              activeInline, activeNode, {startIndex, oldEndIndex: endIndex}, true);
-          return undefined;
-        },
-      }] : [],
-      ...inTopLevelDocument && activeNode && activeInline ? [{
-        description: 'Focus on block',
-        execute: async () => {
-          this.root = getLogicalContainingBlock(activeNode);
-          focusNode(cast(activeInline.hostContext), activeNode, startIndex);
-          return undefined;
-        },
-      }] : [],
-      ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
-        description: 'Focus on containing block',
-        execute: async () => {
-          if (this.root?.viewModel.parent) this.root = getLogicalContainingBlock(this.root.viewModel.parent);
-          if (activeNode && activeInline) focusNode(cast(activeInline.hostContext), activeNode, startIndex);
-          return undefined;
-        },
-      }] : [],
-      ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
-        description: 'Focus on document',
-        execute: async () => {
-          this.root = this.document?.tree.root;
-          if (activeNode) focusNode(cast(activeInline.hostContext), activeNode, startIndex);
-          return undefined;
-        },
-      }] : [],
-      ...transclusion ? [{
-        description: 'Delete transclusion',
-        execute: async () => {
-          const finished = transclusion.node!.viewModel.tree.edit();
-          transclusion.node!.viewModel.remove();
-          finished();
-          // TODO: focus
-          return undefined;
-        },
-      }] : [],
-      ...activeNode ? [{
-        description: 'Insert transclusion...',
-        execute: async () => {
-          const action = async ({name}: {name: string}) => {
-            const finished = activeNode.viewModel.tree.edit();
-            const newParagraph = activeNode.viewModel.tree.add({
-              type: 'code-block',
-              info: 'tc',
-              content: name,
-            });
-            newParagraph.viewModel.insertBefore(
-                cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
-            finished();
-            focusNode(activeInline.hostContext!, newParagraph);
-            return undefined;
-          };
-          return new BlockCommandBundle('Insert transclusion', this.library, action, action);
-        },
-      }] : [],
-      ...transclusion ? [{
-        description: 'Insert before transclusion',
-        execute: async () => {
-          const node = transclusion.node!;
-          const finished = node.viewModel.tree.edit();
-          const newParagraph = node.viewModel.tree.add({
-            type: 'paragraph',
-            content: '',
-          });
-          newParagraph.viewModel.insertBefore(
-              cast(node.viewModel.parent), node);
-          finished();
-          focusNode(cast(transclusion.hostContext), newParagraph, 0);
-          return undefined;
-        },
-      }] : [],
-      ...transclusion ? [{
-        description: 'Insert after transclusion',
-        execute: async () => {
-          const node = transclusion.node!;
-          const finished = node.viewModel.tree.edit();
-          const newParagraph = node.viewModel.tree.add({
-            type: 'paragraph',
-            content: '',
-          });
-          newParagraph.viewModel.insertBefore(
-              cast(node.viewModel.parent), node.viewModel.nextSibling);
-          finished();
-          focusNode(cast(transclusion.hostContext), newParagraph, 0);
-          return undefined;
-        },
-      }] : [],
-      ...activeInline?.hostContext?.hasSelection ? getLanguageTools(() => serializeSelection(activeInline.hostContext!)) : [],
+      ...(activeNode && startIndex !== undefined && endIndex !== undefined
+        ? [
+            {
+              description: 'Paste as markdown',
+              execute: async () => {
+                this.triggerPaste(
+                  activeInline,
+                  activeNode,
+                  {startIndex, oldEndIndex: endIndex},
+                  true
+                );
+                return undefined;
+              },
+            },
+          ]
+        : []),
+      ...(inTopLevelDocument && activeNode && activeInline
+        ? [
+            {
+              description: 'Focus on block',
+              execute: async () => {
+                this.root = getLogicalContainingBlock(activeNode);
+                focusNode(
+                  cast(activeInline.hostContext),
+                  activeNode,
+                  startIndex
+                );
+                return undefined;
+              },
+            },
+          ]
+        : []),
+      ...(inTopLevelDocument && this.root !== this.document?.tree.root
+        ? [
+            {
+              description: 'Focus on containing block',
+              execute: async () => {
+                if (this.root?.viewModel.parent)
+                  this.root = getLogicalContainingBlock(
+                    this.root.viewModel.parent
+                  );
+                if (activeNode && activeInline)
+                  focusNode(
+                    cast(activeInline.hostContext),
+                    activeNode,
+                    startIndex
+                  );
+                return undefined;
+              },
+            },
+          ]
+        : []),
+      ...(inTopLevelDocument && this.root !== this.document?.tree.root
+        ? [
+            {
+              description: 'Focus on document',
+              execute: async () => {
+                this.root = this.document?.tree.root;
+                if (activeNode)
+                  focusNode(
+                    cast(activeInline.hostContext),
+                    activeNode,
+                    startIndex
+                  );
+                return undefined;
+              },
+            },
+          ]
+        : []),
+      ...(transclusion
+        ? [
+            {
+              description: 'Delete transclusion',
+              execute: async () => {
+                const finished = transclusion.node!.viewModel.tree.edit();
+                transclusion.node!.viewModel.remove();
+                finished();
+                // TODO: focus
+                return undefined;
+              },
+            },
+          ]
+        : []),
+      ...(activeNode
+        ? [
+            {
+              description: 'Insert transclusion...',
+              execute: async () => {
+                const action = async ({name}: {name: string}) => {
+                  const finished = activeNode.viewModel.tree.edit();
+                  const newParagraph = activeNode.viewModel.tree.add({
+                    type: 'code-block',
+                    info: 'tc',
+                    content: name,
+                  });
+                  newParagraph.viewModel.insertBefore(
+                    cast(activeNode.viewModel.parent),
+                    activeNode.viewModel.nextSibling
+                  );
+                  finished();
+                  focusNode(activeInline.hostContext!, newParagraph);
+                  return undefined;
+                };
+                return new BlockCommandBundle(
+                  'Insert transclusion',
+                  this.library,
+                  action,
+                  action
+                );
+              },
+            },
+          ]
+        : []),
+      ...(transclusion
+        ? [
+            {
+              description: 'Insert before transclusion',
+              execute: async () => {
+                const node = transclusion.node!;
+                const finished = node.viewModel.tree.edit();
+                const newParagraph = node.viewModel.tree.add({
+                  type: 'paragraph',
+                  content: '',
+                });
+                newParagraph.viewModel.insertBefore(
+                  cast(node.viewModel.parent),
+                  node
+                );
+                finished();
+                focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                return undefined;
+              },
+            },
+          ]
+        : []),
+      ...(transclusion
+        ? [
+            {
+              description: 'Insert after transclusion',
+              execute: async () => {
+                const node = transclusion.node!;
+                const finished = node.viewModel.tree.edit();
+                const newParagraph = node.viewModel.tree.add({
+                  type: 'paragraph',
+                  content: '',
+                });
+                newParagraph.viewModel.insertBefore(
+                  cast(node.viewModel.parent),
+                  node.viewModel.nextSibling
+                );
+                finished();
+                focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                return undefined;
+              },
+            },
+          ]
+        : []),
+      ...(activeInline?.hostContext?.hasSelection
+        ? getLanguageTools(() => serializeSelection(activeInline.hostContext!))
+        : []),
     ]);
   }
 }
 
 function performLogicalInsertion(
-    context: ViewModelNode, nodes: ViewModelNode[]) {
+  context: ViewModelNode,
+  nodes: ViewModelNode[]
+) {
   const {parent, nextSibling} = nextLogicalInsertionPoint(context);
   if (context.type === 'section') {
     for (const node of nodes) {
@@ -647,8 +893,10 @@ function performLogicalInsertion(
 }
 
 function nextLogicalInsertionPoint(node: ViewModelNode) {
-  if (!node.viewModel.nextSibling &&
-      node.viewModel.parent?.type === 'list-item') {
+  if (
+    !node.viewModel.nextSibling &&
+    node.viewModel.parent?.type === 'list-item'
+  ) {
     const listItem = node.viewModel.parent;
     return {
       parent: cast(listItem.viewModel.parent),
@@ -662,10 +910,15 @@ function nextLogicalInsertionPoint(node: ViewModelNode) {
 }
 
 function maybeMergeContentInto(
-    node: InlineNode&ViewModelNode, target: ViewModelNode,
-    context: HostContext): boolean {
-  if (target.type === 'code-block' || target.type === 'paragraph' ||
-      target.type === 'section') {
+  node: InlineNode & ViewModelNode,
+  target: ViewModelNode,
+  context: HostContext
+): boolean {
+  if (
+    target.type === 'code-block' ||
+    target.type === 'paragraph' ||
+    target.type === 'section'
+  ) {
     focusNode(context, target, target.content.length);
     (target.viewModel as InlineViewModel).edit({
       startIndex: target.content.length,
@@ -680,24 +933,29 @@ function maybeMergeContentInto(
 }
 
 function insertSiblingParagraph(
-    node: InlineNode&ViewModelNode,
-    root: ViewModelNode,
-    startIndex: number,
-    context: HostContext): boolean {
+  node: InlineNode & ViewModelNode,
+  root: ViewModelNode,
+  startIndex: number,
+  context: HostContext
+): boolean {
   const newParagraph = node.viewModel.tree.add({
     type: 'paragraph',
     content: '',
   });
   newParagraph.viewModel.insertBefore(
-      cast(node.viewModel.parent), node.viewModel.nextSibling);
+    cast(node.viewModel.parent),
+    node.viewModel.nextSibling
+  );
   finishInsertParagraph(node, newParagraph, root, startIndex, context);
   return true;
 }
 
 function insertParagraphInList(
-    node: InlineNode&ViewModelNode,
-    root: ViewModelNode, startIndex: number,
-    context: HostContext): boolean {
+  node: InlineNode & ViewModelNode,
+  root: ViewModelNode,
+  startIndex: number,
+  context: HostContext
+): boolean {
   const {ancestor, path} = findAncestor(node, root, 'list');
   if (!ancestor) return false;
   let targetList;
@@ -711,7 +969,9 @@ function insertParagraphInList(
         type: 'list',
       });
       targetList.viewModel.insertBefore(
-          cast(node.viewModel.parent), node.viewModel.nextSibling);
+        cast(node.viewModel.parent),
+        node.viewModel.nextSibling
+      );
       targetListItemNextSibling = undefined;
     }
   } else {
@@ -726,8 +986,10 @@ function insertParagraphInList(
     marker: firstListItem?.marker ?? '* ',
   });
   newListItem.viewModel.insertBefore(targetList, targetListItemNextSibling);
-  if (newListItem.viewModel.previousSibling?.type === 'list-item' &&
-      newListItem.viewModel.previousSibling.checked !== undefined) {
+  if (
+    newListItem.viewModel.previousSibling?.type === 'list-item' &&
+    newListItem.viewModel.previousSibling.checked !== undefined
+  ) {
     newListItem.viewModel.updateChecked(false);
   }
   const newParagraph = node.viewModel.tree.add({
@@ -744,9 +1006,11 @@ function insertParagraphInList(
  * (because it is the root).
  */
 function insertParagraphInListItem(
-    node: InlineNode&ViewModelNode,
-    root: ViewModelNode, startIndex: number,
-    context: HostContext): boolean {
+  node: InlineNode & ViewModelNode,
+  root: ViewModelNode,
+  startIndex: number,
+  context: HostContext
+): boolean {
   const {ancestor: listItem, path} = findAncestor(node, root, 'list-item');
   if (!listItem) return false;
   const newParagraph = node.viewModel.tree.add({
@@ -759,10 +1023,11 @@ function insertParagraphInListItem(
 }
 
 function insertParagraphInDocument(
-    node: InlineNode&ViewModelNode,
-    root: ViewModelNode,
-    startIndex: number,
-    context: HostContext): boolean {
+  node: InlineNode & ViewModelNode,
+  root: ViewModelNode,
+  startIndex: number,
+  context: HostContext
+): boolean {
   const {ancestor: section, path} = findAncestor(node, root, 'document');
   if (!section) return false;
   const newParagraph = node.viewModel.tree.add({
@@ -775,10 +1040,11 @@ function insertParagraphInDocument(
 }
 
 function insertParagraphInSection(
-    node: InlineNode&ViewModelNode,
-    root: ViewModelNode,
-    startIndex: number,
-    context: HostContext): boolean {
+  node: InlineNode & ViewModelNode,
+  root: ViewModelNode,
+  startIndex: number,
+  context: HostContext
+): boolean {
   let {ancestor: section, path} = findAncestor(node, root, 'section');
   let nextSibling;
   if (section) {
@@ -797,18 +1063,28 @@ function insertParagraphInSection(
   return true;
 }
 
-function areAncestorAndDescendant(node: ViewModelNode, node2: ViewModelNode, root: ViewModelNode) {
-  return [...ancestors(node, root)].includes(node2) ||
-      [...ancestors(node2, root)].includes(node);
+function areAncestorAndDescendant(
+  node: ViewModelNode,
+  node2: ViewModelNode,
+  root: ViewModelNode
+) {
+  return (
+    [...ancestors(node, root)].includes(node2) ||
+    [...ancestors(node2, root)].includes(node)
+  );
 }
 
 function finishInsertParagraph(
-    node: InlineNode&ViewModelNode,
-    newParagraph: ParagraphNode&ViewModelNode,
-    root: ViewModelNode,
-    startIndex: number, context: HostContext) {
-  const shouldSwap = startIndex === 0 && node.content.length > 0 &&
-      !areAncestorAndDescendant(node, newParagraph, root);
+  node: InlineNode & ViewModelNode,
+  newParagraph: ParagraphNode & ViewModelNode,
+  root: ViewModelNode,
+  startIndex: number,
+  context: HostContext
+) {
+  const shouldSwap =
+    startIndex === 0 &&
+    node.content.length > 0 &&
+    !areAncestorAndDescendant(node, newParagraph, root);
   if (shouldSwap) {
     swapNodes(node, newParagraph);
   } else {
@@ -830,10 +1106,11 @@ function finishInsertParagraph(
 }
 
 function handleInlineInputAsBlockEdit(
-    {
-      detail: {inline, inputEvent, inputStart, inputEnd},
-    }: CustomEvent<InlineInput>,
-    context: HostContext): boolean {
+  {
+    detail: {inline, inputEvent, inputStart, inputEnd},
+  }: CustomEvent<InlineInput>,
+  context: HostContext
+): boolean {
   if (!inline.node) return false;
   const root = cast(context.root);
   if (inputEvent.inputType === 'deleteContentBackward') {
@@ -841,7 +1118,9 @@ function handleInlineInputAsBlockEdit(
     const node = inline.node;
     // Turn sections and code-blocks into paragraphs.
     if (node.type === 'section') {
-      node.viewModel.updateMarker(node.marker.substring(0, node.marker.length - 1));
+      node.viewModel.updateMarker(
+        node.marker.substring(0, node.marker.length - 1)
+      );
       if (node.marker === '') {
         const paragraph = node.viewModel.tree.add({
           type: 'paragraph',
@@ -861,7 +1140,7 @@ function handleInlineInputAsBlockEdit(
     } else if (node.type === 'code-block') {
       const paragraph = node.viewModel.tree.add({
         type: 'paragraph',
-        content: node.content,  // TODO: detect new blocks
+        content: node.content, // TODO: detect new blocks
       });
       paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
       node.viewModel.remove();
@@ -890,17 +1169,24 @@ function handleInlineInputAsBlockEdit(
       if (maybeMergeContentInto(node, prev, context)) return true;
     }
   } else if (inputEvent.inputType === 'insertParagraph') {
-    return insertParagraphInList(inline.node, root, inputStart.index, context) ||
-        insertParagraphInListItem(inline.node, root, inputStart.index, context) ||
-        insertParagraphInSection(inline.node, root, inputStart.index, context) ||
-        insertParagraphInDocument(inline.node, root, inputStart.index, context);
+    return (
+      insertParagraphInList(inline.node, root, inputStart.index, context) ||
+      insertParagraphInListItem(inline.node, root, inputStart.index, context) ||
+      insertParagraphInSection(inline.node, root, inputStart.index, context) ||
+      insertParagraphInDocument(inline.node, root, inputStart.index, context)
+    );
   } else if (inputEvent.inputType === 'insertLineBreak') {
     return insertSiblingParagraph(inline.node, root, inputStart.index, context);
   }
   return false;
 }
 
-async function sendTo({root, name}: {root?: ViewModelNode, name: string}, library: Library, hostContext: HostContext, mode: 'remove'|'transclude'|'link') {
+async function sendTo(
+  {root, name}: {root?: ViewModelNode; name: string},
+  library: Library,
+  hostContext: HostContext,
+  mode: 'remove' | 'transclude' | 'link'
+) {
   if (!root) {
     // TODO: We shouldn't need to make the call here, but TS can't
     // figure out `root` that root is defined if we reassign it...
@@ -923,13 +1209,13 @@ async function sendTo({root, name}: {root?: ViewModelNode, name: string}, librar
         info: 'tc',
         content: targetName,
       });
-      break
+      break;
     case 'link':
       replacement = focus.viewModel.tree.add({
         type: 'paragraph',
         content: `[${targetName}]`,
       });
-      break
+      break;
   }
   const finish = focus.viewModel.tree.edit();
   try {
@@ -946,8 +1232,9 @@ function insertMarkdown(markdown: string, node: ViewModelNode) {
   assert(root.type === 'document' && root.children);
   const finishEditing = node.viewModel.tree.edit();
   try {
-    const newNodes = root.children.map(
-        newNode => node.viewModel.tree.add<MarkdownNode>(newNode));
+    const newNodes = root.children.map((newNode) =>
+      node.viewModel.tree.add<MarkdownNode>(newNode)
+    );
     let newFocus = findFinalEditable(newNodes[0]);
     performLogicalInsertion(node, newNodes);
     return newFocus;
@@ -963,7 +1250,7 @@ function copyMarkdownToClipboard(markdown: string) {
     new ClipboardItem({
       [textType]: new Blob([markdown], {type: textType}),
       [mdType]: new Blob([markdown], {type: mdType}),
-}),
+    }),
   ]);
 }
 

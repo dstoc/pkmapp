@@ -1,9 +1,6 @@
 {
   "compilerOptions": {
-    "lib": [
-      "esnext",
-      "dom"
-    ],
+    "lib": ["esnext", "dom"],
     "esModuleInterop": true,
     "target": "esnext",
     "module": "esnext",
@@ -38,7 +35,5 @@
     "stripInternal": true,
     "useUnknownInCatchVariables": true
   },
-  "include": [
-    "src/**/*",
-  ]
+  "include": ["src/**/*"]
 }

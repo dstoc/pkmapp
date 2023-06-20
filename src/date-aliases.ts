@@ -13,7 +13,9 @@
 // limitations under the License.
 
 function dateToName(date: Date) {
-  return `${date.getFullYear()}-${String(101 + date.getMonth()).substring(1)}-${String(100 + date.getDate()).substring(1)}`;
+  return `${date.getFullYear()}-${String(101 + date.getMonth()).substring(
+    1
+  )}-${String(100 + date.getDate()).substring(1)}`;
 }
 
 function relativeDate(days: number) {

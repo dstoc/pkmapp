@@ -1,44 +1,53 @@
-import { Command, SimpleCommandBundle } from './command-palette.js';
-import { html } from './deps/lit.js';
+import {Command, SimpleCommandBundle} from './command-palette.js';
+import {html} from './deps/lit.js';
 import './markdown/block-render.js';
-import { parseBlocks, Tree } from './markdown/block-parser.js';
-import { DocumentNode } from './markdown/node.js';
-import { MarkdownTree } from './markdown/view-model.js';
-import { assert } from './asserts.js';
+import {parseBlocks, Tree} from './markdown/block-parser.js';
+import {DocumentNode} from './markdown/node.js';
+import {MarkdownTree} from './markdown/view-model.js';
+import {assert} from './asserts.js';
 
 export function getLanguageTools(getSelection: () => string): Command[] {
-  return [new SimpleCommandBundle("Analyze with LLM", Object.entries(analyzePrompts).map(([description, suffix]) => ({
-    description,
-    async execute(_command, updatePreview) {
-      const loader = new StreamingLoader('');
-      const prompt = `${getSelection()}END\n\n${analyzePrefix} ${suffix}`;
-      const preview = () => html`<md-block-render .block=${loader.tree.root}></md-block-render>`;
+  return [
+    new SimpleCommandBundle(
+      'Analyze with LLM',
+      Object.entries(analyzePrompts).map(([description, suffix]) => ({
+        description,
+        async execute(_command, updatePreview) {
+          const loader = new StreamingLoader('');
+          const prompt = `${getSelection()}END\n\n${analyzePrefix} ${suffix}`;
+          const preview = () =>
+            html`<md-block-render
+              .block=${loader.tree.root}
+            ></md-block-render>`;
 
-      for await (const chunk of openAiChat(prompt)) {
-        loader.append(chunk);
-        updatePreview(preview());
-      }
+          for await (const chunk of openAiChat(prompt)) {
+            loader.append(chunk);
+            updatePreview(preview());
+          }
 
-      return new SimpleCommandBundle("what?", [{
-        description: 'Replace selection',
-        async execute() {
+          return new SimpleCommandBundle('what?', [
+            {
+              description: 'Replace selection',
+              async execute() {},
+              preview,
+            } as Command,
+            {
+              description: 'Append after selection',
+              async execute() {},
+              preview,
+              // TODO: is type inference broken?
+            } as Command,
+            {
+              description: 'Copy to clipboard',
+              async execute() {},
+              preview,
+              // TODO: is type inference broken?
+            } as Command,
+          ]);
         },
-        preview,
-      } as Command, {
-        description: 'Append after selection',
-        async execute() {
-        },
-        preview,
-        // TODO: is type inference broken?
-      } as Command, {
-        description: 'Copy to clipboard',
-        async execute() {
-        },
-        preview,
-        // TODO: is type inference broken?
-      } as Command]);
-    },
-  })))];
+      }))
+    ),
+  ];
 }
 
 /**
@@ -50,7 +59,7 @@ class StreamingLoader {
   readonly tree: MarkdownTree;
   private parserTree: Tree;
   constructor(private content: string) {
-    const { node, tree: parserTree } = parseBlocks(this.content);
+    const {node, tree: parserTree} = parseBlocks(this.content);
     this.parserTree = parserTree;
     assert(node && node.type === 'document');
     this.tree = new MarkdownTree(node);
@@ -68,7 +77,11 @@ class StreamingLoader {
       oldEndPosition: indexToPosition(this.content, oldEndIndex),
       newEndPosition: indexToPosition(this.content, newEndIndex),
     };
-    const { node, tree: parserTree } = parseBlocks(this.content, this.parserTree, edit);
+    const {node, tree: parserTree} = parseBlocks(
+      this.content,
+      this.parserTree,
+      edit
+    );
     this.parserTree = parserTree;
     assert(node && node.type === 'document');
     this.tree.setRoot(this.tree.add<DocumentNode>(node));
@@ -86,7 +99,7 @@ function indexToPosition(text: string, index: number) {
       column++;
     }
   }
-  return { row, column };
+  return {row, column};
 }
 
 async function* openAiChat(prompt: string): AsyncGenerator<string> {
@@ -98,19 +111,23 @@ async function* openAiChat(prompt: string): AsyncGenerator<string> {
     body: JSON.stringify({
       model: 'gpt-3.5-turbo',
       stream: true,
-      messages: [{
-        role: 'user',
-        content: prompt,
-      }]
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
     }),
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`,
-    }
+      Authorization: `Bearer ${key}`,
+    },
   });
   const stream = response.body;
   if (!stream) return;
-  for await (const chunk of iterateStream(stream.pipeThrough(new TextDecoderStream()))) {
+  for await (const chunk of iterateStream(
+    stream.pipeThrough(new TextDecoderStream())
+  )) {
     buffer += chunk;
     const parts = buffer.split('\n');
     buffer = parts.pop()!;
@@ -129,28 +146,27 @@ async function* openAiChat(prompt: string): AsyncGenerator<string> {
 
 function iterateStream(stream: ReadableStream) {
   return {
-    [Symbol.asyncIterator]: async function*() {
-      const reader = stream.getReader()
+    [Symbol.asyncIterator]: async function* () {
+      const reader = stream.getReader();
       try {
         while (true) {
-          const { done, value } = await reader.read();
+          const {done, value} = await reader.read();
           if (done) return;
           yield value;
         }
-      }
-      finally {
+      } finally {
         reader.releaseLock();
       }
-    }
-  }
+    },
+  };
 }
 
-const analyzePrefix = `Analyze all text above and`
+const analyzePrefix = `Analyze all text above and`;
 const analyzePrompts = {
-  'Elaborate': `Elaborate with 3-5 bullet point statements that expand by relating additional information not in the original text.`,
+  Elaborate: `Elaborate with 3-5 bullet point statements that expand by relating additional information not in the original text.`,
   'Capture the essence': `Rewrite in a simple paragraph that captures the essence.`,
-  'Defeat': `List 3-5 reasons why it might not work as bullet point statements.`,
-  'Reflect': `Complete the following prompts:
+  Defeat: `List 3-5 reasons why it might not work as bullet point statements.`,
+  Reflect: `Complete the following prompts:
 1. That's interesting because...
 2. That reminds me of...
 3. It's similar because...

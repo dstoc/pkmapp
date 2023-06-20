@@ -47,8 +47,12 @@ function separator(prev: MarkdownNode, next: MarkdownNode): string {
 }
 
 function serializeBlocks(
-    blocks: MarkdownNode[], indents: Indents, result: string[], predicate?: (node: MarkdownNode) => boolean) {
-  let prev: MarkdownNode|undefined;
+  blocks: MarkdownNode[],
+  indents: Indents,
+  result: string[],
+  predicate?: (node: MarkdownNode) => boolean
+) {
+  let prev: MarkdownNode | undefined;
   let serializedContent = false;
   for (const block of blocks) {
     const preResultLength = result.length;
@@ -95,7 +99,12 @@ export function getPrefix(node: MarkdownNode): string {
   }
 }
 
-function serialize(node: MarkdownNode, indents: Indents, result: string[], predicate?: (node: MarkdownNode) => boolean) {
+function serialize(
+  node: MarkdownNode,
+  indents: Indents,
+  result: string[],
+  predicate?: (node: MarkdownNode) => boolean
+) {
   function indent() {
     for (const indent of indents) {
       result.push(indent.next().value);
@@ -165,11 +174,19 @@ function serialize(node: MarkdownNode, indents: Indents, result: string[], predi
       // TODO: assert not reached?
       assert(false);
   }
-  const serializedChild = serializeBlocks(node.children || [], indents, result, predicate);
+  const serializedChild = serializeBlocks(
+    node.children || [],
+    indents,
+    result,
+    predicate
+  );
   return shouldSerializeNodeContent || serializedChild;
 }
 
-export function serializeToString(node: MarkdownNode, predicate?: (node: MarkdownNode) => boolean): string {
+export function serializeToString(
+  node: MarkdownNode,
+  predicate?: (node: MarkdownNode) => boolean
+): string {
   const result: string[] = [];
   serialize(node, [], result, predicate);
   return result.join('');

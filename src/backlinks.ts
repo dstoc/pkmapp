@@ -21,7 +21,9 @@ export class BackLinks {
   private backLinks: Map<string, Set<InlineViewModelNode>> = new Map();
 
   private getBacklinksByName(name: string) {
-    return [...(this.backLinks.get(name)?.values() ?? [])].map(node => node.viewModel.tree); 
+    return [...(this.backLinks.get(name)?.values() ?? [])].map(
+      (node) => node.viewModel.tree
+    );
   }
   getBacklinksByDocument(document: Document, library: Library) {
     const sources = new Set<string>();
@@ -36,7 +38,10 @@ export class BackLinks {
     // TODO: return block rather than string?
     return [...sources.values()];
   }
-  postEditUpdate(node: InlineViewModelNode, change: 'connected'|'disconnected'|'changed') {
+  postEditUpdate(
+    node: InlineViewModelNode,
+    change: 'connected' | 'disconnected' | 'changed'
+  ) {
     const ivmn = node as InlineViewModelNode;
     if (change === 'disconnected') {
       const links = this.links.get(ivmn);
@@ -52,11 +57,11 @@ export class BackLinks {
       for (const next of dfs(ivmn.viewModel.inlineTree.rootNode)) {
         if (next.type === 'inline_link' || next.type === 'shortcut_link') {
           const text =
-              next.namedChildren.find((node) => node.type === 'link_text')?.text ??
-              '';
+            next.namedChildren.find((node) => node.type === 'link_text')
+              ?.text ?? '';
           const destination =
-              next.namedChildren.find((node) => node.type === 'link_destination')?.text ??
-              text;
+            next.namedChildren.find((node) => node.type === 'link_destination')
+              ?.text ?? text;
           if (!links) {
             links = new Set();
             this.links.set(ivmn, links);

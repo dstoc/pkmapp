@@ -12,53 +12,65 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export type MarkdownNode = DocumentNode|ListNode|ParagraphNode|BlockQuoteNode|
-    ListItemNode|SectionNode|CodeBlockNode|UnsupportedNode;
-export type InlineNode = ParagraphNode|CodeBlockNode|SectionNode;
-export type ParentNode = DocumentNode|ListNode|BlockQuoteNode|ListItemNode|SectionNode;
+export type MarkdownNode =
+  | DocumentNode
+  | ListNode
+  | ParagraphNode
+  | BlockQuoteNode
+  | ListItemNode
+  | SectionNode
+  | CodeBlockNode
+  | UnsupportedNode;
+export type InlineNode = ParagraphNode | CodeBlockNode | SectionNode;
+export type ParentNode =
+  | DocumentNode
+  | ListNode
+  | BlockQuoteNode
+  | ListItemNode
+  | SectionNode;
 
 // TODO: ID, Sequence Number (per tree?)
 interface Node {
   readonly children?: MarkdownNode[];
 }
 
-export type DocumentNode = Node&{
+export type DocumentNode = Node & {
   readonly type: 'document';
-}
+};
 
-export type ListNode = Node&{
+export type ListNode = Node & {
   readonly type: 'list';
-}
+};
 
-export type SectionNode = Node&{
+export type SectionNode = Node & {
   readonly type: 'section';
   readonly marker: string;
   readonly content: string;
 };
 
-export type ParagraphNode = Node&{
+export type ParagraphNode = Node & {
   readonly type: 'paragraph';
   readonly content: string;
 };
 
-export type BlockQuoteNode = Node&{
+export type BlockQuoteNode = Node & {
   readonly type: 'block-quote';
   readonly marker: string;
 };
 
-export type ListItemNode = Node&{
+export type ListItemNode = Node & {
   readonly type: 'list-item';
   readonly marker: string;
   readonly checked?: boolean;
 };
 
-export type CodeBlockNode = Node&{
+export type CodeBlockNode = Node & {
   readonly type: 'code-block';
-  readonly info: string|null;
+  readonly info: string | null;
   readonly content: string;
 };
 
-export type UnsupportedNode = Node&{
+export type UnsupportedNode = Node & {
   readonly type: 'unsupported';
   readonly content: string;
   readonly parser_type: string;

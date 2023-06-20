@@ -15,8 +15,12 @@
 import {FileSystem, Main} from '../pages/main';
 
 export async function testRoundtrip(
-    content: string, main: Main, fs: FileSystem, removeWhitespace = false,
-    expectedFailure?: string) {
+  content: string,
+  main: Main,
+  fs: FileSystem,
+  removeWhitespace = false,
+  expectedFailure?: string
+) {
   await fs.setFile('test.md', content);
   await main.runCommand('sync');
   await main.runCommand('open', 'test');

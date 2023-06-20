@@ -17,7 +17,8 @@ import {testRoundtrip} from '../util/test_roundtrip';
 
 async function getTests() {
   await browser.url('https://github.github.com/gfm');
-  const result = JSON.parse(await browser.executeScript(
+  const result = JSON.parse(
+    await browser.executeScript(
       `
     function extract(a) {
       const name = a.textContent;
@@ -27,31 +28,33 @@ async function getTests() {
     }
     return JSON.stringify([...document.querySelectorAll('[href^="#example"]')].map(extract));
   `,
-      []));
+      []
+    )
+  );
   await browser.back();
   return result;
 }
 
 const expectedFailures = {
-  90: '',   // normalised code block
-  93: '',   // normalised code block
-  94: '',   // normalised code block
-  95: '',   // normalised code block
-  96: '',   // normalised code block
-  97: '',   // normalised code block
-  98: '',   // normalised code block
-  109: '',  // normalised code block
-  111: '',  // normalised code block
-  113: '',  // normalised code block
-  114: '',  // normalised code block
-  116: '',  // normalised code block
-  143: '',  // TODO html parser error?
-  215: '',  // normalization, but TODO empty code blocks?
-  218: '',  // normalization
-  219: '',  // normalization, but TODO block quote missing space
-  227: '',  // normalization
-  300: '',  // normllization, but TODO extra newlines
-  315: '',  // normalized code block
+  90: '', // normalised code block
+  93: '', // normalised code block
+  94: '', // normalised code block
+  95: '', // normalised code block
+  96: '', // normalised code block
+  97: '', // normalised code block
+  98: '', // normalised code block
+  109: '', // normalised code block
+  111: '', // normalised code block
+  113: '', // normalised code block
+  114: '', // normalised code block
+  116: '', // normalised code block
+  143: '', // TODO html parser error?
+  215: '', // normalization, but TODO empty code blocks?
+  218: '', // normalization
+  219: '', // normalization, but TODO block quote missing space
+  227: '', // normalization
+  300: '', // normllization, but TODO extra newlines
+  315: '', // normalized code block
 };
 
 export function runTests(start = 1, limit = 678) {
@@ -71,12 +74,15 @@ export function runTests(start = 1, limit = 678) {
     });
     for (let i = start; i < Math.min(limit, 678); i++) {
       it(`can ${
-             expectedFailures[i] !== undefined ?
-                 '(not) ' :
-                 ''}roundtrip https://github.github.com/gfm/#example-${i}`,
-         async () => testRoundtrip(
-             tests[i].content.trim() + '\n', main, fs, true,
-             expectedFailures[i]));
+        expectedFailures[i] !== undefined ? '(not) ' : ''
+      }roundtrip https://github.github.com/gfm/#example-${i}`, async () =>
+        testRoundtrip(
+          tests[i].content.trim() + '\n',
+          main,
+          fs,
+          true,
+          expectedFailures[i]
+        ));
     }
   });
 }

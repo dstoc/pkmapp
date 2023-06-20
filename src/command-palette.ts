@@ -12,7 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {TemplateResult, css, customElement, html, LitElement, query, state, property} from './deps/lit.js';
+import {
+  TemplateResult,
+  css,
+  customElement,
+  html,
+  LitElement,
+  query,
+  state,
+  property,
+} from './deps/lit.js';
 import {cast} from './asserts.js';
 import './emoji.js';
 
@@ -28,21 +37,29 @@ export interface Command extends FreeformCommandTemplate {
 
 export interface FreeformCommandTemplate {
   readonly icon?: string;
-  execute(command: Command, updatePreview: (template: TemplateResult) => void): Promise<CommandBundle|undefined>;
+  execute(
+    command: Command,
+    updatePreview: (template: TemplateResult) => void
+  ): Promise<CommandBundle | undefined>;
 }
 
 export class SimpleCommandBundle {
-  constructor(readonly description: string, private commands: Command[], private freeform?: FreeformCommandTemplate) {
-  }
+  constructor(
+    readonly description: string,
+    private commands: Command[],
+    private freeform?: FreeformCommandTemplate
+  ) {}
   async execute() {
     return this;
   }
   async getCommands(input: string) {
     const pattern = new RegExp(
-        input.replace(
-            /(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'),
-        'i');
-    const commands = this.commands.filter(({description}) => pattern.test(description));
+      input.replace(/(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'),
+      'i'
+    );
+    const commands = this.commands.filter(({description}) =>
+      pattern.test(description)
+    );
     if (this.freeform) commands.push({...this.freeform, description: input});
     return commands;
   }
@@ -52,7 +69,7 @@ export class SimpleCommandBundle {
 export class CommandPalette extends LitElement {
   @property({attribute: true}) noHeader = false;
   @state() activeIndex = 0;
-  @state() bundle: CommandBundle|undefined;
+  @state() bundle: CommandBundle | undefined;
   @state() activeItems: Command[] = [];
   @state() previewOverride?: TemplateResult;
   private activeSearch?: string;
@@ -64,7 +81,8 @@ export class CommandPalette extends LitElement {
         display: grid;
         height: 100%;
       }
-      input, .item {
+      input,
+      .item {
         border: none;
         color: var(--root-color);
         outline: none;
@@ -73,10 +91,12 @@ export class CommandPalette extends LitElement {
         padding-left: 10px;
         font-family: var(--root-font);
       }
-      input, #items {
+      input,
+      #items {
         padding: 10px;
       }
-      #separator, #preview-separator {
+      #separator,
+      #preview-separator {
         height: 100%;
         background: var(--md-accent-color);
         opacity: 0.25;
@@ -103,7 +123,7 @@ export class CommandPalette extends LitElement {
         padding-bottom: 5px;
       }
       .item[data-active] {
-        background: rgba(128,128,128,0.3);
+        background: rgba(128, 128, 128, 0.3);
         border-radius: 5px;
       }
       #items {
@@ -130,11 +150,11 @@ export class CommandPalette extends LitElement {
       :host {
         grid-template-rows: min-content 1px 1fr 1px 1fr;
         grid-template-areas:
-          "input"
-          "sep"
-          "items"
-          "psep"
-          "preview";
+          'input'
+          'sep'
+          'items'
+          'psep'
+          'preview';
       }
       :host-context([collapsed]) {
         grid-template-rows: 0 0 1fr 1px;
@@ -144,9 +164,9 @@ export class CommandPalette extends LitElement {
           grid-template-columns: 500px 1px;
           grid-template-rows: min-content 1px 1fr;
           grid-template-areas:
-            "input input input"
-            "sep   sep   sep"
-            "items psep  preview";
+            'input input input'
+            'sep   sep   sep'
+            'items psep  preview';
         }
         :host-context([collapsed]) {
           grid-template-rows: 0 0 1fr;
@@ -155,8 +175,13 @@ export class CommandPalette extends LitElement {
     `;
   }
   override render() {
-    const preview = this.activeItems?.[this.activeIndex]?.preview ??
-       (() => html`<pkm-emoji .text=${this.activeItems?.[this.activeIndex]?.description ?? 'default'}></pkm-emoji>`);
+    const preview =
+      this.activeItems?.[this.activeIndex]?.preview ??
+      (() =>
+        html`<pkm-emoji
+          .text=${this.activeItems?.[this.activeIndex]?.description ??
+          'default'}
+        ></pkm-emoji>`);
     return html`
       <input
           type=text
@@ -165,16 +190,18 @@ export class CommandPalette extends LitElement {
           placeholder=${this.bundle?.description ?? ''}></input>
       <div id=separator></div>
       <div id=items>
-        ${
-      this.activeItems.map(
+        ${this.activeItems.map(
           (item, idx) => html`
-        <div
-            class=item
-            ?data-active=${idx === this.activeIndex}
-            @click=${this.handleItemClick}
-            @pointermove=${() => this.activeIndex = idx}><span class=icon>${item.icon}</span>${
-              item.description}</div>
-        `)}
+            <div
+              class="item"
+              ?data-active=${idx === this.activeIndex}
+              @click=${this.handleItemClick}
+              @pointermove=${() => (this.activeIndex = idx)}
+            >
+              <span class="icon">${item.icon}</span>${item.description}
+            </div>
+          `
+        )}
       </div>
       <div id=preview-separator></div>
       <div id=preview>${this.previewOverride ?? preview?.()}</div>
@@ -186,9 +213,13 @@ export class CommandPalette extends LitElement {
       this.activeSearch = search;
       this.activeIndex = 0;
     }
-    this.activeItems = this.bundle ? await this.bundle.getCommands(search, 100) : [];
-    this.activeIndex =
-        Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
+    this.activeItems = this.bundle
+      ? await this.bundle.getCommands(search, 100)
+      : [];
+    this.activeIndex = Math.max(
+      0,
+      Math.min(this.activeIndex, this.activeItems.length - 1)
+    );
   }
   private handleInputKeyDown(e: KeyboardEvent) {
     switch (e.key) {
@@ -224,24 +255,30 @@ export class CommandPalette extends LitElement {
   async commit() {
     const selected = this.activeItems[this.activeIndex];
     this.requestUpdate();
-    const animation = this.input.animate({
-      background: [
-        'linear-gradient(45deg, transparent, var(--md-accent-color), transparent)',
-        'linear-gradient(45deg, transparent, var(--md-accent-color), transparent)',
-      ],
-      backgroundSize: ['200%', '200%'],
-      backgroundPositionX: ['0%', '200%'],
-    }, {
-      duration: 1000,
-      iterations: Infinity,
-      easing: 'ease-in-out',
-    });
-    const next = await selected.execute(selected, template => this.previewOverride = template);
+    const animation = this.input.animate(
+      {
+        background: [
+          'linear-gradient(45deg, transparent, var(--md-accent-color), transparent)',
+          'linear-gradient(45deg, transparent, var(--md-accent-color), transparent)',
+        ],
+        backgroundSize: ['200%', '200%'],
+        backgroundPositionX: ['0%', '200%'],
+      },
+      {
+        duration: 1000,
+        iterations: Infinity,
+        easing: 'ease-in-out',
+      }
+    );
+    const next = await selected.execute(
+      selected,
+      (template) => (this.previewOverride = template)
+    );
     animation.cancel();
     if (next) {
       await this.trigger(next);
     } else {
-      this.dispatchEvent(new CustomEvent('commit'))
+      this.dispatchEvent(new CustomEvent('commit'));
     }
   }
   async trigger(bundle: CommandBundle) {
@@ -250,11 +287,17 @@ export class CommandPalette extends LitElement {
     await this.onInput();
   }
   async triggerCommand(command: Command) {
-    const bundle = await command.execute(command, template => this.previewOverride = template);
+    const bundle = await command.execute(
+      command,
+      (template) => (this.previewOverride = template)
+    );
     await this.trigger(cast(bundle));
   }
   next() {
-    this.activeIndex = Math.min(this.activeItems.length - 1, this.activeIndex + 1);
+    this.activeIndex = Math.min(
+      this.activeItems.length - 1,
+      this.activeIndex + 1
+    );
     this.scrollToActiveItem();
   }
   previous() {
@@ -263,7 +306,7 @@ export class CommandPalette extends LitElement {
   }
   private scrollToActiveItem() {
     const item = this.items.querySelector(`:nth-child(${this.activeIndex})`);
-    item?.scrollIntoView({block: 'center'})
+    item?.scrollIntoView({block: 'center'});
   }
 }
 

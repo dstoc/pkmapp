@@ -17,8 +17,13 @@ import {ViewModelNode} from './markdown/view-model.js';
 export function isLogicalContainingBlock(node?: ViewModelNode) {
   switch (node?.type) {
     case 'section':
-     if (!node.viewModel.previousSibling && (node.viewModel.parent?.type === 'list-item' || node.viewModel.parent?.type === 'document')) return false;
-     return true;
+      if (
+        !node.viewModel.previousSibling &&
+        (node.viewModel.parent?.type === 'list-item' ||
+          node.viewModel.parent?.type === 'document')
+      )
+        return false;
+      return true;
     case 'list-item':
     case 'document':
       return true;

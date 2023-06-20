@@ -12,7 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {state, css, customElement, html, LitElement, property} from '../deps/lit.js';
+import {
+  state,
+  css,
+  customElement,
+  html,
+  LitElement,
+  property,
+} from '../deps/lit.js';
 
 import {MarkdownInline} from './inline-render.js';
 import {ViewModelNode} from './view-model.js';
@@ -26,10 +33,10 @@ export class MarkdownBlock extends LitElement {
   @property({type: String, reflect: true}) checked?: boolean;
   @property({type: Boolean, reflect: true}) root?: boolean;
   @property({type: String, reflect: true}) type = '';
-  @property({attribute: false}) node: ViewModelNode|undefined;
+  @property({attribute: false}) node: ViewModelNode | undefined;
   @contextProvided({context: hostContext, subscribe: true})
   @property({attribute: false})
-  hostContext: HostContext|undefined;
+  hostContext: HostContext | undefined;
   constructor() {
     super();
     this.addEventListener('click', (e) => this.handleClick(e));
@@ -62,14 +69,12 @@ export class MarkdownBlock extends LitElement {
     if (node.type === 'code-block' && node.info === 'tc') {
       return html`<md-transclusion .node=${node}></md-transclusion>`;
     }
-    return html`${
-        (node.type === 'paragraph' || node.type === 'code-block' ||
-         node.type === 'section') ?
-            html`<md-inline .node=${node}></md-inline>` :
-            ''}
-        ${
-        node.children?.map((node) => html`<md-block .node=${node}></md-block>`)}
-    `;
+    return html`${node.type === 'paragraph' ||
+    node.type === 'code-block' ||
+    node.type === 'section'
+      ? html`<md-inline .node=${node}></md-inline>`
+      : ''}
+    ${node.children?.map((node) => html`<md-block .node=${node}></md-block>`)} `;
   }
   protected override createRenderRoot() {
     return this;
@@ -102,10 +107,10 @@ export class MarkdownBlock extends LitElement {
     }
     this.requestUpdate();
   };
-  private addObserver(node: ViewModelNode|undefined) {
+  private addObserver(node: ViewModelNode | undefined) {
     node?.viewModel.observe.add(this.observer);
   }
-  private removeObserver(node: ViewModelNode|undefined) {
+  private removeObserver(node: ViewModelNode | undefined) {
     node?.viewModel.observe.remove(this.observer);
   }
 }
@@ -149,7 +154,9 @@ export class MarkdownRenderer extends LitElement {
         md-block + md-block[type='list'] {
           margin-block-start: -0.5em !important;
         }
-        md-block[type='list-item'] > md-block[type='paragraph'] + md-block[type='list'] {
+        md-block[type='list-item']
+          > md-block[type='paragraph']
+          + md-block[type='list'] {
           margin-block-start: -1em !important;
         }
         md-block[type='section'] > md-block:nth-child(2) {
@@ -221,7 +228,11 @@ export class MarkdownRenderer extends LitElement {
     if (!this.block) return html``;
     return html`<md-block .node=${this.block} ?root=${true}></md-block>`;
   }
-  getInlineSelection(): {inline?: MarkdownInline, startIndex?: number, endIndex?: number} {
+  getInlineSelection(): {
+    inline?: MarkdownInline;
+    startIndex?: number;
+    endIndex?: number;
+  } {
     let active = this.shadowRoot!.activeElement;
     while (true) {
       if (!active || active instanceof MarkdownInline) {

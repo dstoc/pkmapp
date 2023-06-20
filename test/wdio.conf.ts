@@ -25,14 +25,16 @@ export const config: Options.Testrunner = {
   specs: ['./specs/**/*test.ts'],
   exclude: [],
   maxInstances: instances,
-  capabilities: [{
-    'maxInstances': instances,
-    'browserName': 'chrome',
-    'acceptInsecureCerts': true,
-    'goog:chromeOptions': {
-      args: ['headless'],
+  capabilities: [
+    {
+      maxInstances: instances,
+      browserName: 'chrome',
+      acceptInsecureCerts: true,
+      'goog:chromeOptions': {
+        args: ['headless'],
+      },
     },
-  }],
+  ],
   // Level of logging verbosity: trace | debug | info | warn | error | silent
   logLevel: 'warn',
   outputDir: 'test/logs',
@@ -49,6 +51,6 @@ export const config: Options.Testrunner = {
     defaultTimeoutInterval: 60000,
     expectationResultHandler(passed) {
       if (!passed) browser.saveScreenshot('./test/logs/failure.png');
-    }
+    },
   },
 };

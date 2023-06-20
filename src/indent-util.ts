@@ -19,8 +19,12 @@ import {cast} from './asserts.js';
 import {focusNode} from './markdown/host-context.js';
 import {findAncestor, ancestors} from './markdown/view-model-util.js';
 
-export function maybeEditBlockSelectionIndent(inline: MarkdownInline, mode: 'indent'|'unindent') {
-  const {hostContext: selectionHostContext} = getBlockSelectionTarget(inline) ?? {};
+export function maybeEditBlockSelectionIndent(
+  inline: MarkdownInline,
+  mode: 'indent' | 'unindent'
+) {
+  const {hostContext: selectionHostContext} =
+    getBlockSelectionTarget(inline) ?? {};
   if (!selectionHostContext) return false;
   const root = cast(selectionHostContext.root);
   const finish = root.viewModel.tree.edit();
@@ -39,7 +43,10 @@ export function maybeEditBlockSelectionIndent(inline: MarkdownInline, mode: 'ind
   }
 }
 
-export function editInlineIndent(inline: MarkdownInline, mode: 'indent'|'unindent') {
+export function editInlineIndent(
+  inline: MarkdownInline,
+  mode: 'indent' | 'unindent'
+) {
   const selection = inline.getSelection();
   const node = cast(inline.node);
   const hostContext = cast(inline.hostContext);
@@ -69,23 +76,26 @@ function unindent(node: ViewModelNode, root: ViewModelNode) {
   const targetListItemSibling = list.viewModel.parent!;
   if (targetListItemSibling?.type === 'list-item') {
     listItem.viewModel.insertBefore(
-        cast(targetListItemSibling.viewModel.parent),
-        targetListItemSibling.viewModel.nextSibling);
+      cast(targetListItemSibling.viewModel.parent),
+      targetListItemSibling.viewModel.nextSibling
+    );
   } else {
     target.viewModel.insertBefore(
-        cast(list.viewModel.parent), list.viewModel.nextSibling);
+      cast(list.viewModel.parent),
+      list.viewModel.nextSibling
+    );
     listItem.viewModel.remove();
   }
   // Siblings of the undended list-item move to sublist.
   if (nextSibling) {
-    let next: ViewModelNode|undefined = nextSibling;
+    let next: ViewModelNode | undefined = nextSibling;
     while (next) {
       if (listItem.viewModel.lastChild?.type !== 'list') {
         listItem.viewModel.tree
-            .add({
-              type: 'list',
-            })
-            .viewModel.insertBefore(listItem);
+          .add({
+            type: 'list',
+          })
+          .viewModel.insertBefore(listItem);
       }
       const targetList = listItem.viewModel.lastChild!;
       const toMove: ViewModelNode = next;
@@ -98,7 +108,9 @@ function unindent(node: ViewModelNode, root: ViewModelNode) {
   if (listItem.children?.length && !listItem.viewModel.parent) {
     // TODO: move more than the first child.
     listItem.viewModel.firstChild?.viewModel.insertBefore(
-        cast(target.viewModel.parent), target.viewModel.nextSibling);
+      cast(target.viewModel.parent),
+      target.viewModel.nextSibling
+    );
   }
   if (!list.children?.length) {
     list.viewModel.remove();
@@ -115,8 +127,10 @@ function indent(node: ViewModelNode, root: ViewModelNode) {
       break;
     }
     // Don't indent a section at the top level, unless we are inside a heading.
-    if (ancestor.type === 'section' &&
-        ancestor.viewModel.parent!.type == 'document') {
+    if (
+      ancestor.type === 'section' &&
+      ancestor.viewModel.parent!.type == 'document'
+    ) {
       if (target.type === 'section') {
         target = ancestor;
       }

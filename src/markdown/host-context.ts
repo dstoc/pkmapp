@@ -26,7 +26,7 @@ export class HostContext {
 
   get hasSelection() {
     return !!this.selection.size;
-  } 
+  }
 
   clearSelection() {
     if (!this.selection.size) return;
@@ -42,8 +42,8 @@ export class HostContext {
   setSelection(anchor: ViewModelNode, focus: ViewModelNode) {
     this.selectionAnchor = anchor;
     this.selectionFocus = focus;
-    this.selection.add(anchor)
-    this.selection.add(focus)
+    this.selection.add(anchor);
+    this.selection.add(focus);
     anchor.viewModel.observe.notify();
     focus.viewModel.observe.notify();
   }
@@ -60,10 +60,16 @@ export class HostContext {
     this.selectionFocus = to;
     to.viewModel.observe.notify();
   }
-};
-export const hostContext = createContext<HostContext|undefined>('hostContext');
+}
+export const hostContext = createContext<HostContext | undefined>(
+  'hostContext'
+);
 
-export function focusNode(context: HostContext, node: ViewModelNode, offset?: number) {
+export function focusNode(
+  context: HostContext,
+  node: ViewModelNode,
+  offset?: number
+) {
   context.focusNode = node;
   context.focusOffset = offset;
   node.viewModel.observe.notify();
