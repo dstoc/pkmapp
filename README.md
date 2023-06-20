@@ -2,11 +2,11 @@
 
 A local-only personal knowledge management app.
 
-* TypeScript / web
-* Markdown
-  * WYSIWYG editing
-  * Tree-sitter incremental parsing
-* File system access API
+- TypeScript / web
+- Markdown
+  - WYSIWYG editing
+  - Tree-sitter incremental parsing
+- File system access API
 
 ## Contributing
 

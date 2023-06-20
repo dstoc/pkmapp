@@ -13,7 +13,14 @@
 // limitations under the License.
 
 import {Generator} from '@jspm/generator';
-import {existsSync, rmSync, copyFileSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
+import {
+  existsSync,
+  rmSync,
+  copyFileSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'fs';
 import {pathToFileURL} from 'url';
 import {join, dirname} from 'path';
 
@@ -45,5 +52,7 @@ for (const dep of deps) {
 }
 
 const inputHtml = readFileSync('index.html').toString();
-const outputHtml = await generator.htmlInject(inputHtml, {esModuleShims: false});
+const outputHtml = await generator.htmlInject(inputHtml, {
+  esModuleShims: false,
+});
 writeFileSync('build/index.html', outputHtml);

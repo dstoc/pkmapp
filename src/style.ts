@@ -36,8 +36,8 @@ export const styles = [
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --md-block-quote-bgcolor: rgba(255, 255, 255, 0.10);
-        --md-code-block-bgcolor: rgba(255, 255, 255, 0.10);
+        --md-block-quote-bgcolor: rgba(255, 255, 255, 0.1);
+        --md-code-block-bgcolor: rgba(255, 255, 255, 0.1);
         --md-accent-color: #56e;
         --md-block-selection-color: #888;
         --pkm-dialog-bgcolor: #191919;

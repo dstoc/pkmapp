@@ -13,25 +13,46 @@
 // limitations under the License.
 
 function wrap(request: IDBRequest) {
-  return new Promise<IDBRequest>((resolve, reject) => (request.onsuccess = () => resolve(request), request.onerror = reject));
+  return new Promise<IDBRequest>(
+    (resolve, reject) => (
+      (request.onsuccess = () => resolve(request)), (request.onerror = reject)
+    )
+  );
 }
 
 async function getDatabase(): Promise<IDBDatabase> {
   const request = indexedDB.open('pkmapp-directories');
-  request.onupgradeneeded = e => {
+  request.onupgradeneeded = (e) => {
     const database = request.result;
     database.createObjectStore('directories');
   };
   return (await wrap(request)).result;
 }
 
-export async function getDirectory(key: string): Promise<FileSystemDirectoryHandle|undefined> {
-  const db = (await getDatabase());
-  const result = (await wrap(db.transaction('directories', 'readwrite').objectStore('directories')!.get(key))).result;
+export async function getDirectory(
+  key: string
+): Promise<FileSystemDirectoryHandle | undefined> {
+  const db = await getDatabase();
+  const result = (
+    await wrap(
+      db
+        .transaction('directories', 'readwrite')
+        .objectStore('directories')!
+        .get(key)
+    )
+  ).result;
   return result;
 }
 
-export async function setDirectory(key: string, directory: FileSystemDirectoryHandle) {
-  const db = (await getDatabase());
-  await wrap(db.transaction('directories', 'readwrite').objectStore('directories')!.put(directory, key));   
+export async function setDirectory(
+  key: string,
+  directory: FileSystemDirectoryHandle
+) {
+  const db = await getDatabase();
+  await wrap(
+    db
+      .transaction('directories', 'readwrite')
+      .objectStore('directories')!
+      .put(directory, key)
+  );
 }

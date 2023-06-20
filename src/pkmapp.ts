@@ -19,7 +19,14 @@ import './command-palette-dialog.js';
 import {libraryContext} from './app-context.js';
 import {CommandPaletteDialog} from './command-palette-dialog.js';
 import {contextProvider} from './deps/lit-labs-context.js';
-import {customElement, html, LitElement, query, render, state} from './deps/lit.js';
+import {
+  customElement,
+  html,
+  LitElement,
+  query,
+  render,
+  state,
+} from './deps/lit.js';
 import {Editor} from './editor.js';
 import {FileSystemLibrary, Library} from './library.js';
 import {styles} from './style.js';
@@ -52,15 +59,18 @@ export class PkmApp extends LitElement {
   override render() {
     const url = new URL(this.initialLocation);
     const basePath = new URL(resolve('./')).pathname;
-    const defaultName = url.searchParams.has('no-default') ? undefined : decodeURIComponent(url.pathname.substring(basePath.length)) || 'index';
+    const defaultName = url.searchParams.has('no-default')
+      ? undefined
+      : decodeURIComponent(url.pathname.substring(basePath.length)) || 'index';
     if (!this.library) {
       return html`pkmapp`;
     }
     return html`
       <pkm-editor
-          @editor-navigate=${this.onEditorNavigate}
-          @editor-commands=${this.onCommands}
-          .defaultName=${defaultName}></pkm-editor>
+        @editor-navigate=${this.onEditorNavigate}
+        @editor-commands=${this.onCommands}
+        .defaultName=${defaultName}
+      ></pkm-editor>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
   }
@@ -77,7 +87,9 @@ export class PkmApp extends LitElement {
   private onCommands({detail: commands}: CustomEvent<CommandBundle>) {
     this.commandPalette.trigger(commands);
   }
-  private onEditorNavigate({detail: navigation}: CustomEvent<EditorNavigation>) {
+  private onEditorNavigate({
+    detail: navigation,
+  }: CustomEvent<EditorNavigation>) {
     // TODO: use root name (metadata)
     const name = navigation.document.name;
     document.title = `${name} - pkmapp`;
@@ -102,8 +114,10 @@ export class PkmApp extends LitElement {
         const opfs = await navigator.storage.getDirectory();
         const path = url.searchParams.get('opfs')!;
         library = new FileSystemLibrary(
-            path == '' ? opfs :
-                         await opfs.getDirectoryHandle(path, {create: true}));
+          path == ''
+            ? opfs
+            : await opfs.getDirectoryHandle(path, {create: true})
+        );
       } else {
         if (!navigator.userActivation?.isActive) return;
         let directory = await getDirectory('default');
@@ -130,7 +144,7 @@ declare global {
   interface Navigator {
     userActivation?: {
       isActive: boolean;
-    }
+    };
   }
 }
 
@@ -139,4 +153,4 @@ onerror = (event, source, lineno, colno, error) => console.error(event, error);
 
 render(html`<pkm-app></pkm-app>`, document.body);
 
-navigator.serviceWorker.register('./serviceworker.js')
+navigator.serviceWorker.register('./serviceworker.js');

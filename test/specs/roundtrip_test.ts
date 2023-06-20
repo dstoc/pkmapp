@@ -25,9 +25,10 @@ describe('roundtrip parse/serialize', () => {
     return {main, fs: await main.fileSystem};
   });
   const roundtrip = (content: string) =>
-      testRoundtrip(content, state.main, state.fs);
+    testRoundtrip(content, state.main, state.fs);
 
-  it('preserves codeblock content inside blockquote', async () => roundtrip(`
+  it('preserves codeblock content inside blockquote', async () =>
+    roundtrip(`
       > \`\`\`
       > a
       > b

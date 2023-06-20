@@ -24,9 +24,12 @@ import {dfs} from './view-model-util.js';
 
 class ViewModel {
   constructor(
-      readonly self: ViewModelNode, readonly tree: MarkdownTree,
-      public parent?: ViewModelNode, childIndex?: number,
-      public connected = false) {
+    readonly self: ViewModelNode,
+    readonly tree: MarkdownTree,
+    public parent?: ViewModelNode,
+    childIndex?: number,
+    public connected = false
+  ) {
     this.initialize(parent, childIndex);
     this.observe = new Observe(this.self, this.tree.observe);
   }
@@ -49,7 +52,7 @@ class ViewModel {
   nextSibling?: ViewModelNode;
   previousSibling?: ViewModelNode;
   readonly observe;
-  protected signalMutation(notify=true) {
+  protected signalMutation(notify = true) {
     this.version = this.tree.root.viewModel.version + 1;
     let parent = this.parent;
     while (parent) {
@@ -77,8 +80,10 @@ class ViewModel {
     }
     const index = this.parent!.children!.indexOf(this.self);
     this.parent!.children!.splice(index, 1);
-    if (!this.previousSibling) this.parent.viewModel.firstChild = this.nextSibling;
-    if (!this.nextSibling) this.parent.viewModel.lastChild = this.previousSibling;
+    if (!this.previousSibling)
+      this.parent.viewModel.firstChild = this.nextSibling;
+    if (!this.nextSibling)
+      this.parent.viewModel.lastChild = this.previousSibling;
     const parent = this.parent;
     this.signalMutation(false);
     this.parent = undefined;
@@ -95,9 +100,9 @@ class ViewModel {
       return;
     }
     if (this.parent) this.remove();
-    const previousSibling = nextSibling ?
-        nextSibling?.viewModel.previousSibling :
-        parent.viewModel.lastChild;
+    const previousSibling = nextSibling
+      ? nextSibling?.viewModel.previousSibling
+      : parent.viewModel.lastChild;
 
     this.parent = parent;
     this.previousSibling = previousSibling;
@@ -141,7 +146,7 @@ class ViewModel {
     }
   }
 
-  updateChecked(checked: boolean|undefined) {
+  updateChecked(checked: boolean | undefined) {
     // TODO: assert tree editing
     switch (this.self.type) {
       case 'list-item':
@@ -155,14 +160,17 @@ class ViewModel {
 
 export class InlineViewModel extends ViewModel {
   constructor(
-      self: InlineNode&ViewModelNode, tree: MarkdownTree,
-      parent?: ViewModelNode, childIndex?: number) {
+    self: InlineNode & ViewModelNode,
+    tree: MarkdownTree,
+    parent?: ViewModelNode,
+    childIndex?: number
+  ) {
     super(self, tree, parent, childIndex);
     this.inlineTree = inlineParser.parse(self.content);
     this.self = self;
   }
   inlineTree: Parser.Tree;
-  override self: InlineNode&ViewModelNode;
+  override self: InlineNode & ViewModelNode;
   edit({startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit) {
     const oldText = this.self.content.substring(startIndex, oldEndIndex);
     const result = {
@@ -214,24 +222,30 @@ export class InlineViewModel extends ViewModel {
 }
 
 export interface MarkdownTreeDelegate {
-  postEditUpdate(node: ViewModelNode, change: 'connected'|'disconnected'|'changed'): void;
+  postEditUpdate(
+    node: ViewModelNode,
+    change: 'connected' | 'disconnected' | 'changed'
+  ): void;
 }
 
 export class MarkdownTree {
-  constructor(root: DocumentNode, private readonly delegate?: MarkdownTreeDelegate) {
+  constructor(
+    root: DocumentNode,
+    private readonly delegate?: MarkdownTreeDelegate
+  ) {
     this.root = this.addDom<DocumentNode>(root);
     this.setRoot(this.root);
   }
 
-  state: 'editing'|'post-edit'|'idle' = 'idle';
+  state: 'editing' | 'post-edit' | 'idle' = 'idle';
   private editCount = 0;
   private editStartVersion = 0;
   private editResumeObserve: () => void = () => void 0;
-  root: ViewModelNode&DocumentNode;
+  root: ViewModelNode & DocumentNode;
   readonly observe = new Observe(this);
   removed: Set<ViewModelNode> = new Set();
 
-  setRoot(node: DocumentNode&ViewModelNode) {
+  setRoot(node: DocumentNode & ViewModelNode) {
     assert(node.viewModel.tree === this);
     assert(!node.viewModel.parent);
     const finish = this.edit();
@@ -242,7 +256,7 @@ export class MarkdownTree {
     finish();
   }
 
-  add<T>(node: T&MarkdownNode) {
+  add<T>(node: T & MarkdownNode) {
     if ((node as MaybeViewModelNode).viewModel) {
       throw new Error('node is already part of a tree');
     }
@@ -250,7 +264,7 @@ export class MarkdownTree {
   }
 
   edit() {
-    if (this.state === 'idle') { 
+    if (this.state === 'idle') {
       this.editStartVersion = this.root.viewModel.version;
       this.editResumeObserve = this.observe.suspend();
       this.state = 'editing';
@@ -293,10 +307,16 @@ export class MarkdownTree {
   }
 
   private addDom<T>(
-      node: T&MarkdownNode, parent?: ViewModelNode, childIndex?: number) {
+    node: T & MarkdownNode,
+    parent?: ViewModelNode,
+    childIndex?: number
+  ) {
     const result = node as T & ViewModelNode;
-    if (result.type === 'paragraph' || result.type === 'section' ||
-        result.type === 'code-block') {
+    if (
+      result.type === 'paragraph' ||
+      result.type === 'section' ||
+      result.type === 'code-block'
+    ) {
       assert(!result.viewModel);
       result.viewModel = new InlineViewModel(result, this, parent, childIndex);
     } else {
@@ -322,17 +342,17 @@ export class MarkdownTree {
   }
 }
 
-export type MaybeViewModelNode = MarkdownNode&{
+export type MaybeViewModelNode = MarkdownNode & {
   viewModel?: ViewModel;
   children?: MarkdownNode[];
 };
 
-export type ViewModelNode = MarkdownNode&{
+export type ViewModelNode = MarkdownNode & {
   viewModel: ViewModel;
   children?: ViewModelNode[];
 };
 
-export type InlineViewModelNode = InlineNode&{
+export type InlineViewModelNode = InlineNode & {
   viewModel: InlineViewModel;
   children?: ViewModelNode[];
 };
@@ -368,8 +388,10 @@ interface Edit {
 
 function apply(text: string, edit: Edit) {
   return (
-      text.substring(0, edit.startIndex) + (edit.newText ?? '') +
-      text.substring(edit.oldEndIndex));
+    text.substring(0, edit.startIndex) +
+    (edit.newText ?? '') +
+    text.substring(edit.oldEndIndex)
+  );
 }
 
 export interface InlineEdit {

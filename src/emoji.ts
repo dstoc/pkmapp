@@ -15,7 +15,10 @@
 import {customElement, html, LitElement, state, property} from './deps/lit.js';
 
 async function getConsistentEmoji(value: string) {
-  const sha1 = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(value));
+  const sha1 = await crypto.subtle.digest(
+    'SHA-1',
+    new TextEncoder().encode(value)
+  );
   const index = new Uint8Array(sha1)[0];
   const emoji = [
     '☕',
@@ -100,7 +103,7 @@ export class Emoji extends LitElement {
     if (changedProperties.has('text')) {
       this.updateEmoji();
     }
-    return changedProperties.has('emoji');;
+    return changedProperties.has('emoji');
   }
   override render() {
     return html`${this.emoji ?? ''}`;

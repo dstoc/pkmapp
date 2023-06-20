@@ -20,15 +20,21 @@ import {cast} from '../asserts.js';
 await Parser.init({
   locateFile(path: string) {
     return resolve(`./deps/${path}`);
-  }
+  },
 });
-const blocks = await Parser.Language.load(resolve('./deps/tree-sitter-markdown.wasm'));
+const blocks = await Parser.Language.load(
+  resolve('./deps/tree-sitter-markdown.wasm')
+);
 const parser = new Parser();
 parser.setLanguage(blocks);
 
 export type Tree = Parser.Tree;
 
-export function parseBlocks(markdown: string, tree?: Parser.Tree, edit?: Parser.Edit) {
+export function parseBlocks(
+  markdown: string,
+  tree?: Parser.Tree,
+  edit?: Parser.Edit
+) {
   if (tree) {
     tree.edit(cast(edit));
   }
@@ -36,8 +42,9 @@ export function parseBlocks(markdown: string, tree?: Parser.Tree, edit?: Parser.
   return {node: cast(convertNode(tree.rootNode)), tree};
 }
 
-function*
-    convertNodes(nodes: Parser.SyntaxNode[]): IterableIterator<MarkdownNode> {
+function* convertNodes(
+  nodes: Parser.SyntaxNode[]
+): IterableIterator<MarkdownNode> {
   for (const node of nodes) {
     const result = convertNode(node);
     if (result) yield result;
@@ -50,13 +57,14 @@ const emptyParagraph: ParagraphNode = {
 };
 
 function ensureContent(
-    children: MarkdownNode[],
-    result: MarkdownNode[] = [{...emptyParagraph}]): MarkdownNode[] {
+  children: MarkdownNode[],
+  result: MarkdownNode[] = [{...emptyParagraph}]
+): MarkdownNode[] {
   if (children.length) return children;
   return result;
 }
 
-function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
+function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
   switch (node.type) {
     case 'document': {
       let children = node.namedChildren;
@@ -66,16 +74,15 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
         if (!sectionChildren.length) {
           children = children.slice(1);
         } else if (sectionChildren[0].type !== 'atx_heading') {
-          children = [
-            ...sectionChildren,
-            ...children.slice(1),
-          ];
+          children = [...sectionChildren, ...children.slice(1)];
         }
       }
       return {
         type: 'document',
-        children:
-            ensureContent([...convertNodes(children)], [{...emptyParagraph}]),
+        children: ensureContent(
+          [...convertNodes(children)],
+          [{...emptyParagraph}]
+        ),
       };
     }
     case 'section': {
@@ -106,7 +113,7 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
       if (!marker.endsWith(' ')) {
         marker += ' ';
       }
-      let checked: boolean|undefined;
+      let checked: boolean | undefined;
       if (children[1]?.type === 'task_list_marker_unchecked') checked = false;
       if (children[1]?.type === 'task_list_marker_checked') checked = true;
       return {
@@ -128,8 +135,9 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode|undefined {
     case 'fenced_code_block': {
       const children = node.namedChildren;
       const info = children.find((node) => node.type === 'info_string');
-      const content =
-          children.find((node) => node.type === 'code_fence_content');
+      const content = children.find(
+        (node) => node.type === 'code_fence_content'
+      );
       const offset = content?.startPosition.column ?? 0;
       const prefix = new RegExp(`(?<=\n).{${offset}}`, 'g');
       return {

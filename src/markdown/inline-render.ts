@@ -13,7 +13,17 @@
 // limitations under the License.
 
 import {contextProvided} from '../deps/lit-labs-context.js';
-import {css, customElement, html, LitElement, property, query, queryAll, repeat, TemplateResult} from '../deps/lit.js';
+import {
+  css,
+  customElement,
+  html,
+  LitElement,
+  property,
+  query,
+  queryAll,
+  repeat,
+  TemplateResult,
+} from '../deps/lit.js';
 import Parser from '../deps/tree-sitter.js';
 import {cast} from '../asserts.js';
 
@@ -134,8 +144,10 @@ export class MarkdownInline extends LitElement {
   }
   @contextProvided({context: hostContext, subscribe: true})
   @property({attribute: false})
-  hostContext: HostContext|undefined;
-  @property({type: Object, reflect: false}) node: InlineViewModelNode|undefined;
+  hostContext: HostContext | undefined;
+  @property({type: Object, reflect: false}) node:
+    | InlineViewModelNode
+    | undefined;
   @property({type: Boolean, reflect: true}) contenteditable = true;
   @property({type: Boolean, reflect: true}) active = false;
   @query('md-span') span!: MarkdownSpan;
@@ -221,10 +233,17 @@ export class MarkdownInline extends LitElement {
     while (!(parent instanceof MarkdownSpan)) {
       parent = parent?.parentElement!;
     }
-    const walker = document.createTreeWalker(parent, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    const walker = document.createTreeWalker(
+      parent,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT
+    );
     walker.currentNode = node;
     let previous = walker.previousNode();
-    while (previous && previous !== parent && !(previous instanceof MarkdownSpan)) {
+    while (
+      previous &&
+      previous !== parent &&
+      !(previous instanceof MarkdownSpan)
+    ) {
       if (previous.nodeType === Node.TEXT_NODE) {
         offset += (previous as Text).length;
       }
@@ -238,16 +257,27 @@ export class MarkdownInline extends LitElement {
   }
   static getSelectionRange(selection: Selection) {
     const start = MarkdownInline.nodeOffsetToInputPoint(
-        selection.anchorNode!, selection.anchorOffset);
+      selection.anchorNode!,
+      selection.anchorOffset
+    );
     const end = MarkdownInline.nodeOffsetToInputPoint(
-        selection.focusNode!, selection.focusOffset);
+      selection.focusNode!,
+      selection.focusOffset
+    );
     return start.index <= end.index ? {start, end} : {start: end, end: start};
   }
-  moveCaret(alter: 'move'|'extend', direction: 'backward'|'forward', granularity: 'line'|'character'|'word'): true|number {
+  moveCaret(
+    alter: 'move' | 'extend',
+    direction: 'backward' | 'forward',
+    granularity: 'line' | 'character' | 'word'
+  ): true | number {
     const selection = (this.getRootNode()! as Document).getSelection()!;
     const focusNode = selection.focusNode!;
     const focusOffset = selection.focusOffset;
-    const initial = MarkdownInline.nodeOffsetToInputPoint(selection.focusNode!, selection.focusOffset);
+    const initial = MarkdownInline.nodeOffsetToInputPoint(
+      selection.focusNode!,
+      selection.focusOffset
+    );
     const focus = document.createRange();
     focus.setStart(selection.focusNode!, selection.focusOffset);
     focus.collapse(true);
@@ -264,33 +294,52 @@ export class MarkdownInline extends LitElement {
 
     // Find the end of the inline.
     selection.modify('move', 'forward', 'documentboundary');
-    const end = MarkdownInline.nodeOffsetToInputPoint(selection.focusNode!, selection.focusOffset);
+    const end = MarkdownInline.nodeOffsetToInputPoint(
+      selection.focusNode!,
+      selection.focusOffset
+    );
 
     // Reset the selection to the initial state, then modify it based on the arguments.
     selection.removeAllRanges();
     selection.addRange(anchor);
     selection.extend(focusNode, focusOffset);
     selection.modify(alter, direction, granularity);
-    const result = MarkdownInline.nodeOffsetToInputPoint(selection.focusNode!, selection.focusOffset);
+    const result = MarkdownInline.nodeOffsetToInputPoint(
+      selection.focusNode!,
+      selection.focusOffset
+    );
 
     if (granularity === 'line') {
       if (direction == 'backward') {
-        return result.index < line.start.index || initial.index - line.start.index;
+        return (
+          result.index < line.start.index || initial.index - line.start.index
+        );
       } else {
-        return (result.index > line.end.index || result.index !== end.index && result.index == line.end.index) || initial.index - line.start.index;  
+        return (
+          result.index > line.end.index ||
+          (result.index !== end.index && result.index == line.end.index) ||
+          initial.index - line.start.index
+        );
       }
     } else {
-      return result.index !== initial.index || (direction === 'backward' ? Infinity : 0);
+      return (
+        result.index !== initial.index ||
+        (direction === 'backward' ? Infinity : 0)
+      );
     }
   }
   getSelection() {
-    const selection: Selection =
-        (this.getRootNode()! as Document).getSelection()!;
+    const selection: Selection = (
+      this.getRootNode()! as Document
+    ).getSelection()!;
     if (!selection.focusNode) return;
     return MarkdownInline.getSelectionRange(selection);
   }
   getCaretPosition() {
-    let {x, y, height} = (this.getRootNode()! as Document).getSelection()!.getRangeAt(0).getBoundingClientRect();
+    let {x, y, height} = (this.getRootNode()! as Document)
+      .getSelection()!
+      .getRangeAt(0)
+      .getBoundingClientRect();
     if (x === 0 && y === 0) {
       ({x, y, height} = this.getBoundingClientRect());
     }
@@ -302,19 +351,22 @@ export class MarkdownInline extends LitElement {
       node: this.node!,
       keyboardEvent: e,
     };
-    this.dispatchEvent(new CustomEvent('inline-keydown', {
-      detail: inlineKeydown,
-      bubbles: true,
-      composed: true,
-    }));
+    this.dispatchEvent(
+      new CustomEvent('inline-keydown', {
+        detail: inlineKeydown,
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
   onBeforeInput(e: InputEvent) {
     if (!this.node) return;
     e.preventDefault();
-    const selection: Selection =
-        (this.getRootNode()! as Document).getSelection()!;
+    const selection: Selection = (
+      this.getRootNode()! as Document
+    ).getSelection()!;
     const {start: inputStart, end: inputEnd} =
-        MarkdownInline.getSelectionRange(selection);
+      MarkdownInline.getSelectionRange(selection);
     const inlineInput: InlineInput = {
       inline: this,
       node: this.node!,
@@ -324,11 +376,13 @@ export class MarkdownInline extends LitElement {
       content: this.node.content,
     };
 
-    this.dispatchEvent(new CustomEvent('inline-input', {
-      detail: inlineInput,
-      bubbles: true,
-      composed: true,
-    }));
+    this.dispatchEvent(
+      new CustomEvent('inline-input', {
+        detail: inlineInput,
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
   onPointerDown(event: PointerEvent) {
     this.hostContext?.clearSelection();
@@ -340,10 +394,10 @@ export class MarkdownInline extends LitElement {
     }
     this.requestUpdate();
   };
-  private addObserver(node: ViewModelNode|undefined) {
+  private addObserver(node: ViewModelNode | undefined) {
     node?.viewModel.observe.add(this.observer);
   }
-  private removeObserver(node: ViewModelNode|undefined) {
+  private removeObserver(node: ViewModelNode | undefined) {
     node?.viewModel.observe.remove(this.observer);
   }
 }
@@ -370,17 +424,21 @@ export class MarkdownSpan extends LitElement {
   override async performUpdate() {
     await super.performUpdate();
     await Promise.all(
-        Array.from(this.spans).map((span) => span.updateComplete));
+      Array.from(this.spans).map((span) => span.updateComplete)
+    );
   }
 
   override shouldUpdate(changed: Map<string, unknown>) {
     let result = false;
     if (changed.has('node')) {
-      const oldSyntaxNode =
-          changed.get('node') as | Parser.SyntaxNode | undefined;
+      const oldSyntaxNode = changed.get('node') as
+        | Parser.SyntaxNode
+        | undefined;
       const newSyntaxNode = this.node;
-      if (newSyntaxNode &&
-          (!oldSyntaxNode || oldSyntaxNode.id !== newSyntaxNode.id)) {
+      if (
+        newSyntaxNode &&
+        (!oldSyntaxNode || oldSyntaxNode.id !== newSyntaxNode.id)
+      ) {
         result = true;
         this.nodeIds?.migrate(oldSyntaxNode, newSyntaxNode);
       }
@@ -397,7 +455,12 @@ export class MarkdownSpan extends LitElement {
     if (this.active) return;
     const node = this.node;
     if (!node) return;
-    if (event.target instanceof HTMLAnchorElement || node.type === 'inline_link' || node.type === 'shortcut_link' || node.type === 'uri_autolink') {
+    if (
+      event.target instanceof HTMLAnchorElement ||
+      node.type === 'inline_link' ||
+      node.type === 'shortcut_link' ||
+      node.type === 'uri_autolink'
+    ) {
       // Prevent focus before link click.
       event.preventDefault();
     }
@@ -413,25 +476,33 @@ export class MarkdownSpan extends LitElement {
         destination: event.target.href,
       };
     } else {
-      if (node.type !== 'inline_link' && node.type !== 'shortcut_link' && node.type !== 'uri_autolink') return;
+      if (
+        node.type !== 'inline_link' &&
+        node.type !== 'shortcut_link' &&
+        node.type !== 'uri_autolink'
+      )
+        return;
       const text =
-          node.namedChildren.find((node) => node.type === 'link_text')?.text ??
-          '';
+        node.namedChildren.find((node) => node.type === 'link_text')?.text ??
+        '';
       const destination =
-          node.namedChildren.find((node) => node.type === 'link_destination')?.text ??
-          (node.type === 'uri_autolink' ? node.text.slice(1, -1) : null) ??
-          text;
+        node.namedChildren.find((node) => node.type === 'link_destination')
+          ?.text ??
+        (node.type === 'uri_autolink' ? node.text.slice(1, -1) : null) ??
+        text;
       inlineLinkClick = {
         type: this.node!.type,
         destination,
       };
     }
     event.preventDefault();
-    this.dispatchEvent(new CustomEvent('inline-link-click', {
-      detail: inlineLinkClick,
-      bubbles: true,
-      composed: true,
-    }));
+    this.dispatchEvent(
+      new CustomEvent('inline-link-click', {
+        detail: inlineLinkClick,
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
   override render() {
     const node = this.node;
@@ -454,7 +525,9 @@ export class MarkdownSpan extends LitElement {
       if (child) {
         if (index < child.startIndex) {
           const text = node.text.substring(
-              index - node.startIndex, child.startIndex - node.startIndex);
+            index - node.startIndex,
+            child.startIndex - node.startIndex
+          );
           results.push({result: html`${text}`});
         }
         index = child.endIndex;
@@ -467,7 +540,9 @@ export class MarkdownSpan extends LitElement {
         });
       } else {
         const text = node.text.substring(
-            index - node.startIndex, node.endIndex - node.startIndex);
+          index - node.startIndex,
+          node.endIndex - node.startIndex
+        );
         results.push({result: this.renderText(text)});
         index = node.endIndex;
       }
@@ -494,9 +569,11 @@ export class MarkdownSpan extends LitElement {
         return html`${value}`;
       } else {
         const target = value.startsWith('http') ? value : `http://${value}`;
-        return html`<a href=${target} target="_blank" rel="noopener noreferrer">${value}</a>`;
+        return html`<a href=${target} target="_blank" rel="noopener noreferrer"
+          >${value}</a
+        >`;
       }
-    })}`
+    })}`;
   }
 }
 
@@ -506,7 +583,7 @@ class NodeIds {
   get(node: Parser.SyntaxNode) {
     return this.idMap.get(node.id)!;
   }
-  migrate(oldNode: Parser.SyntaxNode|undefined, newNode: Parser.SyntaxNode) {
+  migrate(oldNode: Parser.SyntaxNode | undefined, newNode: Parser.SyntaxNode) {
     const posMap = new Map<number, number>();
     function key(node: Parser.SyntaxNode) {
       return node.startIndex;
@@ -524,7 +601,7 @@ class NodeIds {
 
 function* childNodes(node?: Parser.SyntaxNode) {
   if (!node) return;
-  const next = (next: Parser.SyntaxNode|null) => {
+  const next = (next: Parser.SyntaxNode | null) => {
     if (next) node = next;
     return !!next;
   };
@@ -553,8 +630,10 @@ function isFormatting(node: Parser.SyntaxNode) {
 declare global {
   interface Selection {
     modify(
-        alter: 'move'|'extend', direction: 'forward'|'backward',
-        granularity: 'character'|'lineboundary'|'line'): void;
+      alter: 'move' | 'extend',
+      direction: 'forward' | 'backward',
+      granularity: 'character' | 'lineboundary' | 'line'
+    ): void;
   }
   interface HTMLElementTagNameMap {
     'md-inline': MarkdownInline;

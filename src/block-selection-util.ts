@@ -17,17 +17,22 @@ import {ViewModelNode} from './markdown/view-model.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {assert, cast} from './asserts.js';
 import {focusNode} from './markdown/host-context.js';
-import {findPreviousEditable, findNextEditable} from './markdown/view-model-util.js';
+import {
+  findPreviousEditable,
+  findNextEditable,
+} from './markdown/view-model-util.js';
 import {MarkdownInline} from './markdown/inline-render.js';
 import {children} from './markdown/view-model-util.js';
 
-export function getBlockSelectionTarget(element: Element&{hostContext?: HostContext, node?: ViewModelNode}) {
+export function getBlockSelectionTarget(
+  element: Element & {hostContext?: HostContext; node?: ViewModelNode}
+) {
   if (element.hostContext?.hasSelection) return element;
   // Retarget if there's any containing transclusion that has a selection.
   let transclusion;
   do {
     transclusion = getContainingTransclusion(transclusion ?? element);
-  } while (transclusion && !cast(transclusion.hostContext).hasSelection)
+  } while (transclusion && !cast(transclusion.hostContext).hasSelection);
   if (transclusion && cast(transclusion.hostContext).hasSelection) {
     assert(transclusion.node);
     return transclusion;
@@ -49,7 +54,8 @@ export function maybeRemoveSelectedNodesIn(hostContext: HostContext) {
   const finish = root.viewModel.tree.edit();
   try {
     for (const node of nodes) {
-      node.viewModel.previousSibling && context.push(node.viewModel.previousSibling);
+      node.viewModel.previousSibling &&
+        context.push(node.viewModel.previousSibling);
       node.viewModel.parent && context.push(node.viewModel.parent);
       if (node.type === 'section' && node.viewModel.parent) {
         for (const child of children(node)) {

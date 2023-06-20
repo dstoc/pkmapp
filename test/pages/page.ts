@@ -16,7 +16,7 @@ export abstract class Page {
   abstract path: string;
   abstract isReady: () => Promise<boolean>;
   private resolveLoaded;
-  loaded = new Promise((resolve) => this.resolveLoaded = resolve);
+  loaded = new Promise((resolve) => (this.resolveLoaded = resolve));
   async load(): Promise<this> {
     await browser.url(this.path);
     await browser.waitUntil(this.isReady);

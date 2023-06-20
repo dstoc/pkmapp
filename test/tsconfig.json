@@ -1,12 +1,12 @@
 {
-    "compilerOptions": {
-        "moduleResolution": "node",
-        "types": [
-            "node",
-            "webdriverio/async",
-            "@wdio/jasmine-framework",
-            "expect-webdriverio"
-        ],
-        "target": "es2019"
-    }
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "types": [
+      "node",
+      "webdriverio/async",
+      "@wdio/jasmine-framework",
+      "expect-webdriverio"
+    ],
+    "target": "es2019"
+  }
 }

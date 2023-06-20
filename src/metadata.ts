@@ -15,12 +15,15 @@
 import type {CodeBlockNode, SectionNode} from './markdown/node.js';
 import {InlineViewModelNode, ViewModelNode} from './markdown/view-model.js';
 import {dfs} from './markdown/inline-parser.js';
-import {getLogicalContainingBlock, isLogicalContainingBlock} from './block-util.js';
+import {
+  getLogicalContainingBlock,
+  isLogicalContainingBlock,
+} from './block-util.js';
 import {assert} from './asserts.js';
 
 class SetBiMap<T> {
-  private index = new Map<string, Set<T>>;
-  private reverse = new Map<T, Set<string>>;
+  private index = new Map<string, Set<T>>();
+  private reverse = new Map<T, Set<string>>();
   private normalized = new Map<string, Set<T>>();
   values() {
     return this.index.keys();
@@ -79,11 +82,14 @@ class SetBiMap<T> {
 class ProviderMap<Provider, Target, Value> {
   private values = new Map<Target, Value>();
   private targets = new Map<Provider, Target>();
-  constructor(readonly changed: (target: Target, value?: Value, newValue?: Value) => void) {
-  }
+  constructor(
+    readonly changed: (target: Target, value?: Value, newValue?: Value) => void
+  ) {}
   update(provider: Provider, target?: Target, value?: Value) {
     const previousTarget = this.targets.get(provider);
-    const previousValue = previousTarget ? this.values.get(previousTarget) : undefined;
+    const previousValue = previousTarget
+      ? this.values.get(previousTarget)
+      : undefined;
     const targetChanged = previousTarget !== target;
     const valueChanged = previousValue !== value;
     if (previousTarget && (targetChanged || value == undefined)) {
@@ -97,7 +103,7 @@ class ProviderMap<Provider, Target, Value> {
     }
     if (targetChanged) {
       if (previousTarget) {
-        this.changed(previousTarget, undefined, previousValue)
+        this.changed(previousTarget, undefined, previousValue);
       }
       if (value !== undefined) {
         assert(target);
@@ -110,14 +116,15 @@ class ProviderMap<Provider, Target, Value> {
   }
 }
 
-type Section = ViewModelNode&SectionNode;
+type Section = ViewModelNode & SectionNode;
 
 export class Metadata {
   private meta = new ProviderMap<ViewModelNode, ViewModelNode, string>(
     (target, value) => {
       this.nameMap.update(target, value !== undefined ? [value] : []);
       target.viewModel.observe.notify();
-    });
+    }
+  );
   private nameMap = new SetBiMap<ViewModelNode>();
   private tagMap = new SetBiMap<InlineViewModelNode>();
   private sectionNameMap = new SetBiMap<Section>();
@@ -130,7 +137,10 @@ export class Metadata {
     ];
   }
   getPreferredName(node: ViewModelNode) {
-    if (node.type !== 'section' && node.viewModel.firstChild?.type === 'section') {
+    if (
+      node.type !== 'section' &&
+      node.viewModel.firstChild?.type === 'section'
+    ) {
       node = node.viewModel.firstChild;
     }
     if (node.type === 'section') return node.content;
@@ -138,30 +148,42 @@ export class Metadata {
     return result;
   }
   getNames(node: ViewModelNode) {
-    if (node.type !== 'section' && node.viewModel.firstChild?.type === 'section') {
+    if (
+      node.type !== 'section' &&
+      node.viewModel.firstChild?.type === 'section'
+    ) {
       node = node.viewModel.firstChild;
     }
-    const result = [...this.nameMap.getValues(node)?.values() ?? []];
+    const result = [...(this.nameMap.getValues(node)?.values() ?? [])];
     if (node.type === 'section') result.push(node.content);
     return result;
   }
   findByName(name: string) {
-    const sections = [...this.sectionNameMap.getTargets(name)?.values() ?? []].map(section => {
+    const sections = [
+      ...(this.sectionNameMap.getTargets(name)?.values() ?? []),
+    ].map((section) => {
       if (!isLogicalContainingBlock(section)) {
         return section.viewModel.parent!;
       }
       return section;
     });
-    const named = [...this.nameMap.getTargets(name)?.values() ?? []].map(result => {
-      if (result && !isLogicalContainingBlock(result)) {
-        return result.viewModel.parent!;
+    const named = [...(this.nameMap.getTargets(name)?.values() ?? [])].map(
+      (result) => {
+        if (result && !isLogicalContainingBlock(result)) {
+          return result.viewModel.parent!;
+        }
+        return result;
       }
-      return result;
-    });
-    const tagged = [...this.tagMap.getTargets(name)?.values() ?? []].map(node => getLogicalContainingBlock(node)!);
+    );
+    const tagged = [...(this.tagMap.getTargets(name)?.values() ?? [])].map(
+      (node) => getLogicalContainingBlock(node)!
+    );
     return [...sections, ...named, ...tagged];
   }
-  updateSection(node: Section, change: 'connected'|'disconnected'|'changed') {
+  updateSection(
+    node: Section,
+    change: 'connected' | 'disconnected' | 'changed'
+  ) {
     if (change === 'disconnected') {
       this.sectionNameMap.update(node, []);
     } else {
@@ -171,17 +193,25 @@ export class Metadata {
       node.viewModel.parent?.viewModel.observe.notify();
     }
   }
-  updateCodeblock(node: ViewModelNode&CodeBlockNode, change: 'connected'|'disconnected'|'changed') {
+  updateCodeblock(
+    node: ViewModelNode & CodeBlockNode,
+    change: 'connected' | 'disconnected' | 'changed'
+  ) {
     const parent = node.viewModel.parent;
     const isMetadata = change !== 'disconnected' && node.info === 'meta';
-    const valid = isMetadata && (isLogicalContainingBlock(parent) || parent?.type === 'section');
+    const valid =
+      isMetadata &&
+      (isLogicalContainingBlock(parent) || parent?.type === 'section');
     if (valid) {
       this.meta.update(node, parent, node.content);
     } else {
       this.meta.update(node);
     }
   }
-  updateInlineNode(node: InlineViewModelNode, change: 'connected'|'disconnected'|'changed') {
+  updateInlineNode(
+    node: InlineViewModelNode,
+    change: 'connected' | 'disconnected' | 'changed'
+  ) {
     if (change === 'disconnected') {
       this.tagMap.update(node, []);
     } else {

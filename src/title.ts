@@ -15,7 +15,14 @@
 import {Library} from './library.js';
 import {assert} from './asserts.js';
 import {findNextEditable} from './markdown/view-model-util.js';
-import {state, property, css, customElement, html, LitElement} from './deps/lit.js';
+import {
+  state,
+  property,
+  css,
+  customElement,
+  html,
+  LitElement,
+} from './deps/lit.js';
 import {contextProvided} from './deps/lit-labs-context.js';
 import {libraryContext} from './app-context.js';
 import {getLogicalContainingBlock} from './block-util.js';
@@ -43,29 +50,42 @@ export class Title extends LitElement {
     if (!this.node) return ``;
     this.observers?.clear();
     let containers = [];
-    let next: ViewModelNode|undefined = this.node;
+    let next: ViewModelNode | undefined = this.node;
     while (next) {
       containers.unshift(next);
       next = getLogicalContainingBlock(next);
     }
-    this.observers = new Observers(...containers.map(container => new Observer(
-       () => container.viewModel.observe,
-       (target, observer) => target.add(observer),
-       (target, observer) => target.remove(observer),
-       () => this.requestUpdate(),
-       )));
+    this.observers = new Observers(
+      ...containers.map(
+        (container) =>
+          new Observer(
+            () => container.viewModel.observe,
+            (target, observer) => target.add(observer),
+            (target, observer) => target.remove(observer),
+            () => this.requestUpdate()
+          )
+      )
+    );
     this.observers.update();
 
     return html`
-      ${containers.map(node => html`» <a class=item @click=${() => this.onItemClick(node)}>${getTitle(node, this.library)}</a> `)}
+      ${containers.map(
+        (node) =>
+          html`»
+            <a class="item" @click=${() => this.onItemClick(node)}
+              >${getTitle(node, this.library)}</a
+            > `
+      )}
     `;
   }
   private onItemClick(node: ViewModelNode) {
-    this.dispatchEvent(new CustomEvent('title-item-click', {
-      detail: node,
-      bubbles: true,
-      composed: true,
-    }));
+    this.dispatchEvent(
+      new CustomEvent('title-item-click', {
+        detail: node,
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 }
 
@@ -93,4 +113,3 @@ function getTitle(node: ViewModelNode, library: Library): string {
       assert(false);
   }
 }
-

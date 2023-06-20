@@ -18,14 +18,16 @@ import {resolve} from '../resolve.js';
 await Parser.init({
   locateFile(path: string) {
     return resolve(`./deps/${path}`);
-  }
+  },
 });
-const inline = await Parser.Language.load(resolve('./deps/tree-sitter-markdown_inline.wasm'));
+const inline = await Parser.Language.load(
+  resolve('./deps/tree-sitter-markdown_inline.wasm')
+);
 export const parser = new Parser();
 parser.setLanguage(inline);
 
 export function* dfs(node: Parser.SyntaxNode) {
-  function next(next: Parser.SyntaxNode|null) {
+  function next(next: Parser.SyntaxNode | null) {
     return next && (node = next);
   }
   do {

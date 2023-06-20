@@ -21,7 +21,7 @@ import {cast} from '../asserts.js';
 
 function moveTrailingNodesIntoSections(tree: MarkdownTree) {
   for (const node of dfs(tree.root)) {
-    let section: SectionNode&ViewModelNode|undefined;
+    let section: (SectionNode & ViewModelNode) | undefined;
     for (const child of children(node)) {
       if (child.type === 'section') {
         section = child;
@@ -33,29 +33,33 @@ function moveTrailingNodesIntoSections(tree: MarkdownTree) {
 }
 
 function normalizeContiguousSections(
-    sections: Array<SectionNode&ViewModelNode>) {
-  const activeSections: Array<SectionNode&ViewModelNode> = [];
+  sections: Array<SectionNode & ViewModelNode>
+) {
+  const activeSections: Array<SectionNode & ViewModelNode> = [];
   function activeSection() {
     return activeSections[activeSections.length - 1];
   }
   for (const section of sections) {
     if (activeSections.length) {
-      while (section.marker.length < activeSection().marker.length &&
-             activeSections.length > 1) {
+      while (
+        section.marker.length < activeSection().marker.length &&
+        activeSections.length > 1
+      ) {
         activeSections.pop();
       }
       if (section.marker.length <= activeSection().marker.length) {
         if (section.viewModel.previousSibling !== activeSection()) {
           section.viewModel.insertBefore(
-              activeSection().viewModel.parent!,
-              activeSection().viewModel.nextSibling);
+            activeSection().viewModel.parent!,
+            activeSection().viewModel.nextSibling
+          );
         }
         activeSections.pop();
       } else {
         assert(section.marker.length > activeSection().marker.length);
         if (section.viewModel.parent !== activeSection()) {
           // ensure section is first section child of activeSection
-          let next: ViewModelNode|undefined;
+          let next: ViewModelNode | undefined;
           for (const child of children(activeSection())) {
             if (child.type === 'section') {
               next = child;
@@ -72,7 +76,7 @@ function normalizeContiguousSections(
 
 function normalizeSections(tree: MarkdownTree) {
   moveTrailingNodesIntoSections(tree);
-  type Section = SectionNode&ViewModelNode;
+  type Section = SectionNode & ViewModelNode;
   const ranges = new Map<Section, Section[]>();
   for (const node of dfs(tree.root)) {
     if (node.type !== 'section') continue;
@@ -95,13 +99,15 @@ function normalizeSections(tree: MarkdownTree) {
 }
 
 export function normalizeTree(tree: MarkdownTree) {
-  const emptyPredicate = (node?: ViewModelNode) => node &&
-      node.viewModel.parent && !node.viewModel.firstChild &&
-      ['list-item', 'list', 'block-quote'].includes(node.type);
+  const emptyPredicate = (node?: ViewModelNode) =>
+    node &&
+    node.viewModel.parent &&
+    !node.viewModel.firstChild &&
+    ['list-item', 'list', 'block-quote'].includes(node.type);
   for (const empty of [...dfs(tree.root)].filter(emptyPredicate)) {
-    let node: ViewModelNode|undefined = empty;
+    let node: ViewModelNode | undefined = empty;
     while (node) {
-      const parent: ViewModelNode|undefined = node.viewModel.parent;
+      const parent: ViewModelNode | undefined = node.viewModel.parent;
       node.viewModel.remove();
       node = emptyPredicate(parent) ? parent : undefined;
     }

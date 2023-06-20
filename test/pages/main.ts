@@ -16,7 +16,7 @@ import {control} from '../util/input';
 
 import {Page} from './page';
 
-type Status = 'loading'|'loaded'|'error';
+type Status = 'loading' | 'loaded' | 'error';
 export class Main extends Page {
   path = '/?opfs&no-default';
   host = $('>>>pkm-editor');
@@ -24,9 +24,9 @@ export class Main extends Page {
   fileSystem = new FileSystem();
   isClean = async () => (await this.host.getAttribute('dirty')) === null;
   async status(...status: Status[]): Promise<Status> {
-    await browser.waitUntil(
-        async () =>
-            status.includes(await this.host.getAttribute('status') as Status));
+    await browser.waitUntil(async () =>
+      status.includes((await this.host.getAttribute('status')) as Status)
+    );
     return this.host.getAttribute('status') as Promise<Status>;
   }
   async runCommand(command: string, argument?: string) {
@@ -43,7 +43,7 @@ export class Main extends Page {
 export class FileSystem {
   async getFile(fileName: string): Promise<string> {
     const result = await browser.executeAsyncScript(
-        `
+      `
       const [fileName, callback] = arguments;
       (async () => {
         try {
@@ -60,7 +60,8 @@ export class FileSystem {
         }
       })();
     `,
-        [fileName]);
+      [fileName]
+    );
     if (typeof result === 'string') return result;
     const error = new Error(result.message);
     error.stack = result.stack;
@@ -68,7 +69,7 @@ export class FileSystem {
   }
   async setFile(fileName: string, content: string): Promise<string> {
     const result = await browser.executeAsyncScript(
-        `
+      `
       const [fileName, content, callback] = arguments;
       (async () => {
         try {
@@ -86,7 +87,8 @@ export class FileSystem {
         }
       })();
     `,
-        [fileName, content]);
+      [fileName, content]
+    );
     if (typeof result === 'string') return;
     const error = new Error(result.message);
     error.stack = result.stack;

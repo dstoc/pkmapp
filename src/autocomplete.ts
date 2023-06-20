@@ -17,11 +17,23 @@ import './command-palette.js';
 
 import {contextProvided} from './deps/lit-labs-context.js';
 import {libraryContext} from './app-context.js';
-import {css, query, customElement, html, LitElement, property, state} from './deps/lit.js';
+import {
+  css,
+  query,
+  customElement,
+  html,
+  LitElement,
+  property,
+  state,
+} from './deps/lit.js';
 import {InlineKeyDown} from './markdown/inline-render.js';
 import {InlineViewModelNode} from './markdown/view-model.js';
 import {MarkdownInline} from './markdown/inline-render.js';
-import {SimpleCommandBundle, Command, CommandPalette} from './command-palette.js';
+import {
+  SimpleCommandBundle,
+  Command,
+  CommandPalette,
+} from './command-palette.js';
 import {focusNode} from './markdown/host-context.js';
 import {Library} from './library.js';
 import {BlockCommandBundle} from './block-command-bundle.js';
@@ -53,7 +65,7 @@ export class Autocomplete extends LitElement {
   }
   @query('pkm-command-palette') palette!: CommandPalette;
   @property({reflect: true})
-  private state: 'active'|'inactive' = 'inactive';
+  private state: 'active' | 'inactive' = 'inactive';
   node?: InlineViewModelNode;
   startIndex: number = 0;
   @state()
@@ -63,7 +75,10 @@ export class Autocomplete extends LitElement {
   library!: Library;
   override render() {
     return html`
-      <pkm-command-palette @commit=${this.abort} collapsed></pkm-command-palette>
+      <pkm-command-palette
+        @commit=${this.abort}
+        collapsed
+      ></pkm-command-palette>
     `;
   }
   onInlineKeyDown({
@@ -82,7 +97,9 @@ export class Autocomplete extends LitElement {
       this.palette.commit();
       keyboardEvent.preventDefault();
       return true;
-    } else if (['ArrowLeft', 'ArrowRight', 'Escape'].includes(keyboardEvent.key)) {
+    } else if (
+      ['ArrowLeft', 'ArrowRight', 'Escape'].includes(keyboardEvent.key)
+    ) {
       this.abort();
     }
     return false;
@@ -101,7 +118,10 @@ export class Autocomplete extends LitElement {
     this.node = inline.node!;
     this.startIndex = index;
     this.endIndex = index;
-    document.addEventListener('pointerdown', () => this.abort(), {capture: true, once: true});
+    document.addEventListener('pointerdown', () => this.abort(), {
+      capture: true,
+      once: true,
+    });
   }
   private getLinkInsertionCommand(inline: MarkdownInline): Command {
     const node = inline.node!;
@@ -164,7 +184,14 @@ export class Autocomplete extends LitElement {
         });
         this.palette.triggerCommand(this.getLinkInsertionCommand(inline));
       } else if (newText === '/') {
-        this.palette.trigger(new SimpleCommandBundle('Run command...', [this.getSlashCommandWrapper(inline, this.getLinkInsertionCommand(inline))]));
+        this.palette.trigger(
+          new SimpleCommandBundle('Run command...', [
+            this.getSlashCommandWrapper(
+              inline,
+              this.getLinkInsertionCommand(inline)
+            ),
+          ])
+        );
         this.activate(inline, cursorIndex);
       }
     } else if (newText === ']') {
@@ -184,7 +211,9 @@ export class Autocomplete extends LitElement {
       this.endIndex = cursorIndex;
     }
     if (this.state === 'active') {
-      this.palette.setInput(node.content.substring(this.startIndex, this.endIndex));
+      this.palette.setInput(
+        node.content.substring(this.startIndex, this.endIndex)
+      );
     }
   }
 }
