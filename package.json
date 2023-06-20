@@ -7,8 +7,7 @@
     "build-index": "node build-index.mjs",
     "build-cached": "npm run compile && npm run build-index",
     "test": "wdio run test/wdio.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json",
-    "test-extra": "wdio run test/extra.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json",
-    "precommit": "npx check-clang-format"
+    "test-extra": "wdio run test/extra.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json"
   },
   "license": "Apache-2.0",
   "devDependencies": {
@@ -25,12 +24,12 @@
     "@wdio/spec-reporter": "^8.3.0",
     "@web/dev-server": "^0.1.33",
     "chromedriver": "^112.0.0",
-    "clang-format": "^1.8.0",
     "concurrently": "^7.4.0",
     "emscripten-sdk-npm": "github:devappd/emscripten-sdk-npm",
     "eslint": "^8.27.0",
     "eslint-config-google": "^0.14.0",
     "lit": "^2.3.0",
+    "prettier": "2.8.8",
     "tree-sitter-cli": "^0.20.7",
     "tree-sitter-markdown": "github:MDeiml/tree-sitter-markdown",
     "ts-lit-plugin": "^1.2.1",
