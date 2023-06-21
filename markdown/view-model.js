@@ -88,9 +88,9 @@ class ViewModel {
         }
         if (this.parent)
             this.remove();
-        const previousSibling = nextSibling ?
-            nextSibling?.viewModel.previousSibling :
-            parent.viewModel.lastChild;
+        const previousSibling = nextSibling
+            ? nextSibling?.viewModel.previousSibling
+            : parent.viewModel.lastChild;
         this.parent = parent;
         this.previousSibling = previousSibling;
         this.nextSibling = nextSibling;
@@ -280,7 +280,8 @@ export class MarkdownTree {
     }
     addDom(node, parent, childIndex) {
         const result = node;
-        if (result.type === 'paragraph' || result.type === 'section' ||
+        if (result.type === 'paragraph' ||
+            result.type === 'section' ||
             result.type === 'code-block') {
             assert(!result.viewModel);
             result.viewModel = new InlineViewModel(result, this, parent, childIndex);
@@ -321,7 +322,8 @@ function indexToPosition(text, index) {
     return { row, column };
 }
 function apply(text, edit) {
-    return (text.substring(0, edit.startIndex) + (edit.newText ?? '') +
+    return (text.substring(0, edit.startIndex) +
+        (edit.newText ?? '') +
         text.substring(edit.oldEndIndex));
 }
 //# sourceMappingURL=view-model.js.map

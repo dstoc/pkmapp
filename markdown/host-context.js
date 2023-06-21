@@ -51,7 +51,6 @@ export class HostContext {
         to.viewModel.observe.notify();
     }
 }
-;
 export const hostContext = createContext('hostContext');
 export function focusNode(context, node, offset) {
     context.focusNode = node;

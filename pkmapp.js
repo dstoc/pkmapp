@@ -22,7 +22,7 @@ import './editor.js';
 import './command-palette-dialog.js';
 import { libraryContext } from './app-context.js';
 import { contextProvider } from './deps/lit-labs-context.js';
-import { customElement, html, LitElement, query, render, state } from './deps/lit.js';
+import { customElement, html, LitElement, query, render, state, } from './deps/lit.js';
 import { FileSystemLibrary } from './library.js';
 import { styles } from './style.js';
 import { getDirectory, setDirectory } from './directory-db.js';
@@ -47,15 +47,18 @@ let PkmApp = class PkmApp extends LitElement {
     render() {
         const url = new URL(this.initialLocation);
         const basePath = new URL(resolve('./')).pathname;
-        const defaultName = url.searchParams.has('no-default') ? undefined : decodeURIComponent(url.pathname.substring(basePath.length)) || 'index';
+        const defaultName = url.searchParams.has('no-default')
+            ? undefined
+            : decodeURIComponent(url.pathname.substring(basePath.length)) || 'index';
         if (!this.library) {
             return html `pkmapp`;
         }
         return html `
       <pkm-editor
-          @editor-navigate=${this.onEditorNavigate}
-          @editor-commands=${this.onCommands}
-          .defaultName=${defaultName}></pkm-editor>
+        @editor-navigate=${this.onEditorNavigate}
+        @editor-commands=${this.onCommands}
+        .defaultName=${defaultName}
+      ></pkm-editor>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
     }
@@ -72,7 +75,7 @@ let PkmApp = class PkmApp extends LitElement {
     onCommands({ detail: commands }) {
         this.commandPalette.trigger(commands);
     }
-    onEditorNavigate({ detail: navigation }) {
+    onEditorNavigate({ detail: navigation, }) {
         // TODO: use root name (metadata)
         const name = navigation.document.name;
         document.title = `${name} - pkmapp`;
@@ -98,8 +101,9 @@ let PkmApp = class PkmApp extends LitElement {
             if (url.searchParams.has('opfs')) {
                 const opfs = await navigator.storage.getDirectory();
                 const path = url.searchParams.get('opfs');
-                library = new FileSystemLibrary(path == '' ? opfs :
-                    await opfs.getDirectoryHandle(path, { create: true }));
+                library = new FileSystemLibrary(path == ''
+                    ? opfs
+                    : await opfs.getDirectoryHandle(path, { create: true }));
             }
             else {
                 if (!navigator.userActivation?.isActive)

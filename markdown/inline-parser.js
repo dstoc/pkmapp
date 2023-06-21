@@ -16,7 +16,7 @@ import { resolve } from '../resolve.js';
 await Parser.init({
     locateFile(path) {
         return resolve(`./deps/${path}`);
-    }
+    },
 });
 const inline = await Parser.Language.load(resolve('./deps/tree-sitter-markdown_inline.wasm'));
 export const parser = new Parser();

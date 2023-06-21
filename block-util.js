@@ -14,7 +14,9 @@
 export function isLogicalContainingBlock(node) {
     switch (node?.type) {
         case 'section':
-            if (!node.viewModel.previousSibling && (node.viewModel.parent?.type === 'list-item' || node.viewModel.parent?.type === 'document'))
+            if (!node.viewModel.previousSibling &&
+                (node.viewModel.parent?.type === 'list-item' ||
+                    node.viewModel.parent?.type === 'document'))
                 return false;
             return true;
         case 'list-item':

@@ -17,7 +17,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { state, css, customElement, html, LitElement, property } from '../deps/lit.js';
+import { state, css, customElement, html, LitElement, property, } from '../deps/lit.js';
 import { MarkdownInline } from './inline-render.js';
 import './transclusion.js';
 import { hostContext, HostContext } from './host-context.js';
@@ -64,12 +64,12 @@ let MarkdownBlock = class MarkdownBlock extends LitElement {
         if (node.type === 'code-block' && node.info === 'tc') {
             return html `<md-transclusion .node=${node}></md-transclusion>`;
         }
-        return html `${(node.type === 'paragraph' || node.type === 'code-block' ||
-            node.type === 'section') ?
-            html `<md-inline .node=${node}></md-inline>` :
-            ''}
-        ${node.children?.map((node) => html `<md-block .node=${node}></md-block>`)}
-    `;
+        return html `${node.type === 'paragraph' ||
+            node.type === 'code-block' ||
+            node.type === 'section'
+            ? html `<md-inline .node=${node}></md-inline>`
+            : ''}
+    ${node.children?.map((node) => html `<md-block .node=${node}></md-block>`)} `;
     }
     createRenderRoot() {
         return this;
@@ -169,7 +169,9 @@ let MarkdownRenderer = class MarkdownRenderer extends LitElement {
         md-block + md-block[type='list'] {
           margin-block-start: -0.5em !important;
         }
-        md-block[type='list-item'] > md-block[type='paragraph'] + md-block[type='list'] {
+        md-block[type='list-item']
+          > md-block[type='paragraph']
+          + md-block[type='list'] {
           margin-block-start: -1em !important;
         }
         md-block[type='section'] > md-block:nth-child(2) {

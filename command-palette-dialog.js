@@ -38,7 +38,7 @@ let CommandPaletteDialog = class CommandPaletteDialog extends LitElement {
       }
       dialog::backdrop {
         backdrop-filter: blur(3px);
-        background: rgba(128,128,128,0.2);
+        background: rgba(128, 128, 128, 0.2);
       }
     `;
     }

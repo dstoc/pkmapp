@@ -17,7 +17,7 @@ import { cast } from '../asserts.js';
 await Parser.init({
     locateFile(path) {
         return resolve(`./deps/${path}`);
-    }
+    },
 });
 const blocks = await Parser.Language.load(resolve('./deps/tree-sitter-markdown.wasm'));
 const parser = new Parser();
@@ -56,10 +56,7 @@ function convertNode(node) {
                     children = children.slice(1);
                 }
                 else if (sectionChildren[0].type !== 'atx_heading') {
-                    children = [
-                        ...sectionChildren,
-                        ...children.slice(1),
-                    ];
+                    children = [...sectionChildren, ...children.slice(1)];
                 }
             }
             return {

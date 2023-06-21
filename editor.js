@@ -22,20 +22,20 @@ import './autocomplete.js';
 import './title.js';
 import { libraryContext } from './app-context.js';
 import { assert, cast } from './asserts.js';
-import { SimpleCommandBundle } from './command-palette.js';
+import { SimpleCommandBundle, } from './command-palette.js';
 import { contextProvided } from './deps/lit-labs-context.js';
-import { css, customElement, html, LitElement, property, query, state } from './deps/lit.js';
+import { css, customElement, html, LitElement, property, query, state, } from './deps/lit.js';
 import { parseBlocks } from './markdown/block-parser.js';
 import { serializeToString } from './markdown/block-serializer.js';
 import { focusNode } from './markdown/host-context.js';
 import { normalizeTree } from './markdown/normalize.js';
-import { ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousEditable, reverseDfs, swapNodes } from './markdown/view-model-util.js';
+import { ancestors, children, findAncestor, findFinalEditable, findNextEditable, findPreviousEditable, reverseDfs, swapNodes, } from './markdown/view-model-util.js';
 import { Observer, Observers } from './observe.js';
 import { getContainingTransclusion } from './markdown/transclusion.js';
-import { maybeEditBlockSelectionIndent, editInlineIndent } from './indent-util.js';
-import { getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn } from './block-selection-util.js';
+import { maybeEditBlockSelectionIndent, editInlineIndent, } from './indent-util.js';
+import { getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn, } from './block-selection-util.js';
 import { getLogicalContainingBlock } from './block-util.js';
-import { blockPreview, blockIcon, BlockCommandBundle } from './block-command-bundle.js';
+import { blockPreview, blockIcon, BlockCommandBundle, } from './block-command-bundle.js';
 import { getLanguageTools } from './language-tool-bundle.js';
 let Editor = class Editor extends LitElement {
     static get styles() {
@@ -70,19 +70,20 @@ let Editor = class Editor extends LitElement {
     render() {
         this.observers.update();
         this.dirty = this.document?.dirty ?? false;
-        return html `
-    <div id=status>${this.document?.dirty ? '💽' : ''}</div>
-    <pkm-title
-      .node=${this.root}
-      @title-item-click=${this.onTitleItemClick}></pkm-title>
-    <div id=content>
-    <md-block-render
-      .block=${this.root}
-      @inline-input=${this.onInlineInput}
-      @inline-link-click=${this.onInlineLinkClick}
-      @inline-keydown=${this.onInlineKeyDown}></md-block-render>
-    </div>
-    <pkm-autocomplete></pkm-autocomplete>`;
+        return html ` <div id="status">${this.document?.dirty ? '💽' : ''}</div>
+      <pkm-title
+        .node=${this.root}
+        @title-item-click=${this.onTitleItemClick}
+      ></pkm-title>
+      <div id="content">
+        <md-block-render
+          .block=${this.root}
+          @inline-input=${this.onInlineInput}
+          @inline-link-click=${this.onInlineLinkClick}
+          @inline-keydown=${this.onInlineKeyDown}
+        ></md-block-render>
+      </div>
+      <pkm-autocomplete></pkm-autocomplete>`;
     }
     updated() {
         if (this.name === undefined || this.name === this.document?.name)
@@ -154,7 +155,7 @@ let Editor = class Editor extends LitElement {
                         {
                             description: 'No',
                             execute: async () => void 0,
-                        }
+                        },
                     ]),
                     bubbles: true,
                     composed: true,
@@ -192,7 +193,7 @@ let Editor = class Editor extends LitElement {
                 composed: true,
             }));
     }
-    onInlineLinkClick({ detail: { destination }, }) {
+    onInlineLinkClick({ detail: { destination } }) {
         if (/^(\w)+:/i.test(destination)) {
             window.open(destination);
         }
@@ -204,7 +205,7 @@ let Editor = class Editor extends LitElement {
         this.root = detail;
     }
     onInlineKeyDown(event) {
-        const { detail: { inline, node, keyboardEvent } } = event;
+        const { detail: { inline, node, keyboardEvent }, } = event;
         const hostContext = cast(inline.hostContext);
         const finishEditing = node.viewModel.tree.edit();
         try {
@@ -214,10 +215,18 @@ let Editor = class Editor extends LitElement {
             }
             else if (['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(keyboardEvent.key)) {
                 keyboardEvent.preventDefault();
-                const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key) ? 'backward' : 'forward';
+                const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key)
+                    ? 'backward'
+                    : 'forward';
                 const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
-                const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key) ? 'line' : keyboardEvent.ctrlKey ? 'word' : 'character';
-                const result = hostContext.hasSelection ? 0 : inline.moveCaret(alter, direction, granularity);
+                const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key)
+                    ? 'line'
+                    : keyboardEvent.ctrlKey
+                        ? 'word'
+                        : 'character';
+                const result = hostContext.hasSelection
+                    ? 0
+                    : inline.moveCaret(alter, direction, granularity);
                 if (result === true) {
                     hostContext.clearSelection();
                 }
@@ -234,7 +243,9 @@ let Editor = class Editor extends LitElement {
                         }
                         while (true) {
                             const root = cast(cast(element.hostContext).root);
-                            const next = direction === 'backward' ? findPreviousEditable(node, root) : findNextEditable(node, root);
+                            const next = direction === 'backward'
+                                ? findPreviousEditable(node, root)
+                                : findNextEditable(node, root);
                             if (next) {
                                 focusNode(cast(element.hostContext), next, direction === 'backward' ? -offset : offset);
                                 return { node, element, next };
@@ -248,7 +259,7 @@ let Editor = class Editor extends LitElement {
                             }
                         }
                     }
-                    const { node: updatedNode, element, next } = updateFocus(inline, node, result);
+                    const { node: updatedNode, element, next, } = updateFocus(inline, node, result);
                     if (next && alter === 'extend') {
                         const hostContext = cast(element.hostContext);
                         if (hostContext.selectionAnchor) {
@@ -309,7 +320,7 @@ let Editor = class Editor extends LitElement {
     }
     async triggerPaste(inline, node, edit, forceMarkdown = false) {
         const content = await navigator.clipboard.read();
-        const mdItem = content.find(item => item.types.includes('web text/markdown'));
+        const mdItem = content.find((item) => item.types.includes('web text/markdown'));
         let mdText;
         if (mdItem) {
             const blob = await mdItem.getType('web text/markdown');
@@ -420,7 +431,8 @@ let Editor = class Editor extends LitElement {
         else {
             // TODO: generalize this (inline block mutation)
             const parent = node.viewModel.parent;
-            if (parent?.type === 'list-item' && parent.checked === undefined &&
+            if (parent?.type === 'list-item' &&
+                parent.checked === undefined &&
                 /^\[( |x)] /.test(node.content)) {
                 parent.viewModel.updateChecked(node.content[1] === 'x');
                 node.viewModel.edit({
@@ -434,7 +446,7 @@ let Editor = class Editor extends LitElement {
         }
     }
     getCommands() {
-        const { inline: activeInline, startIndex, endIndex } = this.markdownRenderer.getInlineSelection();
+        const { inline: activeInline, startIndex, endIndex, } = this.markdownRenderer.getInlineSelection();
         const activeNode = activeInline?.node;
         const inTopLevelDocument = activeNode?.viewModel.tree === this.root?.viewModel.tree ?? false;
         const transclusion = activeInline && getContainingTransclusion(activeInline);
@@ -447,7 +459,7 @@ let Editor = class Editor extends LitElement {
             },
             {
                 description: 'Sync all',
-                execute: async () => void await this.library.sync(),
+                execute: async () => void (await this.library.sync()),
             },
             {
                 description: 'Force save',
@@ -461,147 +473,193 @@ let Editor = class Editor extends LitElement {
                     return undefined;
                 },
             },
-            ...(this.document && this.root === this.document.tree.root) ? [{
-                    description: 'Delete document',
-                    execute: async () => {
-                        return new SimpleCommandBundle('Delete document?', [
-                            {
-                                description: 'No',
-                                execute: async () => void 0,
-                            },
-                            {
-                                description: 'Yes',
-                                execute: async () => {
-                                    const tree = this.document.tree;
-                                    const document = this.library.getDocumentByTree(tree);
-                                    await document?.delete();
-                                    await this.navigateByName('index', true);
-                                    return undefined;
-                                }
-                            },
-                        ]);
+            ...(this.document && this.root === this.document.tree.root
+                ? [
+                    {
+                        description: 'Delete document',
+                        execute: async () => {
+                            return new SimpleCommandBundle('Delete document?', [
+                                {
+                                    description: 'No',
+                                    execute: async () => void 0,
+                                },
+                                {
+                                    description: 'Yes',
+                                    execute: async () => {
+                                        const tree = this.document.tree;
+                                        const document = this.library.getDocumentByTree(tree);
+                                        await document?.delete();
+                                        await this.navigateByName('index', true);
+                                        return undefined;
+                                    },
+                                },
+                            ]);
+                        },
                     },
-                }] : [],
-            ...activeInline?.hostContext?.hasSelection ? [{
-                    description: 'Send to...',
-                    execute: async () => {
-                        return new BlockCommandBundle('Send to', this.library, async (result) => void sendTo(result, this.library, activeInline.hostContext, 'remove'), async (result) => void sendTo(result, this.library, activeInline.hostContext, 'remove'));
+                ]
+                : []),
+            ...(activeInline?.hostContext?.hasSelection
+                ? [
+                    {
+                        description: 'Send to...',
+                        execute: async () => {
+                            return new BlockCommandBundle('Send to', this.library, async (result) => void sendTo(result, this.library, activeInline.hostContext, 'remove'), async (result) => void sendTo(result, this.library, activeInline.hostContext, 'remove'));
+                        },
                     },
-                }, {
-                    description: 'Send to and transclude...',
-                    execute: async () => {
-                        return new BlockCommandBundle('Send to and transclude', this.library, async (result) => void sendTo(result, this.library, activeInline.hostContext, 'transclude'), async (result) => void sendTo(result, this.library, activeInline.hostContext, 'transclude'));
+                    {
+                        description: 'Send to and transclude...',
+                        execute: async () => {
+                            return new BlockCommandBundle('Send to and transclude', this.library, async (result) => void sendTo(result, this.library, activeInline.hostContext, 'transclude'), async (result) => void sendTo(result, this.library, activeInline.hostContext, 'transclude'));
+                        },
                     },
-                }, {
-                    description: 'Send to and link...',
-                    execute: async () => {
-                        return new BlockCommandBundle('Send to and link', this.library, async (result) => void sendTo(result, this.library, activeInline.hostContext, 'link'), async (result) => void sendTo(result, this.library, activeInline.hostContext, 'link'));
+                    {
+                        description: 'Send to and link...',
+                        execute: async () => {
+                            return new BlockCommandBundle('Send to and link', this.library, async (result) => void sendTo(result, this.library, activeInline.hostContext, 'link'), async (result) => void sendTo(result, this.library, activeInline.hostContext, 'link'));
+                        },
                     },
-                }] : [],
+                ]
+                : []),
             {
                 description: 'Backlinks',
                 execute: async () => {
                     const action = async (command) => void this.navigateByName(command.description, true);
-                    const commands = this.library.backLinks.getBacklinksByDocument(this.document, this.library).map(name => ({
+                    const commands = this.library.backLinks
+                        .getBacklinksByDocument(this.document, this.library)
+                        .map((name) => ({
                         description: name,
                         execute: action,
                     }));
                     return new SimpleCommandBundle('Open Backlink', commands);
-                }
+                },
             },
-            ...activeNode && startIndex !== undefined && endIndex !== undefined ? [{
-                    description: 'Paste as markdown',
-                    execute: async () => {
-                        this.triggerPaste(activeInline, activeNode, { startIndex, oldEndIndex: endIndex }, true);
-                        return undefined;
-                    },
-                }] : [],
-            ...inTopLevelDocument && activeNode && activeInline ? [{
-                    description: 'Focus on block',
-                    execute: async () => {
-                        this.root = getLogicalContainingBlock(activeNode);
-                        focusNode(cast(activeInline.hostContext), activeNode, startIndex);
-                        return undefined;
-                    },
-                }] : [],
-            ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
-                    description: 'Focus on containing block',
-                    execute: async () => {
-                        if (this.root?.viewModel.parent)
-                            this.root = getLogicalContainingBlock(this.root.viewModel.parent);
-                        if (activeNode && activeInline)
-                            focusNode(cast(activeInline.hostContext), activeNode, startIndex);
-                        return undefined;
-                    },
-                }] : [],
-            ...inTopLevelDocument && this.root !== this.document?.tree.root ? [{
-                    description: 'Focus on document',
-                    execute: async () => {
-                        this.root = this.document?.tree.root;
-                        if (activeNode)
-                            focusNode(cast(activeInline.hostContext), activeNode, startIndex);
-                        return undefined;
-                    },
-                }] : [],
-            ...transclusion ? [{
-                    description: 'Delete transclusion',
-                    execute: async () => {
-                        const finished = transclusion.node.viewModel.tree.edit();
-                        transclusion.node.viewModel.remove();
-                        finished();
-                        // TODO: focus
-                        return undefined;
-                    },
-                }] : [],
-            ...activeNode ? [{
-                    description: 'Insert transclusion...',
-                    execute: async () => {
-                        const action = async ({ name }) => {
-                            const finished = activeNode.viewModel.tree.edit();
-                            const newParagraph = activeNode.viewModel.tree.add({
-                                type: 'code-block',
-                                info: 'tc',
-                                content: name,
-                            });
-                            newParagraph.viewModel.insertBefore(cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
-                            finished();
-                            focusNode(activeInline.hostContext, newParagraph);
+            ...(activeNode && startIndex !== undefined && endIndex !== undefined
+                ? [
+                    {
+                        description: 'Paste as markdown',
+                        execute: async () => {
+                            this.triggerPaste(activeInline, activeNode, { startIndex, oldEndIndex: endIndex }, true);
                             return undefined;
-                        };
-                        return new BlockCommandBundle('Insert transclusion', this.library, action, action);
+                        },
                     },
-                }] : [],
-            ...transclusion ? [{
-                    description: 'Insert before transclusion',
-                    execute: async () => {
-                        const node = transclusion.node;
-                        const finished = node.viewModel.tree.edit();
-                        const newParagraph = node.viewModel.tree.add({
-                            type: 'paragraph',
-                            content: '',
-                        });
-                        newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
-                        finished();
-                        focusNode(cast(transclusion.hostContext), newParagraph, 0);
-                        return undefined;
+                ]
+                : []),
+            ...(inTopLevelDocument && activeNode && activeInline
+                ? [
+                    {
+                        description: 'Focus on block',
+                        execute: async () => {
+                            this.root = getLogicalContainingBlock(activeNode);
+                            focusNode(cast(activeInline.hostContext), activeNode, startIndex);
+                            return undefined;
+                        },
                     },
-                }] : [],
-            ...transclusion ? [{
-                    description: 'Insert after transclusion',
-                    execute: async () => {
-                        const node = transclusion.node;
-                        const finished = node.viewModel.tree.edit();
-                        const newParagraph = node.viewModel.tree.add({
-                            type: 'paragraph',
-                            content: '',
-                        });
-                        newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
-                        finished();
-                        focusNode(cast(transclusion.hostContext), newParagraph, 0);
-                        return undefined;
+                ]
+                : []),
+            ...(inTopLevelDocument && this.root !== this.document?.tree.root
+                ? [
+                    {
+                        description: 'Focus on containing block',
+                        execute: async () => {
+                            if (this.root?.viewModel.parent)
+                                this.root = getLogicalContainingBlock(this.root.viewModel.parent);
+                            if (activeNode && activeInline)
+                                focusNode(cast(activeInline.hostContext), activeNode, startIndex);
+                            return undefined;
+                        },
                     },
-                }] : [],
-            ...activeInline?.hostContext?.hasSelection ? getLanguageTools(() => serializeSelection(activeInline.hostContext)) : [],
+                ]
+                : []),
+            ...(inTopLevelDocument && this.root !== this.document?.tree.root
+                ? [
+                    {
+                        description: 'Focus on document',
+                        execute: async () => {
+                            this.root = this.document?.tree.root;
+                            if (activeNode)
+                                focusNode(cast(activeInline.hostContext), activeNode, startIndex);
+                            return undefined;
+                        },
+                    },
+                ]
+                : []),
+            ...(transclusion
+                ? [
+                    {
+                        description: 'Delete transclusion',
+                        execute: async () => {
+                            const finished = transclusion.node.viewModel.tree.edit();
+                            transclusion.node.viewModel.remove();
+                            finished();
+                            // TODO: focus
+                            return undefined;
+                        },
+                    },
+                ]
+                : []),
+            ...(activeNode
+                ? [
+                    {
+                        description: 'Insert transclusion...',
+                        execute: async () => {
+                            const action = async ({ name }) => {
+                                const finished = activeNode.viewModel.tree.edit();
+                                const newParagraph = activeNode.viewModel.tree.add({
+                                    type: 'code-block',
+                                    info: 'tc',
+                                    content: name,
+                                });
+                                newParagraph.viewModel.insertBefore(cast(activeNode.viewModel.parent), activeNode.viewModel.nextSibling);
+                                finished();
+                                focusNode(activeInline.hostContext, newParagraph);
+                                return undefined;
+                            };
+                            return new BlockCommandBundle('Insert transclusion', this.library, action, action);
+                        },
+                    },
+                ]
+                : []),
+            ...(transclusion
+                ? [
+                    {
+                        description: 'Insert before transclusion',
+                        execute: async () => {
+                            const node = transclusion.node;
+                            const finished = node.viewModel.tree.edit();
+                            const newParagraph = node.viewModel.tree.add({
+                                type: 'paragraph',
+                                content: '',
+                            });
+                            newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
+                            finished();
+                            focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                            return undefined;
+                        },
+                    },
+                ]
+                : []),
+            ...(transclusion
+                ? [
+                    {
+                        description: 'Insert after transclusion',
+                        execute: async () => {
+                            const node = transclusion.node;
+                            const finished = node.viewModel.tree.edit();
+                            const newParagraph = node.viewModel.tree.add({
+                                type: 'paragraph',
+                                content: '',
+                            });
+                            newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node.viewModel.nextSibling);
+                            finished();
+                            focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                            return undefined;
+                        },
+                    },
+                ]
+                : []),
+            ...(activeInline?.hostContext?.hasSelection
+                ? getLanguageTools(() => serializeSelection(activeInline.hostContext))
+                : []),
         ]);
     }
 };
@@ -679,7 +737,8 @@ function nextLogicalInsertionPoint(node) {
     };
 }
 function maybeMergeContentInto(node, target, context) {
-    if (target.type === 'code-block' || target.type === 'paragraph' ||
+    if (target.type === 'code-block' ||
+        target.type === 'paragraph' ||
         target.type === 'section') {
         focusNode(context, target, target.content.length);
         target.viewModel.edit({
@@ -794,11 +853,12 @@ function insertParagraphInSection(node, root, startIndex, context) {
     return true;
 }
 function areAncestorAndDescendant(node, node2, root) {
-    return [...ancestors(node, root)].includes(node2) ||
-        [...ancestors(node2, root)].includes(node);
+    return ([...ancestors(node, root)].includes(node2) ||
+        [...ancestors(node2, root)].includes(node));
 }
 function finishInsertParagraph(node, newParagraph, root, startIndex, context) {
-    const shouldSwap = startIndex === 0 && node.content.length > 0 &&
+    const shouldSwap = startIndex === 0 &&
+        node.content.length > 0 &&
         !areAncestorAndDescendant(node, newParagraph, root);
     if (shouldSwap) {
         swapNodes(node, newParagraph);
@@ -881,10 +941,10 @@ function handleInlineInputAsBlockEdit({ detail: { inline, inputEvent, inputStart
         }
     }
     else if (inputEvent.inputType === 'insertParagraph') {
-        return insertParagraphInList(inline.node, root, inputStart.index, context) ||
+        return (insertParagraphInList(inline.node, root, inputStart.index, context) ||
             insertParagraphInListItem(inline.node, root, inputStart.index, context) ||
             insertParagraphInSection(inline.node, root, inputStart.index, context) ||
-            insertParagraphInDocument(inline.node, root, inputStart.index, context);
+            insertParagraphInDocument(inline.node, root, inputStart.index, context));
     }
     else if (inputEvent.inputType === 'insertLineBreak') {
         return insertSiblingParagraph(inline.node, root, inputStart.index, context);
@@ -938,7 +998,7 @@ function insertMarkdown(markdown, node) {
     assert(root.type === 'document' && root.children);
     const finishEditing = node.viewModel.tree.edit();
     try {
-        const newNodes = root.children.map(newNode => node.viewModel.tree.add(newNode));
+        const newNodes = root.children.map((newNode) => node.viewModel.tree.add(newNode));
         let newFocus = findFinalEditable(newNodes[0]);
         performLogicalInsertion(node, newNodes);
         return newFocus;

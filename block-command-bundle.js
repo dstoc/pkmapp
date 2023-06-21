@@ -18,14 +18,16 @@ export class BlockCommandBundle {
             const filter = getFilter(parts[i]);
             constraints[i] = (await Promise.all(names.filter(filter).map(async (name) => {
                 const blocks = await this.library.findAll(name);
-                return blocks.map(item => ({
+                return blocks.map((item) => ({
                     ...item,
-                    name: this.library.metadata.getNames(item.root)[0] ?? item.document.name,
-                    description: this.library.metadata.getNames(item.root)[0] ?? item.document.name,
+                    name: this.library.metadata.getNames(item.root)[0] ??
+                        item.document.name,
+                    description: this.library.metadata.getNames(item.root)[0] ??
+                        item.document.name,
                 }));
             }))).flat();
             if (i > 0) {
-                constraints[i] = constraints[i].filter(item => {
+                constraints[i] = constraints[i].filter((item) => {
                     let next;
                     do {
                         next = getLogicalContainingBlock(next ?? item.root);
@@ -49,7 +51,9 @@ export class BlockCommandBundle {
             seen.add(item.root);
             return true;
         }
-        const commands = constraints[constraints.length - 1].filter(once).map(item => ({
+        const commands = constraints[constraints.length - 1]
+            .filter(once)
+            .map((item) => ({
             description: item.description,
             execute: async () => this.action(item),
             icon: blockIcon(item),
@@ -69,7 +73,8 @@ export function blockPreview({ root }) {
     return html `
     <pkm-title .node=${root}></pkm-title>
     <p>
-    <md-block-render .block=${root} style="margin-top: 1em"></md-block-render>
+      <md-block-render .block=${root} style="margin-top: 1em"></md-block-render>
+    </p>
   `;
 }
 export function blockIcon({ root }) {

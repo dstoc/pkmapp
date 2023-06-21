@@ -18,7 +18,7 @@ export class BackLinks {
         this.backLinks = new Map();
     }
     getBacklinksByName(name) {
-        return [...(this.backLinks.get(name)?.values() ?? [])].map(node => node.viewModel.tree);
+        return [...(this.backLinks.get(name)?.values() ?? [])].map((node) => node.viewModel.tree);
     }
     getBacklinksByDocument(document, library) {
         const sources = new Set();
@@ -50,10 +50,10 @@ export class BackLinks {
             const preLinks = new Set(links?.values() ?? []);
             for (const next of dfs(ivmn.viewModel.inlineTree.rootNode)) {
                 if (next.type === 'inline_link' || next.type === 'shortcut_link') {
-                    const text = next.namedChildren.find((node) => node.type === 'link_text')?.text ??
-                        '';
-                    const destination = next.namedChildren.find((node) => node.type === 'link_destination')?.text ??
-                        text;
+                    const text = next.namedChildren.find((node) => node.type === 'link_text')
+                        ?.text ?? '';
+                    const destination = next.namedChildren.find((node) => node.type === 'link_destination')
+                        ?.text ?? text;
                     if (!links) {
                         links = new Set();
                         this.links.set(ivmn, links);

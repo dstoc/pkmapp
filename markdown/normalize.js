@@ -89,7 +89,8 @@ function normalizeSections(tree) {
 }
 export function normalizeTree(tree) {
     const emptyPredicate = (node) => node &&
-        node.viewModel.parent && !node.viewModel.firstChild &&
+        node.viewModel.parent &&
+        !node.viewModel.firstChild &&
         ['list-item', 'list', 'block-quote'].includes(node.type);
     for (const empty of [...dfs(tree.root)].filter(emptyPredicate)) {
         let node = empty;

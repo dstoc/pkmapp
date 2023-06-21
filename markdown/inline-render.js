@@ -19,7 +19,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 var MarkdownInline_1;
 import { contextProvided } from '../deps/lit-labs-context.js';
-import { css, customElement, html, LitElement, property, query, queryAll, repeat } from '../deps/lit.js';
+import { css, customElement, html, LitElement, property, query, queryAll, repeat, } from '../deps/lit.js';
 import { cast } from '../asserts.js';
 import { hostContext } from './host-context.js';
 let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement {
@@ -197,7 +197,9 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         const walker = document.createTreeWalker(parent, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
         walker.currentNode = node;
         let previous = walker.previousNode();
-        while (previous && previous !== parent && !(previous instanceof MarkdownSpan)) {
+        while (previous &&
+            previous !== parent &&
+            !(previous instanceof MarkdownSpan)) {
             if (previous.nodeType === Node.TEXT_NODE) {
                 offset += previous.length;
             }
@@ -242,14 +244,17 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         const result = MarkdownInline_1.nodeOffsetToInputPoint(selection.focusNode, selection.focusOffset);
         if (granularity === 'line') {
             if (direction == 'backward') {
-                return result.index < line.start.index || initial.index - line.start.index;
+                return (result.index < line.start.index || initial.index - line.start.index);
             }
             else {
-                return (result.index > line.end.index || result.index !== end.index && result.index == line.end.index) || initial.index - line.start.index;
+                return (result.index > line.end.index ||
+                    (result.index !== end.index && result.index == line.end.index) ||
+                    initial.index - line.start.index);
             }
         }
         else {
-            return result.index !== initial.index || (direction === 'backward' ? Infinity : 0);
+            return (result.index !== initial.index ||
+                (direction === 'backward' ? Infinity : 0));
         }
     }
     getSelection() {
@@ -259,7 +264,10 @@ let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement 
         return MarkdownInline_1.getSelectionRange(selection);
     }
     getCaretPosition() {
-        let { x, y, height } = this.getRootNode().getSelection().getRangeAt(0).getBoundingClientRect();
+        let { x, y, height } = this.getRootNode()
+            .getSelection()
+            .getRangeAt(0)
+            .getBoundingClientRect();
         if (x === 0 && y === 0) {
             ({ x, y, height } = this.getBoundingClientRect());
         }
@@ -370,7 +378,10 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
         const node = this.node;
         if (!node)
             return;
-        if (event.target instanceof HTMLAnchorElement || node.type === 'inline_link' || node.type === 'shortcut_link' || node.type === 'uri_autolink') {
+        if (event.target instanceof HTMLAnchorElement ||
+            node.type === 'inline_link' ||
+            node.type === 'shortcut_link' ||
+            node.type === 'uri_autolink') {
             // Prevent focus before link click.
             event.preventDefault();
         }
@@ -389,11 +400,14 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
             };
         }
         else {
-            if (node.type !== 'inline_link' && node.type !== 'shortcut_link' && node.type !== 'uri_autolink')
+            if (node.type !== 'inline_link' &&
+                node.type !== 'shortcut_link' &&
+                node.type !== 'uri_autolink')
                 return;
             const text = node.namedChildren.find((node) => node.type === 'link_text')?.text ??
                 '';
-            const destination = node.namedChildren.find((node) => node.type === 'link_destination')?.text ??
+            const destination = node.namedChildren.find((node) => node.type === 'link_destination')
+                ?.text ??
                 (node.type === 'uri_autolink' ? node.text.slice(1, -1) : null) ??
                 text;
             inlineLinkClick = {
@@ -467,7 +481,9 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
             }
             else {
                 const target = value.startsWith('http') ? value : `http://${value}`;
-                return html `<a href=${target} target="_blank" rel="noopener noreferrer">${value}</a>`;
+                return html `<a href=${target} target="_blank" rel="noopener noreferrer"
+          >${value}</a
+        >`;
             }
         })}`;
     }

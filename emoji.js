@@ -101,7 +101,6 @@ let Emoji = class Emoji extends LitElement {
             this.updateEmoji();
         }
         return changedProperties.has('emoji');
-        ;
     }
     render() {
         return html `${this.emoji ?? ''}`;

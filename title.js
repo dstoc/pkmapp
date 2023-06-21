@@ -19,7 +19,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import { assert } from './asserts.js';
 import { findNextEditable } from './markdown/view-model-util.js';
-import { state, property, css, customElement, html, LitElement } from './deps/lit.js';
+import { state, property, css, customElement, html, LitElement, } from './deps/lit.js';
 import { contextProvided } from './deps/lit-labs-context.js';
 import { libraryContext } from './app-context.js';
 import { getLogicalContainingBlock } from './block-util.js';
@@ -43,10 +43,13 @@ let Title = class Title extends LitElement {
             containers.unshift(next);
             next = getLogicalContainingBlock(next);
         }
-        this.observers = new Observers(...containers.map(container => new Observer(() => container.viewModel.observe, (target, observer) => target.add(observer), (target, observer) => target.remove(observer), () => this.requestUpdate())));
+        this.observers = new Observers(...containers.map((container) => new Observer(() => container.viewModel.observe, (target, observer) => target.add(observer), (target, observer) => target.remove(observer), () => this.requestUpdate())));
         this.observers.update();
         return html `
-      ${containers.map(node => html `» <a class=item @click=${() => this.onItemClick(node)}>${getTitle(node, this.library)}</a> `)}
+      ${containers.map((node) => html `»
+            <a class="item" @click=${() => this.onItemClick(node)}
+              >${getTitle(node, this.library)}</a
+            > `)}
     `;
     }
     onItemClick(node) {

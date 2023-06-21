@@ -12,23 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 function wrap(request) {
-    return new Promise((resolve, reject) => (request.onsuccess = () => resolve(request), request.onerror = reject));
+    return new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request)), (request.onerror = reject)));
 }
 async function getDatabase() {
     const request = indexedDB.open('pkmapp-directories');
-    request.onupgradeneeded = e => {
+    request.onupgradeneeded = (e) => {
         const database = request.result;
         database.createObjectStore('directories');
     };
     return (await wrap(request)).result;
 }
 export async function getDirectory(key) {
-    const db = (await getDatabase());
-    const result = (await wrap(db.transaction('directories', 'readwrite').objectStore('directories').get(key))).result;
+    const db = await getDatabase();
+    const result = (await wrap(db
+        .transaction('directories', 'readwrite')
+        .objectStore('directories')
+        .get(key))).result;
     return result;
 }
 export async function setDirectory(key, directory) {
-    const db = (await getDatabase());
-    await wrap(db.transaction('directories', 'readwrite').objectStore('directories').put(directory, key));
+    const db = await getDatabase();
+    await wrap(db
+        .transaction('directories', 'readwrite')
+        .objectStore('directories')
+        .put(directory, key));
 }
 //# sourceMappingURL=directory-db.js.map

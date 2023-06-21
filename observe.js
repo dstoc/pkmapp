@@ -23,11 +23,11 @@ export class Observe {
         assert(this.state === 'active');
         this.state = 'suspended';
         let result;
-        this.resumed = new Promise((resolve) => result = () => {
+        this.resumed = new Promise((resolve) => (result = () => {
             this.state = 'active';
             this.resumed = undefined;
             resolve();
-        });
+        }));
         return result;
     }
     notify() {

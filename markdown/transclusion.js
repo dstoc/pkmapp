@@ -17,7 +17,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { query, customElement, html, css, state, LitElement, property } from '../deps/lit.js';
+import { query, customElement, html, css, state, LitElement, property, } from '../deps/lit.js';
 import { MarkdownRenderer } from './block-render.js';
 import { libraryContext } from '../app-context.js';
 import './block-render.js';
@@ -40,10 +40,12 @@ let MarkdownTransclusion = class MarkdownTransclusion extends LitElement {
         }
     }
     render() {
-        return this.root ? html `
-      ⮴ ${this.node?.content.trim()}
-      <md-block-render .block=${this.root}></md-block-render>
-    ` : '';
+        return this.root
+            ? html `
+          ⮴ ${this.node?.content.trim()}
+          <md-block-render .block=${this.root}></md-block-render>
+        `
+            : '';
     }
     static get styles() {
         return css `
@@ -69,11 +71,12 @@ let MarkdownTransclusion = class MarkdownTransclusion extends LitElement {
             return;
         if (this.hostContext.focusNode !== this.node)
             return;
-        const node = (this.hostContext.focusOffset ?? -1) >= 0 ?
-            findNextEditable(this.root, this.root, true) :
-            findFinalEditable(this.root, true);
+        const node = (this.hostContext.focusOffset ?? -1) >= 0
+            ? findNextEditable(this.root, this.root, true)
+            : findFinalEditable(this.root, true);
         this.markdownRenderer.hostContext.focusNode = node || undefined;
-        this.markdownRenderer.hostContext.focusOffset = this.hostContext.focusOffset;
+        this.markdownRenderer.hostContext.focusOffset =
+            this.hostContext.focusOffset;
         this.hostContext.focusNode = undefined;
         this.hostContext.focusOffset = undefined;
         node?.viewModel.observe.notify();

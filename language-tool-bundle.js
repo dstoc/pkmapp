@@ -5,36 +5,41 @@ import { parseBlocks } from './markdown/block-parser.js';
 import { MarkdownTree } from './markdown/view-model.js';
 import { assert } from './asserts.js';
 export function getLanguageTools(getSelection) {
-    return [new SimpleCommandBundle("Analyze with LLM", Object.entries(analyzePrompts).map(([description, suffix]) => ({
+    return [
+        new SimpleCommandBundle('Analyze with LLM', Object.entries(analyzePrompts).map(([description, suffix]) => ({
             description,
             async execute(_command, updatePreview) {
                 const loader = new StreamingLoader('');
                 const prompt = `${getSelection()}END\n\n${analyzePrefix} ${suffix}`;
-                const preview = () => html `<md-block-render .block=${loader.tree.root}></md-block-render>`;
+                const preview = () => html `<md-block-render
+              .block=${loader.tree.root}
+            ></md-block-render>`;
                 for await (const chunk of openAiChat(prompt)) {
                     loader.append(chunk);
                     updatePreview(preview());
                 }
-                return new SimpleCommandBundle("what?", [{
+                return new SimpleCommandBundle('what?', [
+                    {
                         description: 'Replace selection',
-                        async execute() {
-                        },
+                        async execute() { },
                         preview,
-                    }, {
+                    },
+                    {
                         description: 'Append after selection',
-                        async execute() {
-                        },
+                        async execute() { },
                         preview,
                         // TODO: is type inference broken?
-                    }, {
+                    },
+                    {
                         description: 'Copy to clipboard',
-                        async execute() {
-                        },
+                        async execute() { },
                         preview,
                         // TODO: is type inference broken?
-                    }]);
+                    },
+                ]);
             },
-        })))];
+        }))),
+    ];
 }
 /**
  * Loads a markdown tree with streamed (appended) content in a not completely
@@ -92,15 +97,17 @@ async function* openAiChat(prompt) {
         body: JSON.stringify({
             model: 'gpt-3.5-turbo',
             stream: true,
-            messages: [{
+            messages: [
+                {
                     role: 'user',
                     content: prompt,
-                }]
+                },
+            ],
         }),
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`,
-        }
+            Authorization: `Bearer ${key}`,
+        },
     });
     const stream = response.body;
     if (!stream)
@@ -137,15 +144,15 @@ function iterateStream(stream) {
             finally {
                 reader.releaseLock();
             }
-        }
+        },
     };
 }
 const analyzePrefix = `Analyze all text above and`;
 const analyzePrompts = {
-    'Elaborate': `Elaborate with 3-5 bullet point statements that expand by relating additional information not in the original text.`,
+    Elaborate: `Elaborate with 3-5 bullet point statements that expand by relating additional information not in the original text.`,
     'Capture the essence': `Rewrite in a simple paragraph that captures the essence.`,
-    'Defeat': `List 3-5 reasons why it might not work as bullet point statements.`,
-    'Reflect': `Complete the following prompts:
+    Defeat: `List 3-5 reasons why it might not work as bullet point statements.`,
+    Reflect: `Complete the following prompts:
 1. That's interesting because...
 2. That reminds me of...
 3. It's similar because...

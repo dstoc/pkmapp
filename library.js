@@ -13,7 +13,7 @@
 // limitations under the License.
 import { parseBlocks } from './markdown/block-parser.js';
 import { serializeToString } from './markdown/block-serializer.js';
-import { MarkdownTree } from './markdown/view-model.js';
+import { MarkdownTree, } from './markdown/view-model.js';
 import { Observe } from './observe.js';
 import { BackLinks } from './backlinks.js';
 import { Metadata } from './metadata.js';
@@ -111,7 +111,8 @@ export class FileSystemLibrary {
         const result = new Set(this.metadata.findByName(name));
         if (this.cache.has(name)) {
             const document = cast(this.cache.get(name));
-            if (document.name === document.filename || document.filename === 'index') {
+            if (document.name === document.filename ||
+                document.filename === 'index') {
                 result.add(document.tree.root);
             }
         }
@@ -122,14 +123,14 @@ export class FileSystemLibrary {
         const parts = name.split('/');
         const blocks = [];
         for (let i = 0; i < parts.length; i++) {
-            blocks[i] = this.findByName(parts[i]).map(root => {
+            blocks[i] = this.findByName(parts[i]).map((root) => {
                 return {
                     document: cast(this.getDocumentByTree(root.viewModel.tree)),
                     root,
                 };
             });
             if (i > 0) {
-                blocks[i] = blocks[i].filter(item => {
+                blocks[i] = blocks[i].filter((item) => {
                     let next;
                     do {
                         next = getLogicalContainingBlock(next ?? item.root);
@@ -178,7 +179,7 @@ export class FileSystemLibrary {
         if (cached) {
             return cached;
         }
-        const { root, lastModified } = await this.load(name, 0) ?? {};
+        const { root, lastModified } = (await this.load(name, 0)) ?? {};
         if (!root || lastModified == null)
             return;
         const library = this;
@@ -200,12 +201,10 @@ class FileSystemDocument {
         this.tree.observe.add(() => this.markDirty());
     }
     get name() {
-        return this.library.metadata.getPreferredName(this.tree.root) ?? this.filename;
+        return (this.library.metadata.getPreferredName(this.tree.root) ?? this.filename);
     }
     get allNames() {
-        const names = [
-            ...this.library.metadata.getNames(this.tree.root),
-        ];
+        const names = [...this.library.metadata.getNames(this.tree.root)];
         return names.length ? names : [this.filename];
     }
     postEditUpdate(node, change) {
@@ -243,7 +242,7 @@ class FileSystemDocument {
     async delete() {
         this.state = 'deleted';
         this.tree.setRoot(this.tree.add({
-            type: 'document'
+            type: 'document',
         }));
         this.library.cache.delete(normalizeName(this.filename));
         await deleteFile(this.library.directory, this.filename + '.md');

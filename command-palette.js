@@ -17,7 +17,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { css, customElement, html, LitElement, query, state, property } from './deps/lit.js';
+import { css, customElement, html, LitElement, query, state, property, } from './deps/lit.js';
 import { cast } from './asserts.js';
 import './emoji.js';
 export class SimpleCommandBundle {
@@ -50,7 +50,8 @@ let CommandPalette = class CommandPalette extends LitElement {
         display: grid;
         height: 100%;
       }
-      input, .item {
+      input,
+      .item {
         border: none;
         color: var(--root-color);
         outline: none;
@@ -59,10 +60,12 @@ let CommandPalette = class CommandPalette extends LitElement {
         padding-left: 10px;
         font-family: var(--root-font);
       }
-      input, #items {
+      input,
+      #items {
         padding: 10px;
       }
-      #separator, #preview-separator {
+      #separator,
+      #preview-separator {
         height: 100%;
         background: var(--md-accent-color);
         opacity: 0.25;
@@ -89,7 +92,7 @@ let CommandPalette = class CommandPalette extends LitElement {
         padding-bottom: 5px;
       }
       .item[data-active] {
-        background: rgba(128,128,128,0.3);
+        background: rgba(128, 128, 128, 0.3);
         border-radius: 5px;
       }
       #items {
@@ -116,11 +119,11 @@ let CommandPalette = class CommandPalette extends LitElement {
       :host {
         grid-template-rows: min-content 1px 1fr 1px 1fr;
         grid-template-areas:
-          "input"
-          "sep"
-          "items"
-          "psep"
-          "preview";
+          'input'
+          'sep'
+          'items'
+          'psep'
+          'preview';
       }
       :host-context([collapsed]) {
         grid-template-rows: 0 0 1fr 1px;
@@ -130,9 +133,9 @@ let CommandPalette = class CommandPalette extends LitElement {
           grid-template-columns: 500px 1px;
           grid-template-rows: min-content 1px 1fr;
           grid-template-areas:
-            "input input input"
-            "sep   sep   sep"
-            "items psep  preview";
+            'input input input'
+            'sep   sep   sep'
+            'items psep  preview';
         }
         :host-context([collapsed]) {
           grid-template-rows: 0 0 1fr;
@@ -142,7 +145,10 @@ let CommandPalette = class CommandPalette extends LitElement {
     }
     render() {
         const preview = this.activeItems?.[this.activeIndex]?.preview ??
-            (() => html `<pkm-emoji .text=${this.activeItems?.[this.activeIndex]?.description ?? 'default'}></pkm-emoji>`);
+            (() => html `<pkm-emoji
+          .text=${this.activeItems?.[this.activeIndex]?.description ??
+                'default'}
+        ></pkm-emoji>`);
         return html `
       <input
           type=text
@@ -152,12 +158,15 @@ let CommandPalette = class CommandPalette extends LitElement {
       <div id=separator></div>
       <div id=items>
         ${this.activeItems.map((item, idx) => html `
-        <div
-            class=item
-            ?data-active=${idx === this.activeIndex}
-            @click=${this.handleItemClick}
-            @pointermove=${() => this.activeIndex = idx}><span class=icon>${item.icon}</span>${item.description}</div>
-        `)}
+            <div
+              class="item"
+              ?data-active=${idx === this.activeIndex}
+              @click=${this.handleItemClick}
+              @pointermove=${() => (this.activeIndex = idx)}
+            >
+              <span class="icon">${item.icon}</span>${item.description}
+            </div>
+          `)}
       </div>
       <div id=preview-separator></div>
       <div id=preview>${this.previewOverride ?? preview?.()}</div>
@@ -169,9 +178,10 @@ let CommandPalette = class CommandPalette extends LitElement {
             this.activeSearch = search;
             this.activeIndex = 0;
         }
-        this.activeItems = this.bundle ? await this.bundle.getCommands(search, 100) : [];
-        this.activeIndex =
-            Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
+        this.activeItems = this.bundle
+            ? await this.bundle.getCommands(search, 100)
+            : [];
+        this.activeIndex = Math.max(0, Math.min(this.activeIndex, this.activeItems.length - 1));
     }
     handleInputKeyDown(e) {
         switch (e.key) {
@@ -219,7 +229,7 @@ let CommandPalette = class CommandPalette extends LitElement {
             iterations: Infinity,
             easing: 'ease-in-out',
         });
-        const next = await selected.execute(selected, template => this.previewOverride = template);
+        const next = await selected.execute(selected, (template) => (this.previewOverride = template));
         animation.cancel();
         if (next) {
             await this.trigger(next);
@@ -234,7 +244,7 @@ let CommandPalette = class CommandPalette extends LitElement {
         await this.onInput();
     }
     async triggerCommand(command) {
-        const bundle = await command.execute(command, template => this.previewOverride = template);
+        const bundle = await command.execute(command, (template) => (this.previewOverride = template));
         await this.trigger(cast(bundle));
     }
     next() {

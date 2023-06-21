@@ -21,8 +21,8 @@ import './markdown/block-render.js';
 import './command-palette.js';
 import { contextProvided } from './deps/lit-labs-context.js';
 import { libraryContext } from './app-context.js';
-import { css, query, customElement, html, LitElement, property, state } from './deps/lit.js';
-import { SimpleCommandBundle } from './command-palette.js';
+import { css, query, customElement, html, LitElement, property, state, } from './deps/lit.js';
+import { SimpleCommandBundle, } from './command-palette.js';
 import { focusNode } from './markdown/host-context.js';
 import { BlockCommandBundle } from './block-command-bundle.js';
 let Autocomplete = class Autocomplete extends LitElement {
@@ -57,7 +57,10 @@ let Autocomplete = class Autocomplete extends LitElement {
     }
     render() {
         return html `
-      <pkm-command-palette @commit=${this.abort} collapsed></pkm-command-palette>
+      <pkm-command-palette
+        @commit=${this.abort}
+        collapsed
+      ></pkm-command-palette>
     `;
     }
     onInlineKeyDown({ detail: { inline, node, keyboardEvent }, }) {
@@ -97,7 +100,10 @@ let Autocomplete = class Autocomplete extends LitElement {
         this.node = inline.node;
         this.startIndex = index;
         this.endIndex = index;
-        document.addEventListener('pointerdown', () => this.abort(), { capture: true, once: true });
+        document.addEventListener('pointerdown', () => this.abort(), {
+            capture: true,
+            once: true,
+        });
     }
     getLinkInsertionCommand(inline) {
         const node = inline.node;
@@ -162,7 +168,9 @@ let Autocomplete = class Autocomplete extends LitElement {
                 this.palette.triggerCommand(this.getLinkInsertionCommand(inline));
             }
             else if (newText === '/') {
-                this.palette.trigger(new SimpleCommandBundle('Run command...', [this.getSlashCommandWrapper(inline, this.getLinkInsertionCommand(inline))]));
+                this.palette.trigger(new SimpleCommandBundle('Run command...', [
+                    this.getSlashCommandWrapper(inline, this.getLinkInsertionCommand(inline)),
+                ]));
                 this.activate(inline, cursorIndex);
             }
         }
