@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "lib": ["esnext", "dom"],
+    "types": ["wicg-file-system-access"],
     "esModuleInterop": true,
     "target": "esnext",
     "module": "esnext",
