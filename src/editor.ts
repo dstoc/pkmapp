@@ -55,12 +55,15 @@ import {
   findPreviousEditable,
   reverseDfs,
   swapNodes,
+  removeDescendantNodes,
+  cloneNode,
 } from './markdown/view-model-util.js';
 import {
   InlineEdit,
   InlineViewModel,
   InlineViewModelNode,
   ViewModelNode,
+  MarkdownTree,
 } from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
@@ -1255,18 +1258,60 @@ function copyMarkdownToClipboard(markdown: string) {
 }
 
 function serializeSelection(hostContext: HostContext) {
-  return serializeToString(cast(hostContext.root), (node) => {
+  // This is complex because:
+  // 1. Sections can be disjoint.
+  // 2. Expecations of what to serialize is different to the set of selected
+  //    nodes. For example, if the selection is a paragaph immediately inside
+  //    a list-item, we should serialize the list-item too.
+  // The approach here is:
+  // 1. Recursively expand the selection to include ancestor nodes, when the
+  //    selected node is the first child.
+  // 2. Combine the selected nodes when one is an ancestor of another.
+  // 3. Clone the selected nodes, removing any inline nodes that were not
+  //    part of the original selection.
+  // 4. Build a new document, append the clones (triggering normalization)
+  // 5. Serialize the new document.
+  const expand = (node: ViewModelNode) => {
+    let result = node;
+    if (node.viewModel.previousSibling) {
+      return result;
+    }
+    for (const ancestor of ancestors(node, hostContext.root!)) {
+      if (ancestor.type === 'section') {
+        break;
+      }
+      result = ancestor;
+      if (ancestor.viewModel.previousSibling) {
+        break;
+      }
+    }
+    return result;
+  };
+  const predicate = (node: ViewModelNode) => {
     switch (node.type) {
       case 'section':
       case 'paragraph':
       case 'code-block':
-        return hostContext.selection.has(node as ViewModelNode);
+        return hostContext.selection.has(node);
       case 'unsupported':
         return false;
       default:
         return true;
     }
+  };
+  const roots = removeDescendantNodes(
+    [...hostContext.selection.values()].map(expand)
+  ).map((node) => cloneNode(node, predicate));
+  const tree = new MarkdownTree({
+    type: 'document',
   });
+  const finishEditing = tree.edit();
+  for (const root of roots) {
+    const node = tree.add<MarkdownNode>(root);
+    node.viewModel.insertBefore(tree.root);
+  }
+  finishEditing();
+  return serializeToString(tree.root);
 }
 
 declare global {

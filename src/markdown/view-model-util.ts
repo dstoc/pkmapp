@@ -15,6 +15,7 @@
 import {assert, cast} from '../asserts.js';
 
 import {ViewModelNode} from './view-model.js';
+import {MarkdownNode} from './node.js';
 
 export function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
   if (node1.viewModel.nextSibling === node2) {
@@ -156,4 +157,48 @@ export function* children(node: ViewModelNode) {
     next = child.viewModel.nextSibling;
     yield child;
   }
+}
+
+/**
+ * Returns the values of `nodes` with any nodes that are descendants of
+ * others removed.
+ */
+export function removeDescendantNodes(nodes: ViewModelNode[]) {
+  const roots = new Set<ViewModelNode>(nodes);
+  for (const node of nodes) {
+    for (const ancestor of ancestors(node, node.viewModel.tree.root)) {
+      if (roots.has(ancestor)) {
+        roots.delete(node);
+        break;
+      }
+    }
+  }
+  return [...roots.values()];
+}
+
+function* cloneChildren(
+  children: ViewModelNode[],
+  predicate?: (node: ViewModelNode) => boolean
+): Generator<MarkdownNode> {
+  for (const child of children) {
+    if (!predicate || predicate(child)) {
+      yield cloneNode(child, predicate);
+    }
+  }
+}
+
+/**
+ * Clones `node` into a `MarkdownNode` excluding any descendants where the
+ * optional predicate returns `false`.
+ */
+export function cloneNode(
+  node: ViewModelNode,
+  predicate?: (node: ViewModelNode) => boolean
+): MarkdownNode {
+  const result: MarkdownNode = {
+    ...node,
+    children: [...cloneChildren(node.children ?? [], predicate)],
+  };
+  delete (result as any).viewModel;
+  return result;
 }
