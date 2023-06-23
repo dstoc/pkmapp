@@ -130,4 +130,39 @@ export function* children(node) {
         yield child;
     }
 }
+/**
+ * Returns the values of `nodes` with any nodes that are descendants of
+ * others removed.
+ */
+export function removeDescendantNodes(nodes) {
+    const roots = new Set(nodes);
+    for (const node of nodes) {
+        for (const ancestor of ancestors(node, node.viewModel.tree.root)) {
+            if (roots.has(ancestor)) {
+                roots.delete(node);
+                break;
+            }
+        }
+    }
+    return [...roots.values()];
+}
+function* cloneChildren(children, predicate) {
+    for (const child of children) {
+        if (!predicate || predicate(child)) {
+            yield cloneNode(child, predicate);
+        }
+    }
+}
+/**
+ * Clones `node` into a `MarkdownNode` excluding any descendants where the
+ * optional predicate returns `false`.
+ */
+export function cloneNode(node, predicate) {
+    const result = {
+        ...node,
+        children: [...cloneChildren(node.children ?? [], predicate)],
+    };
+    delete result.viewModel;
+    return result;
+}
 //# sourceMappingURL=view-model-util.js.map
