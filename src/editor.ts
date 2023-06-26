@@ -865,33 +865,43 @@ function performLogicalInsertion(
   context: ViewModelNode,
   nodes: ViewModelNode[]
 ) {
-  const {parent, nextSibling} = nextLogicalInsertionPoint(context);
+  let {parent, nextSibling} = nextLogicalInsertionPoint(context);
   if (context.type === 'section') {
+    // Insertion into a section is append-only. Mainly so that send-to section
+    // is sensible.
+    parent = context;
+    nextSibling = undefined;
     for (const node of nodes) {
-      node.viewModel.insertBefore(context);
+      if (node.type === 'section') {
+        const list = parent.viewModel.tree.add({type: 'list'});
+        const listItem = parent.viewModel.tree.add({
+          type: 'list-item',
+          marker: '* ',
+        });
+        list.viewModel.insertBefore(parent, nextSibling);
+        listItem.viewModel.insertBefore(list);
+        parent = listItem;
+        nextSibling = undefined;
+        break;
+      }
     }
   } else if (parent.type == 'list') {
     if (nodes.length === 1 && nodes[0].type === 'list') {
       const [node] = nodes;
-      for (const child of children(node)) {
-        assert(child.type === 'list-item');
-        child.viewModel.insertBefore(parent, nextSibling);
-      }
+      nodes = [...children(node)];
     } else {
       const listItem = parent.viewModel.tree.add({
         type: 'list-item',
         // TODO: infer from list
-        marker: '*',
+        marker: '* ',
       });
       listItem.viewModel.insertBefore(parent, nextSibling);
-      for (const node of nodes) {
-        node.viewModel.insertBefore(listItem, undefined);
-      }
+      parent = listItem;
+      nextSibling = undefined;
     }
-  } else {
-    for (const node of nodes) {
-      node.viewModel.insertBefore(parent, nextSibling);
-    }
+  }
+  for (const node of nodes) {
+    node.viewModel.insertBefore(parent, nextSibling);
   }
 }
 
