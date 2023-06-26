@@ -1062,7 +1062,8 @@ function insertParagraphInSection(
   let nextSibling;
   if (section) {
     nextSibling = path![0].viewModel.nextSibling;
-  } else if (node.type === 'section') {
+  }
+  if (node.type === 'section') {
     section = node;
     nextSibling = section!.viewModel.firstChild;
   }
