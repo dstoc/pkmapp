@@ -72,7 +72,6 @@ function unindent(node: ViewModelNode, root: ViewModelNode) {
   const target = path[0];
   const nextSibling = listItem.viewModel.nextSibling;
   const list = listItem.viewModel.parent!;
-  if (list.viewModel.nextSibling) return;
   const targetListItemSibling = list.viewModel.parent!;
   if (targetListItemSibling?.type === 'list-item') {
     listItem.viewModel.insertBefore(
@@ -126,14 +125,7 @@ function indent(node: ViewModelNode, root: ViewModelNode) {
     if (ancestor.type === 'document') {
       break;
     }
-    // Don't indent a section at the top level, unless we are inside a heading.
-    if (
-      ancestor.type === 'section' &&
-      ancestor.viewModel.parent!.type == 'document'
-    ) {
-      if (target.type === 'section') {
-        target = ancestor;
-      }
+    if (ancestor.type === 'section') {
       break;
     }
     target = ancestor;
