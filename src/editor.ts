@@ -77,7 +77,10 @@ import {
   maybeRemoveSelectedNodes,
   maybeRemoveSelectedNodesIn,
 } from './block-selection-util.js';
-import {getLogicalContainingBlock} from './block-util.js';
+import {
+  isLogicalContainingBlock,
+  getLogicalContainingBlock,
+} from './block-util.js';
 import {
   blockPreview,
   blockIcon,
@@ -718,7 +721,9 @@ export class Editor extends LitElement {
             {
               description: 'Focus on block',
               execute: async () => {
-                this.root = getLogicalContainingBlock(activeNode);
+                this.root = isLogicalContainingBlock(activeNode)
+                  ? activeNode
+                  : getLogicalContainingBlock(activeNode);
                 focusNode(
                   cast(activeInline.hostContext),
                   activeNode,
