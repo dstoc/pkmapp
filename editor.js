@@ -35,7 +35,7 @@ import { Observer, Observers } from './observe.js';
 import { getContainingTransclusion } from './markdown/transclusion.js';
 import { maybeEditBlockSelectionIndent, editInlineIndent, } from './indent-util.js';
 import { getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedNodesIn, } from './block-selection-util.js';
-import { getLogicalContainingBlock } from './block-util.js';
+import { isLogicalContainingBlock, getLogicalContainingBlock, } from './block-util.js';
 import { blockPreview, blockIcon, BlockCommandBundle, } from './block-command-bundle.js';
 import { getLanguageTools } from './language-tool-bundle.js';
 let Editor = class Editor extends LitElement {
@@ -550,7 +550,9 @@ let Editor = class Editor extends LitElement {
                     {
                         description: 'Focus on block',
                         execute: async () => {
-                            this.root = getLogicalContainingBlock(activeNode);
+                            this.root = isLogicalContainingBlock(activeNode)
+                                ? activeNode
+                                : getLogicalContainingBlock(activeNode);
                             focusNode(cast(activeInline.hostContext), activeNode, startIndex);
                             return undefined;
                         },
@@ -691,36 +693,45 @@ Editor = __decorate([
 ], Editor);
 export { Editor };
 function performLogicalInsertion(context, nodes) {
-    const { parent, nextSibling } = nextLogicalInsertionPoint(context);
+    let { parent, nextSibling } = nextLogicalInsertionPoint(context);
     if (context.type === 'section') {
+        // Insertion into a section is append-only. Mainly so that send-to section
+        // is sensible.
+        parent = context;
+        nextSibling = undefined;
         for (const node of nodes) {
-            node.viewModel.insertBefore(context);
+            if (node.type === 'section') {
+                const list = parent.viewModel.tree.add({ type: 'list' });
+                const listItem = parent.viewModel.tree.add({
+                    type: 'list-item',
+                    marker: '* ',
+                });
+                list.viewModel.insertBefore(parent, nextSibling);
+                listItem.viewModel.insertBefore(list);
+                parent = listItem;
+                nextSibling = undefined;
+                break;
+            }
         }
     }
     else if (parent.type == 'list') {
         if (nodes.length === 1 && nodes[0].type === 'list') {
             const [node] = nodes;
-            for (const child of children(node)) {
-                assert(child.type === 'list-item');
-                child.viewModel.insertBefore(parent, nextSibling);
-            }
+            nodes = [...children(node)];
         }
         else {
             const listItem = parent.viewModel.tree.add({
                 type: 'list-item',
                 // TODO: infer from list
-                marker: '*',
+                marker: '* ',
             });
             listItem.viewModel.insertBefore(parent, nextSibling);
-            for (const node of nodes) {
-                node.viewModel.insertBefore(listItem, undefined);
-            }
+            parent = listItem;
+            nextSibling = undefined;
         }
     }
-    else {
-        for (const node of nodes) {
-            node.viewModel.insertBefore(parent, nextSibling);
-        }
+    for (const node of nodes) {
+        node.viewModel.insertBefore(parent, nextSibling);
     }
 }
 function nextLogicalInsertionPoint(node) {
@@ -839,7 +850,7 @@ function insertParagraphInSection(node, root, startIndex, context) {
     if (section) {
         nextSibling = path[0].viewModel.nextSibling;
     }
-    else if (node.type === 'section') {
+    if (node.type === 'section') {
         section = node;
         nextSibling = section.viewModel.firstChild;
     }

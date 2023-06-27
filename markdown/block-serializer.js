@@ -70,8 +70,10 @@ export function getPrefix(node) {
         case 'paragraph':
             return '';
         case 'list-item':
+            // TODO: whitespace should not be part of the marker.
             return node.marker;
         case 'block-quote':
+            // TODO: whitespace should not be part of the marker.
             return node.marker;
         case 'section':
             return node.marker + ' ';
