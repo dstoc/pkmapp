@@ -27,7 +27,7 @@
     "emscripten-sdk-npm": "github:devappd/emscripten-sdk-npm",
     "eslint": "^8.43.0",
     "eslint-config-google": "^0.14.0",
-    "lit": "^2.3.0",
+    "lit": "^2.7.5",
     "prettier": "2.8.8",
     "tree-sitter-cli": "^0.20.8",
     "tree-sitter-markdown": "github:MDeiml/tree-sitter-markdown",
