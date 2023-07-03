@@ -37,7 +37,7 @@ export class SimpleCommandBundle {
         return commands;
     }
 }
-let CommandPalette = class CommandPalette extends LitElement {
+export let CommandPalette = class CommandPalette extends LitElement {
     constructor() {
         super(...arguments);
         this.noHeader = false;
@@ -284,5 +284,4 @@ __decorate([
 CommandPalette = __decorate([
     customElement('pkm-command-palette')
 ], CommandPalette);
-export { CommandPalette };
 //# sourceMappingURL=command-palette.js.map

@@ -24,7 +24,7 @@ import { contextProvided } from './deps/lit-labs-context.js';
 import { libraryContext } from './app-context.js';
 import { getLogicalContainingBlock } from './block-util.js';
 import { Observers, Observer } from './observe.js';
-let Title = class Title extends LitElement {
+export let Title = class Title extends LitElement {
     static get styles() {
         return css `
       .item {
@@ -70,7 +70,6 @@ __decorate([
 Title = __decorate([
     customElement('pkm-title')
 ], Title);
-export { Title };
 function getTitle(node, library) {
     switch (node.type) {
         case 'list-item':

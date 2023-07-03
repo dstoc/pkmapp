@@ -25,7 +25,7 @@ import { css, query, customElement, html, LitElement, property, state, } from '.
 import { SimpleCommandBundle, } from './command-palette.js';
 import { focusNode } from './markdown/host-context.js';
 import { BlockCommandBundle } from './block-command-bundle.js';
-let Autocomplete = class Autocomplete extends LitElement {
+export let Autocomplete = class Autocomplete extends LitElement {
     constructor() {
         super(...arguments);
         this.state = 'inactive';
@@ -213,5 +213,4 @@ __decorate([
 Autocomplete = __decorate([
     customElement('pkm-autocomplete')
 ], Autocomplete);
-export { Autocomplete };
 //# sourceMappingURL=autocomplete.js.map
