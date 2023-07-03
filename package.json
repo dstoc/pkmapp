@@ -12,7 +12,7 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@jspm/generator": "^1.1.9",
-    "@lit-labs/context": "^0.2.0",
+    "@lit-labs/context": "^0.3.3",
     "@types/jasmine": "^4.3.4",
     "@types/wicg-file-system-access": "^2020.9.5",
     "@typescript-eslint/eslint-plugin": "^5.60.1",
