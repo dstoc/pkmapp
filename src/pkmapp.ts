@@ -141,11 +141,6 @@ declare global {
   interface HTMLElementTagNameMap {
     'pkm-app': PkmApp;
   }
-  interface Navigator {
-    userActivation?: {
-      isActive: boolean;
-    };
-  }
 }
 
 onunhandledrejection = (e) => console.error(e.reason);
