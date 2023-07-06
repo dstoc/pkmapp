@@ -28,7 +28,7 @@
     "eslint": "^8.44.0",
     "eslint-config-google": "^0.14.0",
     "lit": "^2.7.5",
-    "prettier": "2.8.8",
+    "prettier": "3.0.0",
     "tree-sitter-cli": "^0.20.8",
     "tree-sitter-markdown": "github:MDeiml/tree-sitter-markdown",
     "ts-lit-plugin": "^1.2.1",
