@@ -36,6 +36,6 @@
     "typescript": "^5.1.6",
     "wdio-chromedriver-service": "^8.1.1",
     "web-tree-sitter": "^0.20.8",
-    "webdriverio": "^8.11.3"
+    "webdriverio": "^8.12.1"
   }
 }
