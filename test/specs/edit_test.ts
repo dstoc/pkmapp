@@ -15,6 +15,7 @@
 import {Main} from '../pages/main';
 import {input, removeLeadingWhitespace} from '../util/input';
 import {testState} from '../util/test_state';
+import {$, browser} from '@wdio/globals';
 
 describe('input helper', () => {
   it('removes leading whitespace', () => {

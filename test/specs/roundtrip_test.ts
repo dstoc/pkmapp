@@ -15,6 +15,7 @@
 import {Main} from '../pages/main';
 import {testRoundtrip} from '../util/test_roundtrip';
 import {testState} from '../util/test_state';
+import {browser} from '@wdio/globals';
 
 describe('roundtrip parse/serialize', () => {
   afterEach(async () => {

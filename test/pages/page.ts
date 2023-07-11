@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {browser} from '@wdio/globals';
+
 export abstract class Page {
   abstract path: string;
   abstract isReady: () => Promise<boolean>;
