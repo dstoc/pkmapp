@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import {FileSystem, Main} from '../pages/main';
+import {browser} from '@wdio/globals';
 
 export async function testRoundtrip(
   content: string,

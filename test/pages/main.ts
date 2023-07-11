@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {control} from '../util/input';
-
+import {$, browser} from '@wdio/globals';
 import {Page} from './page';
 
 type Status = 'loading' | 'loaded' | 'error';
