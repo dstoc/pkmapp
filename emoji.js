@@ -95,7 +95,7 @@ async function getConsistentEmoji(value) {
     ];
     return emoji[index % emoji.length];
 }
-export let Emoji = class Emoji extends LitElement {
+let Emoji = class Emoji extends LitElement {
     shouldUpdate(changedProperties) {
         if (changedProperties.has('text')) {
             this.updateEmoji();
@@ -123,4 +123,5 @@ __decorate([
 Emoji = __decorate([
     customElement('pkm-emoji')
 ], Emoji);
+export { Emoji };
 //# sourceMappingURL=emoji.js.map

@@ -22,7 +22,7 @@ import { contextProvided } from '../deps/lit-labs-context.js';
 import { css, customElement, html, LitElement, property, query, queryAll, repeat, } from '../deps/lit.js';
 import { cast } from '../asserts.js';
 import { hostContext } from './host-context.js';
-export let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement {
+let MarkdownInline = MarkdownInline_1 = class MarkdownInline extends LitElement {
     static get styles() {
         return [
             css `
@@ -334,7 +334,8 @@ __decorate([
 MarkdownInline = MarkdownInline_1 = __decorate([
     customElement('md-inline')
 ], MarkdownInline);
-export let MarkdownSpan = class MarkdownSpan extends LitElement {
+export { MarkdownInline };
+let MarkdownSpan = class MarkdownSpan extends LitElement {
     constructor() {
         super();
         this.active = false;
@@ -505,6 +506,7 @@ __decorate([
 MarkdownSpan = __decorate([
     customElement('md-span')
 ], MarkdownSpan);
+export { MarkdownSpan };
 class NodeIds {
     constructor() {
         this.idMap = new Map();

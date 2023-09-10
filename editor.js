@@ -38,7 +38,7 @@ import { getBlockSelectionTarget, maybeRemoveSelectedNodes, maybeRemoveSelectedN
 import { isLogicalContainingBlock, getLogicalContainingBlock, } from './block-util.js';
 import { blockPreview, blockIcon, BlockCommandBundle, } from './block-command-bundle.js';
 import { getLanguageTools } from './language-tool-bundle.js';
-export let Editor = class Editor extends LitElement {
+let Editor = class Editor extends LitElement {
     static get styles() {
         return [
             css `
@@ -691,6 +691,7 @@ __decorate([
 Editor = __decorate([
     customElement('pkm-editor')
 ], Editor);
+export { Editor };
 function performLogicalInsertion(context, nodes) {
     let { parent, nextSibling } = nextLogicalInsertionPoint(context);
     if (context.type === 'section') {

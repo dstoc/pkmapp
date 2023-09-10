@@ -29,7 +29,7 @@ import { getDirectory, setDirectory } from './directory-db.js';
 import { resolve } from './resolve.js';
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
-export let PkmApp = class PkmApp extends LitElement {
+let PkmApp = class PkmApp extends LitElement {
     constructor() {
         super();
         this.initialLocation = location.toString();
@@ -139,6 +139,7 @@ __decorate([
 PkmApp = __decorate([
     customElement('pkm-app')
 ], PkmApp);
+export { PkmApp };
 onunhandledrejection = (e) => console.error(e.reason);
 onerror = (event, source, lineno, colno, error) => console.error(event, error);
 render(html `<pkm-app></pkm-app>`, document.body);

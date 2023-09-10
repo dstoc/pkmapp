@@ -22,7 +22,7 @@ import { MarkdownInline } from './inline-render.js';
 import './transclusion.js';
 import { hostContext, HostContext } from './host-context.js';
 import { contextProvider, contextProvided } from '../deps/lit-labs-context.js';
-export let MarkdownBlock = class MarkdownBlock extends LitElement {
+let MarkdownBlock = class MarkdownBlock extends LitElement {
     constructor() {
         super();
         this.type = '';
@@ -126,7 +126,8 @@ __decorate([
 MarkdownBlock = __decorate([
     customElement('md-block')
 ], MarkdownBlock);
-export let MarkdownRenderer = class MarkdownRenderer extends LitElement {
+export { MarkdownBlock };
+let MarkdownRenderer = class MarkdownRenderer extends LitElement {
     constructor() {
         super(...arguments);
         this.hostContext = new HostContext();
@@ -264,4 +265,5 @@ __decorate([
 MarkdownRenderer = __decorate([
     customElement('md-block-render')
 ], MarkdownRenderer);
+export { MarkdownRenderer };
 //# sourceMappingURL=block-render.js.map

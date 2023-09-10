@@ -19,7 +19,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import './command-palette.js';
 import { css, customElement, html, LitElement, query } from './deps/lit.js';
-export let CommandPaletteDialog = class CommandPaletteDialog extends LitElement {
+let CommandPaletteDialog = class CommandPaletteDialog extends LitElement {
     static get styles() {
         return css `
       dialog[open] {
@@ -66,4 +66,5 @@ __decorate([
 CommandPaletteDialog = __decorate([
     customElement('pkm-command-palette-dialog')
 ], CommandPaletteDialog);
+export { CommandPaletteDialog };
 //# sourceMappingURL=command-palette-dialog.js.map

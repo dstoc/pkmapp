@@ -24,7 +24,7 @@ import './block-render.js';
 import { contextProvided } from '../deps/lit-labs-context.js';
 import { hostContext } from './host-context.js';
 import { findNextEditable, findFinalEditable } from './view-model-util.js';
-export let MarkdownTransclusion = class MarkdownTransclusion extends LitElement {
+let MarkdownTransclusion = class MarkdownTransclusion extends LitElement {
     constructor() {
         super(...arguments);
         this.observer = () => {
@@ -123,6 +123,7 @@ __decorate([
 MarkdownTransclusion = __decorate([
     customElement('md-transclusion')
 ], MarkdownTransclusion);
+export { MarkdownTransclusion };
 export function getContainingTransclusion(element) {
     const renderShadow = element.getRootNode();
     if (!(renderShadow instanceof ShadowRoot))
