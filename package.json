@@ -23,7 +23,7 @@
     "@wdio/spec-reporter": "^8.12.2",
     "@web/dev-server": "^0.3.0",
     "chromedriver": "^115.0.0",
-    "concurrently": "^8.2.0",
+    "concurrently": "^8.2.1",
     "emscripten-sdk-npm": "github:devappd/emscripten-sdk-npm",
     "eslint": "^8.46.0",
     "eslint-config-google": "^0.14.0",
