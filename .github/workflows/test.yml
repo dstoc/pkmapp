@@ -36,6 +36,14 @@ jobs:
         with:
           node-version: 18
           cache: 'npm'
+      - uses: browser-actions/setup-chrome@latest
+        with:
+          chrome-version: stable
+        id: setup-chrome
+      - run: |
+          echo ${{ which chrome }}
+          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
+          ${{ steps.setup-chrome.outputs.chrome-path }} --version
       - name: Cache build
         id: cache-build
         uses: actions/cache@v3
@@ -50,13 +58,6 @@ jobs:
       - if: ${{ steps.cache-build.outputs.cache-hit != 'true' }}
         name: build
         run: npm run build
-      - uses: browser-actions/setup-chrome@latest
-        with:
-          chrome-version: stable
-        id: setup-chrome
-      - run: |
-          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
-          ${{ steps.setup-chrome.outputs.chrome-path }} --version
       - name: test
         run: |
           npm run serve &
