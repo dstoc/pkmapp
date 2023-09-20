@@ -16,8 +16,8 @@
 
 [ -d node_modules/emscripten-sdk-npm/emsdk ] || npx emsdk-checkout || exit 1
 # From tree-sitter/cli/emscripten-version
-npx emsdk install 3.1.29 || exit 1
-npx emsdk activate 3.1.29 || exit 1
+npx emsdk install 3.1.37 || exit 1
+npx emsdk activate 3.1.37 || exit 1
 PKMAPP_ROOT=$PWD
 source node_modules/emscripten-sdk-npm/emsdk/emsdk_env.sh || exit 1
 (
