@@ -15,4 +15,11 @@
 -->
 <!DOCTYPE html>
 <title>pkmapp</title>
+<meta
+  http-equiv="Content-Security-Policy"
+  content="
+    base-uri 'none';
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';
+    require-trusted-types-for 'script';">
 <script type="module" src="pkmapp.js"></script>

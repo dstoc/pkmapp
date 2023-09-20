@@ -21,7 +21,7 @@ export class BlockCommandBundle implements CommandBundle {
     private action: (result: Result) => Promise<CommandBundle | undefined>,
     private readonly freeformAction?: (result: {
       name: string;
-    }) => Promise<CommandBundle | undefined>
+    }) => Promise<CommandBundle | undefined>,
   ) {}
   async getCommands(input: string) {
     const names = await this.library.getAllNames();
@@ -42,7 +42,7 @@ export class BlockCommandBundle implements CommandBundle {
                 this.library.metadata.getNames(item.root)[0] ??
                 item.document.name,
             }));
-          })
+          }),
         )
       ).flat();
       if (i > 0) {
@@ -92,7 +92,7 @@ export function blockPreview({root}: {root: ViewModelNode}) {
   return html`
     <pkm-title .node=${root}></pkm-title>
     <p>
-      <md-block-render .block=${root} style="margin-top: 1em"></md-block-render>
+      <md-block-render .block=${root}></md-block-render>
     </p>
   `;
 }
@@ -105,7 +105,7 @@ export function blockIcon({root}: {root: ViewModelNode}) {
 function getFilter(input: string) {
   const pattern = new RegExp(
     input.replace(/(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'),
-    'i'
+    'i',
   );
   return (name: string) => pattern.test(name);
 }
