@@ -53,11 +53,12 @@ jobs:
       - uses: browser-actions/setup-chrome@latest
         with:
           chrome-version: stable
+        id: setup-chrome
       - name: test
         run: |
           npm run serve &
           sleep 5 &&
-          npm run test
+          CHROMIUM_BIN=$(which chrome) npm run test
       - name: 'Upload test logs'
         uses: actions/upload-artifact@v3
         if: always()

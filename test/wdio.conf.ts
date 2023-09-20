@@ -32,6 +32,7 @@ export const config: Options.Testrunner = {
       acceptInsecureCerts: true,
       'goog:chromeOptions': {
         args: ['headless'],
+        binary: process.env.CHROMIUM_BIN,
       },
     },
   ],
