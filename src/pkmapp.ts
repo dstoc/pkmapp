@@ -34,9 +34,18 @@ import {getDirectory, setDirectory} from './directory-db.js';
 import {EditorNavigation} from './editor.js';
 import {resolve} from './resolve.js';
 import {CommandBundle} from './command-palette.js';
+import {assert} from './asserts.js';
 
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
+
+const allowedScripts = ['./serviceworker.js'];
+self.trustedTypes?.createPolicy('default', {
+  createScriptURL(input: string) {
+    assert(allowedScripts.includes(input));
+    return input;
+  },
+});
 
 @customElement('pkm-app')
 export class PkmApp extends LitElement {
@@ -116,7 +125,7 @@ export class PkmApp extends LitElement {
         library = new FileSystemLibrary(
           path == ''
             ? opfs
-            : await opfs.getDirectoryHandle(path, {create: true})
+            : await opfs.getDirectoryHandle(path, {create: true}),
         );
       } else {
         if (!navigator.userActivation?.isActive) return;
