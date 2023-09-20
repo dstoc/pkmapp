@@ -42,7 +42,7 @@ jobs:
         id: setup-chrome
       - run: |
           echo ${{ which chrome }}
-          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
+          Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
           ${{ steps.setup-chrome.outputs.chrome-path }} --version
       - name: Cache build
         id: cache-build
