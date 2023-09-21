@@ -6,8 +6,8 @@
     "build": "npm run compile && ./build-wasm.sh && npm run build-index",
     "build-index": "node build-index.mjs",
     "build-cached": "npm run compile && npm run build-index",
-    "test": "wdio run test/wdio.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json",
-    "test-extra": "wdio run test/extra.conf.ts --autoCompileOpts.tsNodeOpts.project=test/tsconfig.json"
+    "test": "TS_NODE_PROJECT=test/tsconfig.json wdio run test/wdio.conf.ts",
+    "test-extra": "TS_NODE_PROJECT=test/tsconfig.json wdio run test/extra.conf.ts"
   },
   "license": "Apache-2.0",
   "devDependencies": {
