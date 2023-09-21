@@ -31,7 +31,7 @@ export const config: Options.Testrunner = {
       browserName: 'chrome',
       acceptInsecureCerts: true,
       'goog:chromeOptions': {
-        args: ['headless'],
+        args: ['headless', 'disable-gpu'],
         binary: process.env.CHROMIUM_BIN,
       },
     },
