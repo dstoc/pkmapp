@@ -73,7 +73,7 @@ export function blockPreview({ root }) {
     return html `
     <pkm-title .node=${root}></pkm-title>
     <p>
-      <md-block-render .block=${root} style="margin-top: 1em"></md-block-render>
+      <md-block-render .block=${root}></md-block-render>
     </p>
   `;
 }

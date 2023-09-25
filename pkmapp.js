@@ -27,8 +27,16 @@ import { FileSystemLibrary } from './library.js';
 import { styles } from './style.js';
 import { getDirectory, setDirectory } from './directory-db.js';
 import { resolve } from './resolve.js';
+import { assert } from './asserts.js';
 // TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
+const allowedScripts = ['./serviceworker.js'];
+self.trustedTypes?.createPolicy('default', {
+    createScriptURL(input) {
+        assert(allowedScripts.includes(input));
+        return input;
+    },
+});
 let PkmApp = class PkmApp extends LitElement {
     constructor() {
         super();

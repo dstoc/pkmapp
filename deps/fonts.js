@@ -11,8 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import fira from 'https://cdn.jsdelivr.net/npm/firacode@6.2.0/distr/fira_code.css' assert { type: 'css' };
-import opensans from 'https://fonts.googleapis.com/css2?family=Open+Sans&display=swap' assert { type: 'css' };
-import notoemoji from 'https://fonts.googleapis.com/css2?family=Noto+Emoji&display=swap' assert { type: 'css' };
-export { fira, opensans, notoemoji };
+import fira from './firacode/fira_code.css' assert { type: 'css' };
+import notoemoji from './noto-emoji/400.css' assert { type: 'css' };
+export { fira, notoemoji };
 //# sourceMappingURL=fonts.js.map
