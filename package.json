@@ -30,7 +30,7 @@
     "eslint": "^8.50.0",
     "eslint-config-google": "^0.14.0",
     "firacode": "^6.2.0",
-    "lit": "^2.8.0",
+    "lit": "^3.0.0",
     "prettier": "3.0.3",
     "tree-sitter-cli": "^0.20.8",
     "tree-sitter-markdown": "github:MDeiml/tree-sitter-markdown",
