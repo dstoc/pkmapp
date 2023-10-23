@@ -27,7 +27,7 @@
     "chromedriver": "^118.0.1",
     "concurrently": "^8.2.2",
     "emscripten-sdk-npm": "github:devappd/emscripten-sdk-npm",
-    "eslint": "^8.51.0",
+    "eslint": "^8.52.0",
     "eslint-config-google": "^0.14.0",
     "firacode": "^6.2.0",
     "lit": "^3.0.0",
