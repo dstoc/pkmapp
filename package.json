@@ -34,7 +34,7 @@
     "prettier": "3.0.3",
     "tree-sitter-cli": "^0.20.8",
     "tree-sitter-markdown": "github:MDeiml/tree-sitter-markdown",
-    "ts-lit-plugin": "^1.2.1",
+    "ts-lit-plugin": "^2.0.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2",
     "wdio-chromedriver-service": "^8.1.1",
