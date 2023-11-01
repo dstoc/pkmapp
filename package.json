@@ -24,7 +24,7 @@
     "@wdio/local-runner": "^8.20.5",
     "@wdio/spec-reporter": "^8.20.0",
     "@web/dev-server": "^0.3.6",
-    "chromedriver": "^118.0.1",
+    "chromedriver": "^119.0.0",
     "concurrently": "^8.2.2",
     "emscripten-sdk-npm": "github:devappd/emscripten-sdk-npm",
     "eslint": "^8.52.0",
