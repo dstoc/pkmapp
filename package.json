@@ -15,7 +15,7 @@
     "@jspm/generator": "^1.1.12",
     "@lit-labs/context": "^0.5.0",
     "@types/jasmine": "^5.1.1",
-    "@types/trusted-types": "^2.0.5",
+    "@types/trusted-types": "^2.0.6",
     "@types/wicg-file-system-access": "^2023.10.2",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
