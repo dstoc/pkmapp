@@ -20,7 +20,7 @@ export function getLanguageTools(getSelection: () => string): Command[] {
               .block=${loader.tree.root}
             ></md-block-render>`;
 
-          for await (const chunk of openAiChat(prompt)) {
+          for await (const chunk of palm(prompt)) {
             loader.append(chunk);
             updatePreview(preview());
           }
@@ -45,7 +45,7 @@ export function getLanguageTools(getSelection: () => string): Command[] {
             } as Command,
           ]);
         },
-      }))
+      })),
     ),
   ];
 }
@@ -80,7 +80,7 @@ class StreamingLoader {
     const {node, tree: parserTree} = parseBlocks(
       this.content,
       this.parserTree,
-      edit
+      edit,
     );
     this.parserTree = parserTree;
     assert(node && node.type === 'document');
@@ -102,7 +102,24 @@ function indexToPosition(text: string, index: number) {
   return {row, column};
 }
 
-async function* openAiChat(prompt: string): AsyncGenerator<string> {
+async function* palm(prompt: string): AsyncGenerator<string> {
+  const key = localStorage.getItem('palm-key');
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta3/models/text-bison-001:generateText?key=${key}`,
+    {
+      method: 'post',
+      body: JSON.stringify({
+        prompt: {
+          text: prompt,
+        },
+      }),
+    },
+  );
+  const data = await response.json();
+  yield data.candidates[0].output;
+}
+
+export async function* openAiChat(prompt: string): AsyncGenerator<string> {
   let buffer = '';
   const key = localStorage.getItem('openai-key');
   if (!key) throw new Error('`openai-key` not in localStorage');
@@ -126,7 +143,7 @@ async function* openAiChat(prompt: string): AsyncGenerator<string> {
   const stream = response.body;
   if (!stream) return;
   for await (const chunk of iterateStream(
-    stream.pipeThrough(new TextDecoderStream())
+    stream.pipeThrough(new TextDecoderStream()),
   )) {
     buffer += chunk;
     const parts = buffer.split('\n');
@@ -165,7 +182,7 @@ const analyzePrefix = `Analyze all text above and`;
 const analyzePrompts = {
   Elaborate: `Elaborate with 3-5 bullet point statements that expand by relating additional information not in the original text.`,
   'Capture the essence': `Rewrite in a simple paragraph that captures the essence.`,
-  Defeat: `List 3-5 reasons why it might not work as bullet point statements.`,
+  Defeat: `In bullet point statements, list 3-5 reasons why it might not work.`,
   Reflect: `Complete the following prompts:
 1. That's interesting because...
 2. That reminds me of...
