@@ -37,6 +37,26 @@ self.trustedTypes?.createPolicy('default', {
         return input;
     },
 });
+// BroadcastChannel and WebLocks are used here to ensure all clients
+// load in the same process so that the same library instance can be
+// shared between them.
+const bc = new BroadcastChannel('launch');
+const main = await new Promise((resolve) => {
+    navigator.locks.request('main', { ifAvailable: true }, async (lock) => {
+        resolve(!!lock);
+        navigator.locks.request('main', async () => {
+            bc.onmessage = (message) => {
+                window.open(message.data.location);
+            };
+            return new Promise(() => { });
+        });
+    });
+});
+if (!window.opener && !main) {
+    bc.postMessage({ location: String(window.location) });
+    window.close();
+    throw new Error('Requested to reopen window');
+}
 let PkmApp = class PkmApp extends LitElement {
     constructor() {
         super();
@@ -106,7 +126,12 @@ let PkmApp = class PkmApp extends LitElement {
         try {
             const url = new URL(location.toString());
             let library;
-            if (url.searchParams.has('opfs')) {
+            let parent = window.opener?.document.querySelector('pkm-app')?.library;
+            if (parent) {
+                library = parent;
+                console.log('used parent!');
+            }
+            else if (url.searchParams.has('opfs')) {
                 const opfs = await navigator.storage.getDirectory();
                 const path = url.searchParams.get('opfs');
                 library = new FileSystemLibrary(path == ''

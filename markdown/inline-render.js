@@ -416,6 +416,7 @@ let MarkdownSpan = class MarkdownSpan extends LitElement {
             };
         }
         event.preventDefault();
+        event.stopPropagation();
         this.dispatchEvent(new CustomEvent('inline-link-click', {
             detail: inlineLinkClick,
             bubbles: true,
