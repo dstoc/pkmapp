@@ -51,8 +51,9 @@ for (const dep of deps) {
   copyFileSync(file, target);
 }
 
-const inputHtml = readFileSync('index.html').toString();
+const inputHtml = readFileSync('src/index.html').toString();
 const outputHtml = await generator.htmlInject(inputHtml, {
   esModuleShims: false,
 });
 writeFileSync('build/index.html', outputHtml);
+copyFileSync('src/manifest.json', 'build/manifest.json');

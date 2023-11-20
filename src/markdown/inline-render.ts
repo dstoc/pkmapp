@@ -235,7 +235,7 @@ export class MarkdownInline extends LitElement {
     }
     const walker = document.createTreeWalker(
       parent,
-      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
     );
     walker.currentNode = node;
     let previous = walker.previousNode();
@@ -258,25 +258,25 @@ export class MarkdownInline extends LitElement {
   static getSelectionRange(selection: Selection) {
     const start = MarkdownInline.nodeOffsetToInputPoint(
       selection.anchorNode!,
-      selection.anchorOffset
+      selection.anchorOffset,
     );
     const end = MarkdownInline.nodeOffsetToInputPoint(
       selection.focusNode!,
-      selection.focusOffset
+      selection.focusOffset,
     );
     return start.index <= end.index ? {start, end} : {start: end, end: start};
   }
   moveCaret(
     alter: 'move' | 'extend',
     direction: 'backward' | 'forward',
-    granularity: 'line' | 'character' | 'word'
+    granularity: 'line' | 'character' | 'word',
   ): true | number {
     const selection = (this.getRootNode()! as Document).getSelection()!;
     const focusNode = selection.focusNode!;
     const focusOffset = selection.focusOffset;
     const initial = MarkdownInline.nodeOffsetToInputPoint(
       selection.focusNode!,
-      selection.focusOffset
+      selection.focusOffset,
     );
     const focus = document.createRange();
     focus.setStart(selection.focusNode!, selection.focusOffset);
@@ -296,7 +296,7 @@ export class MarkdownInline extends LitElement {
     selection.modify('move', 'forward', 'documentboundary');
     const end = MarkdownInline.nodeOffsetToInputPoint(
       selection.focusNode!,
-      selection.focusOffset
+      selection.focusOffset,
     );
 
     // Reset the selection to the initial state, then modify it based on the arguments.
@@ -306,7 +306,7 @@ export class MarkdownInline extends LitElement {
     selection.modify(alter, direction, granularity);
     const result = MarkdownInline.nodeOffsetToInputPoint(
       selection.focusNode!,
-      selection.focusOffset
+      selection.focusOffset,
     );
 
     if (granularity === 'line') {
@@ -356,7 +356,7 @@ export class MarkdownInline extends LitElement {
         detail: inlineKeydown,
         bubbles: true,
         composed: true,
-      })
+      }),
     );
   }
   onBeforeInput(e: InputEvent) {
@@ -381,7 +381,7 @@ export class MarkdownInline extends LitElement {
         detail: inlineInput,
         bubbles: true,
         composed: true,
-      })
+      }),
     );
   }
   onPointerDown(event: PointerEvent) {
@@ -424,7 +424,7 @@ export class MarkdownSpan extends LitElement {
   override async performUpdate() {
     await super.performUpdate();
     await Promise.all(
-      Array.from(this.spans).map((span) => span.updateComplete)
+      Array.from(this.spans).map((span) => span.updateComplete),
     );
   }
 
@@ -496,12 +496,13 @@ export class MarkdownSpan extends LitElement {
       };
     }
     event.preventDefault();
+    event.stopPropagation();
     this.dispatchEvent(
       new CustomEvent('inline-link-click', {
         detail: inlineLinkClick,
         bubbles: true,
         composed: true,
-      })
+      }),
     );
   }
   override render() {
@@ -526,7 +527,7 @@ export class MarkdownSpan extends LitElement {
         if (index < child.startIndex) {
           const text = node.text.substring(
             index - node.startIndex,
-            child.startIndex - node.startIndex
+            child.startIndex - node.startIndex,
           );
           results.push({result: html`${text}`});
         }
@@ -541,7 +542,7 @@ export class MarkdownSpan extends LitElement {
       } else {
         const text = node.text.substring(
           index - node.startIndex,
-          node.endIndex - node.startIndex
+          node.endIndex - node.startIndex,
         );
         results.push({result: this.renderText(text)});
         index = node.endIndex;
@@ -632,7 +633,7 @@ declare global {
     modify(
       alter: 'move' | 'extend',
       direction: 'forward' | 'backward',
-      granularity: 'character' | 'lineboundary' | 'line'
+      granularity: 'character' | 'lineboundary' | 'line',
     ): void;
   }
   interface HTMLElementTagNameMap {
