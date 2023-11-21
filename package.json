@@ -16,7 +16,7 @@
     "@lit-labs/context": "^0.5.1",
     "@types/jasmine": "^5.1.2",
     "@types/trusted-types": "^2.0.6",
-    "@types/wicg-file-system-access": "^2023.10.3",
+    "@types/wicg-file-system-access": "^2023.10.4",
     "@typescript-eslint/eslint-plugin": "^6.11.0",
     "@typescript-eslint/parser": "^6.11.0",
     "@wdio/cli": "^8.23.1",
