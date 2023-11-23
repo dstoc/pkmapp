@@ -22,7 +22,7 @@
     "@wdio/cli": "^8.23.1",
     "@wdio/jasmine-framework": "^8.23.1",
     "@wdio/local-runner": "^8.23.1",
-    "@wdio/spec-reporter": "^8.23.1",
+    "@wdio/spec-reporter": "^8.24.0",
     "@web/dev-server": "^0.4.1",
     "chromedriver": "^119.0.1",
     "concurrently": "^8.2.2",
