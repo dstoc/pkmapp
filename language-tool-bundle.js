@@ -89,16 +89,40 @@ function indexToPosition(text, index) {
 }
 async function* palm(prompt) {
     const key = localStorage.getItem('palm-key');
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta3/models/text-bison-001:generateText?key=${key}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent?key=${key}&alt=sse`, {
         method: 'post',
         body: JSON.stringify({
-            prompt: {
-                text: prompt,
-            },
+            contents: [
+                {
+                    parts: [
+                        {
+                            text: prompt,
+                        },
+                    ],
+                },
+            ],
         }),
     });
-    const data = await response.json();
-    yield data.candidates[0].output;
+    const stream = response.body;
+    if (!stream)
+        return;
+    let buffer = '';
+    for await (const chunk of iterateStream(stream.pipeThrough(new TextDecoderStream()))) {
+        buffer += chunk;
+        const parts = buffer.split('\n');
+        buffer = parts.pop();
+        for (const part of parts) {
+            if (part.startsWith('data: ')) {
+                const value = part.substring(6);
+                if (value === '[DONE]')
+                    return;
+                const content = JSON.parse(value).candidates[0].content.parts[0].text;
+                if (content != null) {
+                    yield content;
+                }
+            }
+        }
+    }
 }
 export async function* openAiChat(prompt) {
     let buffer = '';
