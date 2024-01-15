@@ -31,7 +31,7 @@
     "eslint-config-google": "^0.14.0",
     "firacode": "^6.2.0",
     "lit": "^3.1.1",
-    "prettier": "3.1.1",
+    "prettier": "3.2.2",
     "tree-sitter-cli": "^0.20.8",
     "tree-sitter-markdown": "github:MDeiml/tree-sitter-markdown",
     "ts-lit-plugin": "^2.0.2",
