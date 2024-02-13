@@ -15,7 +15,6 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for details.
 ## Building
 
 1. Clone this repo.
-1. `git submodule update --init --recursive`
 1. `npm install`
 1. `npm run build`
 1. `npm run dev`
