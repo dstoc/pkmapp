@@ -15,7 +15,7 @@
 # limitations under the License.
 
 [ -d node_modules/emscripten-sdk-npm/emsdk ] || npx emsdk-checkout || exit 1
-# From tree-sitter/cli/emscripten-version
+# From tree-sitter/cli/loader/emscripten-version
 npx emsdk install 3.1.37 || exit 1
 npx emsdk activate 3.1.37 || exit 1
 PKMAPP_ROOT=$PWD
@@ -39,11 +39,6 @@ source node_modules/emscripten-sdk-npm/emsdk/emsdk_env.sh || exit 1
   $PKMAPP_ROOT/node_modules/.bin/tree-sitter build-wasm $PKMAPP_ROOT/node_modules/tree-sitter-markdown/tree-sitter-markdown || exit 1
   $PKMAPP_ROOT/node_modules/.bin/tree-sitter build-wasm $PKMAPP_ROOT/node_modules/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
 )
-(
-  unset NODE
-  cd third_party/tree-sitter || exit 1
-  script/build-wasm || exit 1
-)
-cp third_party/tree-sitter/lib/binding_web/tree-sitter.js build/deps/
+curl -f -L https://github.com/tree-sitter/tree-sitter/releases/download/v0.21.0-pre-release-1/tree-sitter.js > build/deps/tree-sitter.js || exit 1
 echo 'export default TreeSitter;' >> build/deps/tree-sitter.js
-cp third_party/tree-sitter/lib/binding_web/tree-sitter.wasm build/deps/
+curl -f -L https://github.com/tree-sitter/tree-sitter/releases/download/v0.21.0-pre-release-1/tree-sitter.wasm > build/deps/tree-sitter.wasm || exit 1
