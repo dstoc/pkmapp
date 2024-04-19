@@ -31,7 +31,7 @@ import {provide, consume} from '../deps/lit-context.js';
 @customElement('md-block')
 export class MarkdownBlock extends LitElement {
   @property({type: Boolean, reflect: true}) selected?: boolean;
-  @property({type: Boolean, reflect: true}) checked?: boolean;
+  @property({type: String, reflect: true}) checked?: 'true' | 'false';
   @property({type: Boolean, reflect: true}) root?: boolean;
   @property({type: String, reflect: true}) type = '';
   @property({attribute: false}) node?: ViewModelNode;
@@ -65,7 +65,12 @@ export class MarkdownBlock extends LitElement {
     if (!node) return;
     this.type = node.type;
     if (node.type === 'list-item') {
-      this.checked = node.checked;
+      this.checked =
+        node.checked === undefined
+          ? undefined
+          : node.checked
+            ? 'true'
+            : 'false';
     }
     if (node.type === 'code-block' && node.info === 'tc') {
       return html`<md-transclusion .node=${node}></md-transclusion>`;
@@ -130,12 +135,16 @@ export class MarkdownRenderer extends LitElement {
         }
         md-block[type='list'] {
           list-style-type: disc;
-          padding-inline-start: 20px;
+          padding-inline-start: 17px;
         }
         md-block[type='list-item']:not([root]) {
           display: list-item;
           white-space: initial;
           margin-block: 0;
+        }
+        md-block[type='list-item']::marker {
+          color: var(--md-accent-color);
+          cursor: pointer;
         }
         md-block[type='list-item'][checked='true']::marker {
           content: '🗹 ';
@@ -149,6 +158,16 @@ export class MarkdownRenderer extends LitElement {
         }
         md-block[type='section'] > md-inline {
           font-weight: bold;
+        }
+        md-block[type='section'] {
+          margin-inline-start: 15px;
+        }
+        md-block[type='section'] > md-inline {
+          display: list-item;
+        }
+        md-block[type='section'] > md-inline::marker {
+          content: '# ';
+          color: var(--md-accent-color);
         }
         md-block + md-block[type='list'] {
           margin-block-start: -0.5em !important;
@@ -189,12 +208,16 @@ export class MarkdownRenderer extends LitElement {
           border-left: 10px solid var(--md-accent-color);
           padding: 10px;
           border-radius: 10px;
+          background-clip: padding-box;
+          border-bottom: solid transparent 1px;
         }
         md-block[type='code-block'] md-inline {
           font-family: var(--md-code-font-family);
           background: var(--md-code-block-bgcolor);
           padding: 10px;
           border-radius: 10px;
+          background-clip: padding-box;
+          border-bottom: solid transparent 1px;
         }
         a,
         md-span[type='shortcut_link'],

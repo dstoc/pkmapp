@@ -59,7 +59,7 @@ export class Autocomplete extends LitElement {
         display: grid;
         padding: 0;
         max-height: 300px;
-        overflow: scroll;
+        overflow: hidden;
       }
     `;
   }

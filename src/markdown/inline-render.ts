@@ -85,6 +85,9 @@ export class MarkdownInline extends LitElement {
           visibility: visible;
           font-size: 16px;
         }
+        md-span[formatting] {
+          color: var(--md-accent-color);
+        }
         md-span[type='backslash_escape']::first-letter {
           font-size: 0;
         }

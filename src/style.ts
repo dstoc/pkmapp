@@ -23,6 +23,7 @@ export const styles = [
       font-family: var(--root-font);
     }
     :root {
+      color-scheme: light;
       --md-code-font-family: 'Fira Code VF', 'noto sans mono', monospace;
       --md-block-quote-bgcolor: rgba(0, 0, 0, 0.05);
       --md-code-block-bgcolor: rgba(0, 0, 0, 0.05);
@@ -35,6 +36,7 @@ export const styles = [
     }
     @media (prefers-color-scheme: dark) {
       :root {
+        color-scheme: dark;
         --md-block-quote-bgcolor: rgba(255, 255, 255, 0.1);
         --md-code-block-bgcolor: rgba(255, 255, 255, 0.1);
         --md-accent-color: #56e;

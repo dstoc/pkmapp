@@ -82,6 +82,10 @@ export class CommandPalette extends LitElement {
         display: grid;
         height: 100%;
       }
+      :host-context([collapsed]) {
+        /* TODO: not quite correct, use a custom var? */
+        max-height: inherit;
+      }
       input,
       .item {
         border: none;
@@ -128,7 +132,7 @@ export class CommandPalette extends LitElement {
         border-radius: 5px;
       }
       #items {
-        overflow: scroll;
+        overflow: auto;
         grid-area: items;
       }
       .icon {
@@ -143,9 +147,8 @@ export class CommandPalette extends LitElement {
         align-items: center;
       }
       #preview {
-        padding-left: 10px;
-        margin: 10px;
-        overflow: scroll;
+        padding: 10px;
+        overflow: auto;
         grid-area: preview;
       }
       :host {
