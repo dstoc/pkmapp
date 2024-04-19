@@ -204,15 +204,6 @@ test.describe('editing', () => {
               `,
       ),
     );
-    test(
-      'will move to the next line if empty',
-      inputOutputTest(
-        input`* \nb`,
-        `* 
-              * b
-              `,
-      ),
-    );
   });
   test.describe('indentation', () => {
     test(

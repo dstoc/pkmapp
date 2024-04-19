@@ -54,6 +54,7 @@ import {
   findNextEditable,
   findPreviousEditable,
   reverseDfs,
+  shallowTraverse,
   swapNodes,
   removeDescendantNodes,
   cloneNode,
@@ -72,6 +73,7 @@ import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
 import {
   maybeEditBlockSelectionIndent,
+  unindent,
   editInlineIndent,
 } from './indent-util.js';
 import {
@@ -187,6 +189,9 @@ export class Editor extends LitElement {
       await this.navigateByName(this.defaultName, true);
     }
   }
+  serialize() {
+    return this.document!.tree.serialize();
+  }
   async createAndNavigateByName(name: string, fireEvent = false) {
     const document = await this.library.newDocument(name);
     this.navigate(document, document.tree.root, fireEvent);
@@ -295,6 +300,8 @@ export class Editor extends LitElement {
     this.root = detail;
   }
   onInlineKeyDown(event: CustomEvent<InlineKeyDown>) {
+    // This function must only handle key events that do not generate text.
+    // So as not to confuse handling here with insertText in onInlineInput.
     const {
       detail: {inline, node, keyboardEvent},
     } = event;
@@ -471,6 +478,7 @@ export class Editor extends LitElement {
         this.autocomplete.abort();
         return;
       }
+      // TODO: Perhaps the remainder should be handled by an inline editor?
       let newText;
       let startIndex;
       let oldEndIndex;
@@ -533,8 +541,11 @@ export class Editor extends LitElement {
       // TODO: is this needed?
       normalizeTree(node.viewModel.tree);
       const next = findNextEditable(newNodes[0], cast(hostContext.root), true);
-      // TODO: is the focus offset always 0?
-      if (next) focusNode(hostContext, next, 0);
+      // TODO: is the focus offset always 0? No, the input text might have been
+      // "* abc", in which case it should be 3.
+      // if (next) focusNode(hostContext, next, 0);
+      // But maybe seeking to the end is OK?
+      if (next) focusNode(hostContext, next, next.content.length);
     } else {
       // TODO: generalize this (inline block mutation)
       const parent = node.viewModel.parent;
@@ -916,7 +927,6 @@ function performLogicalInsertion(
     node.viewModel.insertBefore(parent, nextSibling);
   }
 }
-
 function nextLogicalInsertionPoint(node: ViewModelNode) {
   if (
     !node.viewModel.nextSibling &&
@@ -957,6 +967,83 @@ function maybeMergeContentInto(
   return false;
 }
 
+/**
+ * Unindents the immediately containing list-item if `node` is an
+ * empty paragraph and the only child of the list-item.
+ */
+function unindentIfEmptyListItem(
+  node: InlineNode & ViewModelNode,
+  root: ViewModelNode,
+  context: HostContext,
+): boolean {
+  if (node.type !== 'paragraph') return false;
+  if (node.content.length > 0) return false;
+  const parent = node.viewModel.parent;
+  if (!parent || parent.type !== 'list-item' || parent === root) return false;
+  if (parent.children!.length > 1) return false;
+  unindent(node, root);
+  focusNode(context, node);
+  return true;
+}
+
+/**
+ * Splits the first containing block-quote or list-item if `node` is an
+ * empty paragraph. The empty paragraph is moved into a sibling, another
+ * subequent sibling is created to hold the tail of items following the
+ * empty paragraph but within the container.
+ */
+function splitBlockQuoteOrListItemOnEmptyParagraph(
+  node: InlineNode & ViewModelNode,
+  root: ViewModelNode,
+  startIndex: number,
+  context: HostContext,
+): boolean {
+  if (node.type !== 'paragraph') return false;
+  if (node.content.length > 0) return false;
+  if (!node.viewModel.parent) return false;
+  const {ancestor} = findAncestor(node, root, 'list-item', 'block-quote');
+  if (!ancestor) return false;
+  if (ancestor === root) return false;
+  const [_self, ...tail] = shallowTraverse(node, ancestor);
+  let target: ViewModelNode;
+  if (ancestor.type === 'list-item') {
+    // Insert a new list-item to hold the empty paragraph.
+    target = node.viewModel.tree.add({
+      type: 'list-item',
+      marker: ancestor.marker,
+    });
+    target.viewModel.insertBefore(
+      cast(ancestor.viewModel.parent),
+      ancestor.viewModel.nextSibling,
+    );
+    node.viewModel.insertBefore(target);
+  } else {
+    // Insert the empty paragraph after the block quote.
+    assert(ancestor.type === 'block-quote');
+    node.viewModel.insertBefore(
+      cast(ancestor.viewModel.parent),
+      ancestor.viewModel.nextSibling,
+    );
+    target = node;
+  }
+  if (tail.length) {
+    // Construct a new block-quote or list-item to hold the tail
+    // of nodes following the empty paragraph.
+    const tailTarget = node.viewModel.tree.add(
+      cloneNode(ancestor, () => false),
+    );
+    tailTarget.viewModel.insertBefore(
+      cast(ancestor.viewModel.parent),
+      target.viewModel.nextSibling,
+    );
+    for (const node of tail) {
+      node.viewModel.insertBefore(tailTarget);
+    }
+  }
+  focusNode(context, node, 0);
+  return true;
+}
+
 function insertSiblingParagraph(
   node: InlineNode & ViewModelNode,
   root: ViewModelNode,
@@ -967,14 +1054,32 @@ function insertSiblingParagraph(
     type: 'paragraph',
     content: '',
   });
-  newParagraph.viewModel.insertBefore(
-    cast(node.viewModel.parent),
-    node.viewModel.nextSibling,
-  );
+  // Sections are a bit special. The section header is kind of a
+  // sibling of the section content.
+  if (node.type === 'section') {
+    if (startIndex === 0) {
+      // Inserting before the section is also special. Handle it directly rather than
+      // in finishInsertParagraph.
+      newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
+      focusNode(context, newParagraph, 0);
+      return true;
+    }
+    newParagraph.viewModel.insertBefore(node, node.viewModel.firstChild);
+  } else {
+    newParagraph.viewModel.insertBefore(
+      cast(node.viewModel.parent),
+      node.viewModel.nextSibling,
+    );
+  }
   finishInsertParagraph(node, newParagraph, root, startIndex, context);
   return true;
 }
 
+/**
+ * Inserts a paragraph in a simple-list scenario. That is, when `node`
+ * is the first-child of list-item and its next sibling, if any, is
+ * a list.
+ */
 function insertParagraphInList(
   node: InlineNode & ViewModelNode,
   root: ViewModelNode,
@@ -982,7 +1087,22 @@ function insertParagraphInList(
   context: HostContext,
 ): boolean {
   const {ancestor, path} = findAncestor(node, root, 'list');
-  if (!ancestor) return false;
+  if (
+    !(
+      ancestor &&
+      node.content.length > 0 &&
+      path &&
+      path.length === 2 &&
+      path[0].type === 'list-item' &&
+      path[1].type === 'paragraph' &&
+      (path[0].children?.length === 1 ||
+        path[1].viewModel.nextSibling?.type === 'list')
+    )
+  ) {
+    // Abort if we're dealing with something other than ithe simple list
+    // scenario.
+    return false;
+  }
   let targetList;
   let targetListItemNextSibling;
   if (node.viewModel.nextSibling) {
@@ -1022,71 +1142,6 @@ function insertParagraphInList(
     content: '',
   });
   newParagraph.viewModel.insertBefore(newListItem);
-  finishInsertParagraph(node, newParagraph, root, startIndex, context);
-  return true;
-}
-
-/**
- * Special case where we have a list-item that is not contained by a list
- * (because it is the root).
- */
-function insertParagraphInListItem(
-  node: InlineNode & ViewModelNode,
-  root: ViewModelNode,
-  startIndex: number,
-  context: HostContext,
-): boolean {
-  const {ancestor: listItem, path} = findAncestor(node, root, 'list-item');
-  if (!listItem) return false;
-  const newParagraph = node.viewModel.tree.add({
-    type: 'paragraph',
-    content: '',
-  });
-  newParagraph.viewModel.insertBefore(listItem, path[0].viewModel.nextSibling);
-  finishInsertParagraph(node, newParagraph, root, startIndex, context);
-  return true;
-}
-
-function insertParagraphInDocument(
-  node: InlineNode & ViewModelNode,
-  root: ViewModelNode,
-  startIndex: number,
-  context: HostContext,
-): boolean {
-  const {ancestor: section, path} = findAncestor(node, root, 'document');
-  if (!section) return false;
-  const newParagraph = node.viewModel.tree.add({
-    type: 'paragraph',
-    content: '',
-  });
-  newParagraph.viewModel.insertBefore(section, path[0].viewModel.nextSibling);
-  finishInsertParagraph(node, newParagraph, root, startIndex, context);
-  return true;
-}
-
-function insertParagraphInSection(
-  node: InlineNode & ViewModelNode,
-  root: ViewModelNode,
-  startIndex: number,
-  context: HostContext,
-): boolean {
-  // TODO: this code should be removed soon
-  // eslint-disable-next-line prefer-const
-  let {ancestor: section, path} = findAncestor(node, root, 'section');
-  let nextSibling;
-  if (section) {
-    nextSibling = path![0].viewModel.nextSibling;
-  }
-  if (node.type === 'section') {
-    section = node;
-    nextSibling = section!.viewModel.firstChild;
-  }
-  if (!section) return false;
-  const newParagraph = node.viewModel.tree.add({
-    type: 'paragraph',
-    content: '',
-  });
-  newParagraph.viewModel.insertBefore(section, nextSibling);
   finishInsertParagraph(node, newParagraph, root, startIndex, context);
   return true;
 }
@@ -1197,11 +1252,17 @@ function handleInlineInputAsBlockEdit(
       if (maybeMergeContentInto(node, prev, context)) return true;
     }
   } else if (inputEvent.inputType === 'insertParagraph') {
+    // TODO: refactor to `insertParagraph()`
     return (
+      unindentIfEmptyListItem(inline.node, root, context) ||
+      splitBlockQuoteOrListItemOnEmptyParagraph(
+        inline.node,
+        root,
+        inputStart.index,
+        context,
+      ) ||
       insertParagraphInList(inline.node, root, inputStart.index, context) ||
-      insertParagraphInListItem(inline.node, root, inputStart.index, context) ||
-      insertParagraphInSection(inline.node, root, inputStart.index, context) ||
-      insertParagraphInDocument(inline.node, root, inputStart.index, context)
+      insertSiblingParagraph(inline.node, root, inputStart.index, context)
     );
   } else if (inputEvent.inputType === 'insertLineBreak') {
     return insertSiblingParagraph(inline.node, root, inputStart.index, context);

@@ -37,6 +37,21 @@ export function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
   node2.viewModel.insertBefore(node1Parent, node1NextSibling);
 }
 
+export function isAncestorOf(
+  maybeAncestor: ViewModelNode,
+  descendant: ViewModelNode,
+) {
+  for (const ancestor of ancestors(
+    descendant,
+    descendant.viewModel.tree.root,
+  )) {
+    if (ancestor === maybeAncestor) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function* ancestors(node: ViewModelNode, root: ViewModelNode) {
   while (node.viewModel.parent) {
     yield node.viewModel.parent;
@@ -81,14 +96,32 @@ export function* dfs(
   } while (true);
 }
 
+/**
+ * Traverses siblings, parent, parent siblings, and repeats until root.
+ *
+ * Assumes that `node` is contained by `root`.
+ */
+export function* shallowTraverse(node: ViewModelNode, root: ViewModelNode) {
+  function next(next?: ViewModelNode) {
+    return next && next !== root && (node = next);
+  }
+  do {
+    yield node;
+    if (next(node.viewModel.nextSibling)) continue;
+    do {
+      if (!next(node.viewModel.parent)) return;
+    } while (!next(node.viewModel.nextSibling));
+  } while (true);
+}
+
 export function findAncestor(
   node: ViewModelNode,
   root: ViewModelNode,
-  type: string,
+  ...type: string[]
 ) {
   const path = [node];
   for (const ancestor of ancestors(node, root)) {
-    if (ancestor.type === type) {
+    if (type.includes(ancestor.type)) {
       return {
         ancestor,
         path,
@@ -123,6 +156,7 @@ export function findNextEditable(
   return findNextDfs(node, root, editable);
 }
 
+// TODO: why doesn't this return Editable?
 export function findFinalEditable(
   node: ViewModelNode,
   include = false,

@@ -66,7 +66,7 @@ export function editInlineIndent(
   }
 }
 
-function unindent(node: ViewModelNode, root: ViewModelNode) {
+export function unindent(node: ViewModelNode, root: ViewModelNode) {
   const {ancestor: listItem, path} = findAncestor(node, root, 'list-item');
   if (!listItem || !path) return;
   const target = path[0];
