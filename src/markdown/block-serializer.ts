@@ -188,8 +188,9 @@ function serialize(
 export function serializeToString(
   node: MarkdownNode,
   predicate?: (node: MarkdownNode) => boolean,
+  prefix?: string,
 ): string {
   const result: string[] = [];
-  serialize(node, [], result, predicate);
+  serialize(node, prefix ? [always(prefix)] : [], result, predicate);
   return result.join('');
 }
