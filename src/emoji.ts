@@ -17,7 +17,7 @@ import {customElement, html, LitElement, state, property} from './deps/lit.js';
 async function getConsistentEmoji(value: string) {
   const sha1 = await crypto.subtle.digest(
     'SHA-1',
-    new TextEncoder().encode(value)
+    new TextEncoder().encode(value),
   );
   const index = new Uint8Array(sha1)[0];
   const emoji = [

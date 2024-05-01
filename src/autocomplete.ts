@@ -188,9 +188,9 @@ export class Autocomplete extends LitElement {
           new SimpleCommandBundle('Run command...', [
             this.getSlashCommandWrapper(
               inline,
-              this.getLinkInsertionCommand(inline)
+              this.getLinkInsertionCommand(inline),
             ),
-          ])
+          ]),
         );
         this.activate(inline, cursorIndex);
       }
@@ -212,7 +212,7 @@ export class Autocomplete extends LitElement {
     }
     if (this.state === 'active') {
       this.palette.setInput(
-        node.content.substring(this.startIndex, this.endIndex)
+        node.content.substring(this.startIndex, this.endIndex),
       );
     }
   }

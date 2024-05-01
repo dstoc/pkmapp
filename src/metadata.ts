@@ -83,7 +83,7 @@ class ProviderMap<Provider, Target, Value> {
   private values = new Map<Target, Value>();
   private targets = new Map<Provider, Target>();
   constructor(
-    readonly changed: (target: Target, value?: Value, newValue?: Value) => void
+    readonly changed: (target: Target, value?: Value, newValue?: Value) => void,
   ) {}
   update(provider: Provider, target?: Target, value?: Value) {
     const previousTarget = this.targets.get(provider);
@@ -123,7 +123,7 @@ export class Metadata {
     (target, value) => {
       this.nameMap.update(target, value !== undefined ? [value] : []);
       target.viewModel.observe.notify();
-    }
+    },
   );
   private nameMap = new SetBiMap<ViewModelNode>();
   private tagMap = new SetBiMap<InlineViewModelNode>();
@@ -173,16 +173,16 @@ export class Metadata {
           return result.viewModel.parent!;
         }
         return result;
-      }
+      },
     );
     const tagged = [...(this.tagMap.getTargets(name)?.values() ?? [])].map(
-      (node) => getLogicalContainingBlock(node)!
+      (node) => getLogicalContainingBlock(node)!,
     );
     return [...sections, ...named, ...tagged];
   }
   updateSection(
     node: Section,
-    change: 'connected' | 'disconnected' | 'changed'
+    change: 'connected' | 'disconnected' | 'changed',
   ) {
     if (change === 'disconnected') {
       this.sectionNameMap.update(node, []);
@@ -195,7 +195,7 @@ export class Metadata {
   }
   updateCodeblock(
     node: ViewModelNode & CodeBlockNode,
-    change: 'connected' | 'disconnected' | 'changed'
+    change: 'connected' | 'disconnected' | 'changed',
   ) {
     const parent = node.viewModel.parent;
     const isMetadata = change !== 'disconnected' && node.info === 'meta';
@@ -210,7 +210,7 @@ export class Metadata {
   }
   updateInlineNode(
     node: InlineViewModelNode,
-    change: 'connected' | 'disconnected' | 'changed'
+    change: 'connected' | 'disconnected' | 'changed',
   ) {
     if (change === 'disconnected') {
       this.tagMap.update(node, []);

@@ -22,7 +22,7 @@ export class BackLinks {
 
   private getBacklinksByName(name: string) {
     return [...(this.backLinks.get(name)?.values() ?? [])].map(
-      (node) => node.viewModel.tree
+      (node) => node.viewModel.tree,
     );
   }
   getBacklinksByDocument(document: Document, library: Library) {
@@ -40,7 +40,7 @@ export class BackLinks {
   }
   postEditUpdate(
     node: InlineViewModelNode,
-    change: 'connected' | 'disconnected' | 'changed'
+    change: 'connected' | 'disconnected' | 'changed',
   ) {
     const ivmn = node as InlineViewModelNode;
     if (change === 'disconnected') {

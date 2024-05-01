@@ -25,7 +25,7 @@ import {MarkdownInline} from './markdown/inline-render.js';
 import {children} from './markdown/view-model-util.js';
 
 export function getBlockSelectionTarget(
-  element: Element & {hostContext?: HostContext; node?: ViewModelNode}
+  element: Element & {hostContext?: HostContext; node?: ViewModelNode},
 ) {
   if (element.hostContext?.hasSelection) return element;
   // Retarget if there's any containing transclusion that has a selection.

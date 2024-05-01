@@ -14,7 +14,7 @@
 
 function dateToName(date: Date) {
   return `${date.getFullYear()}-${String(101 + date.getMonth()).substring(
-    1
+    1,
   )}-${String(100 + date.getDate()).substring(1)}`;
 }
 

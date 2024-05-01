@@ -18,7 +18,10 @@ export class Observe<T> {
   private observers = new Set<(target: T) => void>();
   private state: 'active' | 'suspended' | 'delegated';
   private resumed?: Promise<void>;
-  constructor(readonly target: T, private delegate?: Observe<any>) {
+  constructor(
+    readonly target: T,
+    private delegate?: Observe<any>,
+  ) {
     this.state = delegate ? 'delegated' : 'active';
   }
   suspend() {
@@ -31,7 +34,7 @@ export class Observe<T> {
           this.state = 'active';
           this.resumed = undefined;
           resolve();
-        })
+        }),
     );
     return result!;
   }
@@ -58,7 +61,7 @@ export class Observer<T, O> {
     private target: () => T,
     private add: (target: T, observer: (value: O) => void) => void,
     private remove: (target: T, observer: (value: O) => void) => void,
-    private observer: (value: O) => void
+    private observer: (value: O) => void,
   ) {}
   private cache?: T;
   update(clear = false) {

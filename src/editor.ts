@@ -113,8 +113,8 @@ export class Editor extends LitElement {
       () => this.document?.observe,
       (t, o) => t?.add(o),
       (t, o) => t?.remove(o),
-      () => this.requestUpdate()
-    )
+      () => this.requestUpdate(),
+    ),
   );
   static override get styles() {
     return [
@@ -173,7 +173,7 @@ export class Editor extends LitElement {
         },
         bubbles: true,
         composed: true,
-      })
+      }),
     );
   }
   override async connectedCallback() {
@@ -219,11 +219,11 @@ export class Editor extends LitElement {
                   void this.navigate(document, root, fireEvent),
                 icon: blockIcon({root}),
                 preview: () => blockPreview({root}),
-              }))
+              })),
             ),
             bubbles: true,
             composed: true,
-          })
+          }),
         );
       } else {
         Object.assign(this, old);
@@ -241,11 +241,11 @@ export class Editor extends LitElement {
                   description: 'No',
                   execute: async () => void 0,
                 },
-              ]
+              ],
             ),
             bubbles: true,
             composed: true,
-          })
+          }),
         );
       }
     } catch (e) {
@@ -277,7 +277,7 @@ export class Editor extends LitElement {
           },
           bubbles: true,
           composed: true,
-        })
+        }),
       );
   }
   onInlineLinkClick({detail: {destination}}: CustomEvent<InlineLinkClick>) {
@@ -302,7 +302,7 @@ export class Editor extends LitElement {
         return;
       } else if (
         ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(
-          keyboardEvent.key
+          keyboardEvent.key,
         )
       ) {
         keyboardEvent.preventDefault();
@@ -313,8 +313,8 @@ export class Editor extends LitElement {
         const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key)
           ? 'line'
           : keyboardEvent.ctrlKey
-          ? 'word'
-          : 'character';
+            ? 'word'
+            : 'character';
         const result = hostContext.hasSelection
           ? 0
           : inline.moveCaret(alter, direction, granularity);
@@ -324,7 +324,7 @@ export class Editor extends LitElement {
           function updateFocus(
             element: Element & {hostContext?: HostContext},
             node: ViewModelNode,
-            offset: number
+            offset: number,
           ) {
             // Retarget if there's any containing transclusion that has a selection.
             const target = getBlockSelectionTarget(element);
@@ -345,7 +345,7 @@ export class Editor extends LitElement {
                 focusNode(
                   cast(element.hostContext),
                   next,
-                  direction === 'backward' ? -offset : offset
+                  direction === 'backward' ? -offset : offset,
                 );
                 return {node, element, next};
               } else {
@@ -410,11 +410,11 @@ export class Editor extends LitElement {
     inline: MarkdownInline,
     node: InlineViewModelNode,
     edit: {startIndex: number; oldEndIndex: number},
-    forceMarkdown = false
+    forceMarkdown = false,
   ) {
     const content = await navigator.clipboard.read();
     const mdItem = content.find((item) =>
-      item.types.includes('web text/markdown')
+      item.types.includes('web text/markdown'),
     );
     let mdText;
     if (mdItem) {
@@ -443,7 +443,7 @@ export class Editor extends LitElement {
             newText: text,
             newEndIndex: edit.oldEndIndex + text.length,
           },
-          cast(inline.hostContext)
+          cast(inline.hostContext),
         ); // TODO: wrong context
       } finally {
         finishEditing();
@@ -520,7 +520,7 @@ export class Editor extends LitElement {
   private editInlineNode(
     node: InlineViewModelNode,
     edit: InlineEdit,
-    hostContext: HostContext
+    hostContext: HostContext,
   ) {
     const newNodes = node.viewModel.edit(edit);
     if (newNodes) {
@@ -568,7 +568,7 @@ export class Editor extends LitElement {
             this.library,
             async ({document, root}) =>
               void this.navigate(document, root, true),
-            async ({name}) => void this.createAndNavigateByName(name, true)
+            async ({name}) => void this.createAndNavigateByName(name, true),
           );
         },
       },
@@ -626,15 +626,15 @@ export class Editor extends LitElement {
                       result,
                       this.library,
                       activeInline.hostContext!,
-                      'remove'
+                      'remove',
                     ),
                   async (result) =>
                     void sendTo(
                       result,
                       this.library,
                       activeInline.hostContext!,
-                      'remove'
-                    )
+                      'remove',
+                    ),
                 );
               },
             },
@@ -649,15 +649,15 @@ export class Editor extends LitElement {
                       result,
                       this.library,
                       activeInline.hostContext!,
-                      'transclude'
+                      'transclude',
                     ),
                   async (result) =>
                     void sendTo(
                       result,
                       this.library,
                       activeInline.hostContext!,
-                      'transclude'
-                    )
+                      'transclude',
+                    ),
                 );
               },
             },
@@ -672,15 +672,15 @@ export class Editor extends LitElement {
                       result,
                       this.library,
                       activeInline.hostContext!,
-                      'link'
+                      'link',
                     ),
                   async (result) =>
                     void sendTo(
                       result,
                       this.library,
                       activeInline.hostContext!,
-                      'link'
-                    )
+                      'link',
+                    ),
                 );
               },
             },
@@ -709,7 +709,7 @@ export class Editor extends LitElement {
                   activeInline,
                   activeNode,
                   {startIndex, oldEndIndex: endIndex},
-                  true
+                  true,
                 );
                 return undefined;
               },
@@ -727,7 +727,7 @@ export class Editor extends LitElement {
                 focusNode(
                   cast(activeInline.hostContext),
                   activeNode,
-                  startIndex
+                  startIndex,
                 );
                 return undefined;
               },
@@ -741,13 +741,13 @@ export class Editor extends LitElement {
               execute: async () => {
                 if (this.root?.viewModel.parent)
                   this.root = getLogicalContainingBlock(
-                    this.root.viewModel.parent
+                    this.root.viewModel.parent,
                   );
                 if (activeNode && activeInline)
                   focusNode(
                     cast(activeInline.hostContext),
                     activeNode,
-                    startIndex
+                    startIndex,
                   );
                 return undefined;
               },
@@ -764,7 +764,7 @@ export class Editor extends LitElement {
                   focusNode(
                     cast(activeInline.hostContext),
                     activeNode,
-                    startIndex
+                    startIndex,
                   );
                 return undefined;
               },
@@ -799,7 +799,7 @@ export class Editor extends LitElement {
                   });
                   newParagraph.viewModel.insertBefore(
                     cast(activeNode.viewModel.parent),
-                    activeNode.viewModel.nextSibling
+                    activeNode.viewModel.nextSibling,
                   );
                   finished();
                   focusNode(activeInline.hostContext!, newParagraph);
@@ -809,7 +809,7 @@ export class Editor extends LitElement {
                   'Insert transclusion',
                   this.library,
                   action,
-                  action
+                  action,
                 );
               },
             },
@@ -828,7 +828,7 @@ export class Editor extends LitElement {
                 });
                 newParagraph.viewModel.insertBefore(
                   cast(node.viewModel.parent),
-                  node
+                  node,
                 );
                 finished();
                 focusNode(cast(transclusion.hostContext), newParagraph, 0);
@@ -850,7 +850,7 @@ export class Editor extends LitElement {
                 });
                 newParagraph.viewModel.insertBefore(
                   cast(node.viewModel.parent),
-                  node.viewModel.nextSibling
+                  node.viewModel.nextSibling,
                 );
                 finished();
                 focusNode(cast(transclusion.hostContext), newParagraph, 0);
@@ -868,7 +868,7 @@ export class Editor extends LitElement {
 
 function performLogicalInsertion(
   context: ViewModelNode,
-  nodes: ViewModelNode[]
+  nodes: ViewModelNode[],
 ) {
   let {parent, nextSibling} = nextLogicalInsertionPoint(context);
   if (context.type === 'section') {
@@ -930,7 +930,7 @@ function nextLogicalInsertionPoint(node: ViewModelNode) {
 function maybeMergeContentInto(
   node: InlineNode & ViewModelNode,
   target: ViewModelNode,
-  context: HostContext
+  context: HostContext,
 ): boolean {
   if (
     target.type === 'code-block' ||
@@ -954,7 +954,7 @@ function insertSiblingParagraph(
   node: InlineNode & ViewModelNode,
   root: ViewModelNode,
   startIndex: number,
-  context: HostContext
+  context: HostContext,
 ): boolean {
   const newParagraph = node.viewModel.tree.add({
     type: 'paragraph',
@@ -962,7 +962,7 @@ function insertSiblingParagraph(
   });
   newParagraph.viewModel.insertBefore(
     cast(node.viewModel.parent),
-    node.viewModel.nextSibling
+    node.viewModel.nextSibling,
   );
   finishInsertParagraph(node, newParagraph, root, startIndex, context);
   return true;
@@ -972,7 +972,7 @@ function insertParagraphInList(
   node: InlineNode & ViewModelNode,
   root: ViewModelNode,
   startIndex: number,
-  context: HostContext
+  context: HostContext,
 ): boolean {
   const {ancestor, path} = findAncestor(node, root, 'list');
   if (!ancestor) return false;
@@ -988,7 +988,7 @@ function insertParagraphInList(
       });
       targetList.viewModel.insertBefore(
         cast(node.viewModel.parent),
-        node.viewModel.nextSibling
+        node.viewModel.nextSibling,
       );
       targetListItemNextSibling = undefined;
     }
@@ -1027,7 +1027,7 @@ function insertParagraphInListItem(
   node: InlineNode & ViewModelNode,
   root: ViewModelNode,
   startIndex: number,
-  context: HostContext
+  context: HostContext,
 ): boolean {
   const {ancestor: listItem, path} = findAncestor(node, root, 'list-item');
   if (!listItem) return false;
@@ -1044,7 +1044,7 @@ function insertParagraphInDocument(
   node: InlineNode & ViewModelNode,
   root: ViewModelNode,
   startIndex: number,
-  context: HostContext
+  context: HostContext,
 ): boolean {
   const {ancestor: section, path} = findAncestor(node, root, 'document');
   if (!section) return false;
@@ -1061,7 +1061,7 @@ function insertParagraphInSection(
   node: InlineNode & ViewModelNode,
   root: ViewModelNode,
   startIndex: number,
-  context: HostContext
+  context: HostContext,
 ): boolean {
   let {ancestor: section, path} = findAncestor(node, root, 'section');
   let nextSibling;
@@ -1085,7 +1085,7 @@ function insertParagraphInSection(
 function areAncestorAndDescendant(
   node: ViewModelNode,
   node2: ViewModelNode,
-  root: ViewModelNode
+  root: ViewModelNode,
 ) {
   return (
     [...ancestors(node, root)].includes(node2) ||
@@ -1098,7 +1098,7 @@ function finishInsertParagraph(
   newParagraph: ParagraphNode & ViewModelNode,
   root: ViewModelNode,
   startIndex: number,
-  context: HostContext
+  context: HostContext,
 ) {
   const shouldSwap =
     startIndex === 0 &&
@@ -1128,7 +1128,7 @@ function handleInlineInputAsBlockEdit(
   {
     detail: {inline, inputEvent, inputStart, inputEnd},
   }: CustomEvent<InlineInput>,
-  context: HostContext
+  context: HostContext,
 ): boolean {
   if (!inline.node) return false;
   const root = cast(context.root);
@@ -1138,7 +1138,7 @@ function handleInlineInputAsBlockEdit(
     // Turn sections and code-blocks into paragraphs.
     if (node.type === 'section') {
       node.viewModel.updateMarker(
-        node.marker.substring(0, node.marker.length - 1)
+        node.marker.substring(0, node.marker.length - 1),
       );
       if (node.marker === '') {
         const paragraph = node.viewModel.tree.add({
@@ -1204,7 +1204,7 @@ async function sendTo(
   {root, name}: {root?: ViewModelNode; name: string},
   library: Library,
   hostContext: HostContext,
-  mode: 'remove' | 'transclude' | 'link'
+  mode: 'remove' | 'transclude' | 'link',
 ) {
   if (!root) {
     // TODO: We shouldn't need to make the call here, but TS can't
@@ -1252,7 +1252,7 @@ function insertMarkdown(markdown: string, node: ViewModelNode) {
   const finishEditing = node.viewModel.tree.edit();
   try {
     const newNodes = root.children.map((newNode) =>
-      node.viewModel.tree.add<MarkdownNode>(newNode)
+      node.viewModel.tree.add<MarkdownNode>(newNode),
     );
     let newFocus = findFinalEditable(newNodes[0]);
     performLogicalInsertion(node, newNodes);
@@ -1316,7 +1316,7 @@ function serializeSelection(hostContext: HostContext) {
     }
   };
   const roots = removeDescendantNodes(
-    [...hostContext.selection.values()].map(expand)
+    [...hostContext.selection.values()].map(expand),
   ).map((node) => cloneNode(node, predicate));
   const tree = new MarkdownTree({
     type: 'document',
