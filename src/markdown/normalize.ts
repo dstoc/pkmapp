@@ -16,7 +16,8 @@ import {assert} from '../asserts.js';
 
 import {SectionNode} from './node.js';
 import {children, dfs} from './view-model-util.js';
-import {MarkdownTree, ViewModelNode} from './view-model.js';
+import {MarkdownTree} from './view-model.js';
+import {ViewModelNode} from './view-model-node.js';
 import {cast} from '../asserts.js';
 
 function moveTrailingNodesIntoSections(tree: MarkdownTree) {
@@ -33,7 +34,7 @@ function moveTrailingNodesIntoSections(tree: MarkdownTree) {
 }
 
 function normalizeContiguousSections(
-  sections: Array<SectionNode & ViewModelNode>
+  sections: Array<SectionNode & ViewModelNode>,
 ) {
   const activeSections: Array<SectionNode & ViewModelNode> = [];
   function activeSection() {
@@ -51,7 +52,7 @@ function normalizeContiguousSections(
         if (section.viewModel.previousSibling !== activeSection()) {
           section.viewModel.insertBefore(
             activeSection().viewModel.parent!,
-            activeSection().viewModel.nextSibling
+            activeSection().viewModel.nextSibling,
           );
         }
         activeSections.pop();

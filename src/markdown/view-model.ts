@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import type {MarkdownNode, DocumentNode, InlineNode} from './node.js';
+import type {ViewModelNode, MaybeViewModelNode} from './view-model-node.js';
 
 import {parser as inlineParser} from './inline-parser.js';
 import {parseBlocks} from './block-parser.js';
@@ -22,13 +23,13 @@ import {Observe} from '../observe.js';
 import {normalizeTree} from './normalize.js';
 import {dfs} from './view-model-util.js';
 
-class ViewModel {
+export class ViewModel {
   constructor(
-    readonly self: ViewModelNode,
+    readonly self: MarkdownNode & ViewModelNode,
     readonly tree: MarkdownTree,
     public parent?: ViewModelNode,
     childIndex?: number,
-    public connected = false
+    public connected = false,
   ) {
     this.initialize(parent, childIndex);
     this.observe = new Observe(this.self, this.tree.observe);
@@ -163,7 +164,7 @@ export class InlineViewModel extends ViewModel {
     self: InlineNode & ViewModelNode,
     tree: MarkdownTree,
     parent?: ViewModelNode,
-    childIndex?: number
+    childIndex?: number,
   ) {
     super(self, tree, parent, childIndex);
     this.inlineTree = inlineParser.parse(self.content);
@@ -224,14 +225,14 @@ export class InlineViewModel extends ViewModel {
 export interface MarkdownTreeDelegate {
   postEditUpdate(
     node: ViewModelNode,
-    change: 'connected' | 'disconnected' | 'changed'
+    change: 'connected' | 'disconnected' | 'changed',
   ): void;
 }
 
 export class MarkdownTree {
   constructor(
     root: DocumentNode,
-    private readonly delegate?: MarkdownTreeDelegate
+    private readonly delegate?: MarkdownTreeDelegate,
   ) {
     this.root = this.addDom<DocumentNode>(root);
     this.setRoot(this.root);
@@ -256,7 +257,7 @@ export class MarkdownTree {
     finish();
   }
 
-  add<T>(node: T & MarkdownNode) {
+  add<T extends MarkdownNode>(node: T) {
     if ((node as MaybeViewModelNode).viewModel) {
       throw new Error('node is already part of a tree');
     }
@@ -306,10 +307,10 @@ export class MarkdownTree {
     this.editResumeObserve();
   }
 
-  private addDom<T>(
-    node: T & MarkdownNode,
+  private addDom<T extends MarkdownNode>(
+    node: T,
     parent?: ViewModelNode,
-    childIndex?: number
+    childIndex?: number,
   ) {
     const result = node as T & ViewModelNode;
     if (
@@ -331,31 +332,16 @@ export class MarkdownTree {
     return result;
   }
 
-  serialize(node?: ViewModelNode): MarkdownNode {
+  serialize(node?: MarkdownNode & ViewModelNode): MarkdownNode {
     node = node ?? this.root;
     assert(node.viewModel.tree === this);
     assert(this.state === 'idle');
-    const result: MaybeViewModelNode = {...node};
+    const result: MarkdownNode & MaybeViewModelNode = {...node};
     delete result.viewModel;
     result.children = node.children?.map(this.serialize);
     return result;
   }
 }
-
-export type MaybeViewModelNode = MarkdownNode & {
-  viewModel?: ViewModel;
-  children?: MarkdownNode[];
-};
-
-export type ViewModelNode = MarkdownNode & {
-  viewModel: ViewModel;
-  children?: ViewModelNode[];
-};
-
-export type InlineViewModelNode = InlineNode & {
-  viewModel: InlineViewModel;
-  children?: ViewModelNode[];
-};
 
 interface Position {
   row: number;

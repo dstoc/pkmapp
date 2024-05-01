@@ -14,8 +14,13 @@
 
 import {assert, cast} from '../asserts.js';
 
-import {ViewModelNode} from './view-model.js';
-import {MarkdownNode} from './node.js';
+import type {ViewModelNode} from './view-model-node.js';
+import {
+  CodeBlockNode,
+  MarkdownNode,
+  ParagraphNode,
+  SectionNode,
+} from './node.js';
 
 export function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
   if (node1.viewModel.nextSibling === node2) {
@@ -61,7 +66,7 @@ export function* reverseDfs(node: ViewModelNode, limit?: ViewModelNode) {
 
 export function* dfs(
   node: ViewModelNode,
-  root: ViewModelNode = node.viewModel.tree.root
+  root: ViewModelNode = node.viewModel.tree.root,
 ) {
   function next(next?: ViewModelNode) {
     return next && next !== root.viewModel.parent && (node = next);
@@ -79,7 +84,7 @@ export function* dfs(
 export function findAncestor(
   node: ViewModelNode,
   root: ViewModelNode,
-  type: string
+  type: string,
 ) {
   const path = [node];
   for (const ancestor of ancestors(node, root)) {
@@ -94,7 +99,7 @@ export function findAncestor(
   return {};
 }
 
-type Editable = ViewModelNode & {type: 'paragraph' | 'code-block' | 'section'};
+type Editable = ViewModelNode & (ParagraphNode | CodeBlockNode | SectionNode);
 
 function editable(node: ViewModelNode): node is Editable {
   return ['paragraph', 'code-block', 'section'].includes(node.type);
@@ -103,7 +108,7 @@ function editable(node: ViewModelNode): node is Editable {
 export function findPreviousEditable(
   node: ViewModelNode,
   root: ViewModelNode,
-  include = false
+  include = false,
 ) {
   if (include && editable(node)) return node;
   return findPreviousDfs(node, root, editable);
@@ -112,7 +117,7 @@ export function findPreviousEditable(
 export function findNextEditable(
   node: ViewModelNode,
   root: ViewModelNode,
-  include = false
+  include = false,
 ) {
   if (include && editable(node)) return node;
   return findNextDfs(node, root, editable);
@@ -130,7 +135,7 @@ export function findFinalEditable(node: ViewModelNode, include = false) {
 export function findNextDfs<T extends ViewModelNode>(
   node: ViewModelNode,
   root: ViewModelNode,
-  predicate: (node: ViewModelNode) => node is T
+  predicate: (node: ViewModelNode) => node is T,
 ) {
   for (const next of dfs(node, root)) {
     if (next !== node && predicate(next)) return next;
@@ -141,7 +146,7 @@ export function findNextDfs<T extends ViewModelNode>(
 export function findPreviousDfs<T extends ViewModelNode>(
   node: ViewModelNode,
   root: ViewModelNode,
-  predicate: (node: ViewModelNode) => node is T
+  predicate: (node: ViewModelNode) => node is T,
 ) {
   for (const next of reverseDfs(node, root)) {
     if (next !== node && predicate(next)) return next;
@@ -178,7 +183,7 @@ export function removeDescendantNodes(nodes: ViewModelNode[]) {
 
 function* cloneChildren(
   children: ViewModelNode[],
-  predicate?: (node: ViewModelNode) => boolean
+  predicate?: (node: ViewModelNode) => boolean,
 ): Generator<MarkdownNode> {
   for (const child of children) {
     if (!predicate || predicate(child)) {
@@ -193,7 +198,7 @@ function* cloneChildren(
  */
 export function cloneNode(
   node: ViewModelNode,
-  predicate?: (node: ViewModelNode) => boolean
+  predicate?: (node: ViewModelNode) => boolean,
 ): MarkdownNode {
   const result: MarkdownNode = {
     ...node,

@@ -27,7 +27,7 @@ import {contextProvided} from './deps/lit-labs-context.js';
 import {libraryContext} from './app-context.js';
 import {getLogicalContainingBlock} from './block-util.js';
 import {Observers, Observer} from './observe.js';
-import type {ViewModelNode} from './markdown/view-model.js';
+import type {ViewModelNode} from './markdown/view-model-node.js';
 
 @customElement('pkm-title')
 export class Title extends LitElement {
@@ -39,7 +39,7 @@ export class Title extends LitElement {
       }
     `;
   }
-  @property()
+  @property({attribute: false})
   node?: ViewModelNode;
   @contextProvided({context: libraryContext, subscribe: true})
   @state()

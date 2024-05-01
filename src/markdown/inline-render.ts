@@ -28,7 +28,7 @@ import Parser from '../deps/tree-sitter.js';
 import {cast} from '../asserts.js';
 
 import {HostContext, hostContext} from './host-context.js';
-import {InlineViewModelNode, ViewModelNode} from './view-model.js';
+import {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
 
 export interface InlineInputPoint {
   span?: MarkdownSpan;
