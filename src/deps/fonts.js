@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import fira from './firacode/fira_code.css' assert {type: 'css'};
-import notoemoji from './noto-emoji/400.css' assert {type: 'css'};
+import fira from './firacode/fira_code.css' with {type: 'css'};
+import notoemoji from './noto-emoji/400.css' with {type: 'css'};
 
 export {fira, notoemoji};
