@@ -15,11 +15,11 @@
 import {parseBlocks} from './markdown/block-parser.js';
 import {serializeToString} from './markdown/block-serializer.js';
 import {DocumentNode} from './markdown/node.js';
+import {MarkdownTree} from './markdown/view-model.js';
 import {
-  InlineViewModelNode,
-  MarkdownTree,
   ViewModelNode,
-} from './markdown/view-model.js';
+  InlineViewModelNode,
+} from './markdown/view-model-node.js';
 import {Observe} from './observe.js';
 import {BackLinks} from './backlinks.js';
 import {Metadata} from './metadata.js';

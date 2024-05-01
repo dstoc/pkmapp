@@ -13,13 +13,14 @@
 // limitations under the License.
 
 export type MarkdownNode =
+  | ParagraphNode
+  | CodeBlockNode
+  | SectionNode
   | DocumentNode
   | ListNode
-  | ParagraphNode
   | BlockQuoteNode
   | ListItemNode
   | SectionNode
-  | CodeBlockNode
   | UnsupportedNode;
 export type InlineNode = ParagraphNode | CodeBlockNode | SectionNode;
 export type ParentNode =
@@ -32,46 +33,55 @@ export type ParentNode =
 // TODO: ID, Sequence Number (per tree?)
 interface Node {
   readonly children?: MarkdownNode[];
+  readonly type:
+    | 'document'
+    | 'list'
+    | 'section'
+    | 'paragraph'
+    | 'block-quote'
+    | 'list-item'
+    | 'code-block'
+    | 'unsupported';
 }
 
-export type DocumentNode = Node & {
+export interface DocumentNode extends Node {
   readonly type: 'document';
-};
+}
 
-export type ListNode = Node & {
+export interface ListNode extends Node {
   readonly type: 'list';
-};
+}
 
-export type SectionNode = Node & {
+export interface SectionNode extends Node {
   readonly type: 'section';
   readonly marker: string;
   readonly content: string;
-};
+}
 
-export type ParagraphNode = Node & {
+export interface ParagraphNode extends Node {
   readonly type: 'paragraph';
   readonly content: string;
-};
+}
 
-export type BlockQuoteNode = Node & {
+export interface BlockQuoteNode extends Node {
   readonly type: 'block-quote';
   readonly marker: string;
-};
+}
 
-export type ListItemNode = Node & {
+export interface ListItemNode extends Node {
   readonly type: 'list-item';
   readonly marker: string;
   readonly checked?: boolean;
-};
+}
 
-export type CodeBlockNode = Node & {
+export interface CodeBlockNode extends Node {
   readonly type: 'code-block';
   readonly info: string | null;
   readonly content: string;
-};
+}
 
-export type UnsupportedNode = Node & {
+export interface UnsupportedNode extends Node {
   readonly type: 'unsupported';
   readonly content: string;
   readonly parser_type: string;
-};
+}

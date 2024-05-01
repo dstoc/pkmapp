@@ -14,7 +14,7 @@
 
 import {getBlockSelectionTarget} from './block-selection-util.js';
 import {MarkdownInline} from './markdown/inline-render.js';
-import {ViewModelNode} from './markdown/view-model.js';
+import type {ViewModelNode} from './markdown/view-model-node.js';
 import {cast} from './asserts.js';
 import {focusNode} from './markdown/host-context.js';
 import {findAncestor, ancestors} from './markdown/view-model-util.js';

@@ -13,7 +13,10 @@
 // limitations under the License.
 
 import type {CodeBlockNode, SectionNode} from './markdown/node.js';
-import {InlineViewModelNode, ViewModelNode} from './markdown/view-model.js';
+import {
+  InlineViewModelNode,
+  ViewModelNode,
+} from './markdown/view-model-node.js';
 import {dfs} from './markdown/inline-parser.js';
 import {
   getLogicalContainingBlock,

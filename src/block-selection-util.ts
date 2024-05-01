@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {HostContext} from './markdown/host-context.js';
-import {ViewModelNode} from './markdown/view-model.js';
+import type {ViewModelNode} from './markdown/view-model-node.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {assert, cast} from './asserts.js';
 import {focusNode} from './markdown/host-context.js';

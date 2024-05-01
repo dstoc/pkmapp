@@ -59,10 +59,12 @@ import {
   cloneNode,
 } from './markdown/view-model-util.js';
 import {
+  ViewModelNode,
+  InlineViewModelNode,
+} from './markdown/view-model-node.js';
+import {
   InlineEdit,
   InlineViewModel,
-  InlineViewModelNode,
-  ViewModelNode,
   MarkdownTree,
 } from './markdown/view-model.js';
 import {Observer, Observers} from './observe.js';

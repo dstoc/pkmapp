@@ -14,7 +14,7 @@
 
 import {createContext} from '../deps/lit-labs-context.js';
 
-import {ViewModelNode} from './view-model.js';
+import type {ViewModelNode} from './view-model-node.js';
 
 export class HostContext {
   focusNode?: ViewModelNode;
@@ -62,13 +62,13 @@ export class HostContext {
   }
 }
 export const hostContext = createContext<HostContext | undefined>(
-  'hostContext'
+  'hostContext',
 );
 
 export function focusNode(
   context: HostContext,
   node: ViewModelNode,
-  offset?: number
+  offset?: number,
 ) {
   context.focusNode = node;
   context.focusOffset = offset;

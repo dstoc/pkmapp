@@ -23,7 +23,7 @@ import {
 } from '../deps/lit.js';
 
 import {MarkdownRenderer} from './block-render.js';
-import {ViewModelNode} from './view-model.js';
+import type {ViewModelNode} from './view-model-node.js';
 import {CodeBlockNode} from './node.js';
 import {Library} from '../library.js';
 import {libraryContext} from '../app-context.js';

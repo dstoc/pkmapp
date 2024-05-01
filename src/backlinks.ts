@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {dfs} from './markdown/inline-parser.js';
-import {InlineViewModelNode} from './markdown/view-model.js';
+import {InlineViewModelNode} from './markdown/view-model-node.js';
 import {Library, Document} from './library.js';
 
 export class BackLinks {

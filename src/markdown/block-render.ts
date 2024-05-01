@@ -22,7 +22,7 @@ import {
 } from '../deps/lit.js';
 
 import {MarkdownInline} from './inline-render.js';
-import {ViewModelNode} from './view-model.js';
+import type {ViewModelNode} from './view-model-node.js';
 import './transclusion.js';
 import {hostContext, HostContext} from './host-context.js';
 import {contextProvider, contextProvided} from '../deps/lit-labs-context.js';

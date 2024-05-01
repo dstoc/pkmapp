@@ -27,7 +27,7 @@ import {
   state,
 } from './deps/lit.js';
 import {InlineKeyDown} from './markdown/inline-render.js';
-import {InlineViewModelNode} from './markdown/view-model.js';
+import {InlineViewModelNode} from './markdown/view-model-node.js';
 import {MarkdownInline} from './markdown/inline-render.js';
 import {
   SimpleCommandBundle,
