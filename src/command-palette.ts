@@ -39,7 +39,7 @@ export interface FreeformCommandTemplate {
   readonly icon?: string;
   execute(
     command: Command,
-    updatePreview: (template: TemplateResult) => void
+    updatePreview: (template: TemplateResult) => void,
   ): Promise<CommandBundle | undefined>;
 }
 
@@ -47,7 +47,7 @@ export class SimpleCommandBundle {
   constructor(
     readonly description: string,
     private commands: Command[],
-    private freeform?: FreeformCommandTemplate
+    private freeform?: FreeformCommandTemplate,
   ) {}
   async execute() {
     return this;
@@ -55,10 +55,10 @@ export class SimpleCommandBundle {
   async getCommands(input: string) {
     const pattern = new RegExp(
       input.replace(/(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'),
-      'i'
+      'i',
     );
     const commands = this.commands.filter(({description}) =>
-      pattern.test(description)
+      pattern.test(description),
     );
     if (this.freeform) commands.push({...this.freeform, description: input});
     return commands;
@@ -200,7 +200,7 @@ export class CommandPalette extends LitElement {
             >
               <span class="icon">${item.icon}</span>${item.description}
             </div>
-          `
+          `,
         )}
       </div>
       <div id=preview-separator></div>
@@ -218,7 +218,7 @@ export class CommandPalette extends LitElement {
       : [];
     this.activeIndex = Math.max(
       0,
-      Math.min(this.activeIndex, this.activeItems.length - 1)
+      Math.min(this.activeIndex, this.activeItems.length - 1),
     );
   }
   private handleInputKeyDown(e: KeyboardEvent) {
@@ -268,11 +268,11 @@ export class CommandPalette extends LitElement {
         duration: 1000,
         iterations: Infinity,
         easing: 'ease-in-out',
-      }
+      },
     );
     const next = await selected.execute(
       selected,
-      (template) => (this.previewOverride = template)
+      (template) => (this.previewOverride = template),
     );
     animation.cancel();
     if (next) {
@@ -289,14 +289,14 @@ export class CommandPalette extends LitElement {
   async triggerCommand(command: Command) {
     const bundle = await command.execute(
       command,
-      (template) => (this.previewOverride = template)
+      (template) => (this.previewOverride = template),
     );
     await this.trigger(cast(bundle));
   }
   next() {
     this.activeIndex = Math.min(
       this.activeItems.length - 1,
-      this.activeIndex + 1
+      this.activeIndex + 1,
     );
     this.scrollToActiveItem();
   }

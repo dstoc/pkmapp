@@ -15,7 +15,7 @@
 self.addEventListener('fetch', (event: any) => {
   const basePath = new URL(self.location.toString()).pathname.replace(
     '/serviceworker.js',
-    ''
+    '',
   );
   const target = new URL(event.request.url);
   if (target.origin !== self.origin) return;

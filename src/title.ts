@@ -62,9 +62,9 @@ export class Title extends LitElement {
             () => container.viewModel.observe,
             (target, observer) => target.add(observer),
             (target, observer) => target.remove(observer),
-            () => this.requestUpdate()
-          )
-      )
+            () => this.requestUpdate(),
+          ),
+      ),
     );
     this.observers.update();
 
@@ -74,7 +74,7 @@ export class Title extends LitElement {
           html`»
             <a class="item" @click=${() => this.onItemClick(node)}
               >${getTitle(node, this.library)}</a
-            > `
+            > `,
       )}
     `;
   }
@@ -84,7 +84,7 @@ export class Title extends LitElement {
         detail: node,
         bubbles: true,
         composed: true,
-      })
+      }),
     );
   }
 }

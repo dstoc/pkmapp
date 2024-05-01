@@ -21,7 +21,7 @@ import {findAncestor, ancestors} from './markdown/view-model-util.js';
 
 export function maybeEditBlockSelectionIndent(
   inline: MarkdownInline,
-  mode: 'indent' | 'unindent'
+  mode: 'indent' | 'unindent',
 ) {
   const {hostContext: selectionHostContext} =
     getBlockSelectionTarget(inline) ?? {};
@@ -45,7 +45,7 @@ export function maybeEditBlockSelectionIndent(
 
 export function editInlineIndent(
   inline: MarkdownInline,
-  mode: 'indent' | 'unindent'
+  mode: 'indent' | 'unindent',
 ) {
   const selection = inline.getSelection();
   const node = cast(inline.node);
@@ -76,12 +76,12 @@ function unindent(node: ViewModelNode, root: ViewModelNode) {
   if (targetListItemSibling?.type === 'list-item') {
     listItem.viewModel.insertBefore(
       cast(targetListItemSibling.viewModel.parent),
-      targetListItemSibling.viewModel.nextSibling
+      targetListItemSibling.viewModel.nextSibling,
     );
   } else {
     target.viewModel.insertBefore(
       cast(list.viewModel.parent),
-      list.viewModel.nextSibling
+      list.viewModel.nextSibling,
     );
     listItem.viewModel.remove();
   }
@@ -108,7 +108,7 @@ function unindent(node: ViewModelNode, root: ViewModelNode) {
     // TODO: move more than the first child.
     listItem.viewModel.firstChild?.viewModel.insertBefore(
       cast(target.viewModel.parent),
-      target.viewModel.nextSibling
+      target.viewModel.nextSibling,
     );
   }
   if (!list.children?.length) {

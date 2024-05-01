@@ -55,7 +55,7 @@ function normalizeName(name: string) {
 
 async function* allFiles(
   prefix: string,
-  directory: FileSystemDirectoryHandle
+  directory: FileSystemDirectoryHandle,
 ): AsyncGenerator<string, void, unknown> {
   for await (const entry of directory.values()) {
     if (entry.kind === 'file' && entry.name.endsWith('.md')) {
@@ -69,7 +69,7 @@ async function* allFiles(
 async function createNewFile(
   directory: FileSystemDirectoryHandle,
   name: string,
-  content: string
+  content: string,
 ) {
   let n = 0;
   while (true) {
@@ -95,7 +95,7 @@ async function createNewFile(
 async function getFileHandleFromPath(
   directory: FileSystemDirectoryHandle,
   path: string,
-  create = false
+  create = false,
 ) {
   const parts = path.split('/');
   const name: string = parts.pop()!;
@@ -108,7 +108,7 @@ async function getFileHandleFromPath(
 async function deleteFile(
   directory: FileSystemDirectoryHandle,
   path: string,
-  create = false
+  create = false,
 ) {
   const parts = path.split('/');
   const name: string = parts.pop()!;
@@ -200,7 +200,7 @@ export class FileSystemLibrary implements Library {
     const filename = await createNewFile(
       this.directory,
       name.toLowerCase(),
-      content
+      content,
     );
     return cast(await this.loadDocument(filename));
   }
@@ -244,7 +244,7 @@ class FileSystemDocument implements Document {
     private library: FileSystemLibrary,
     private lastModified: number,
     root: DocumentNode,
-    readonly filename: string
+    readonly filename: string,
   ) {
     this.tree = new MarkdownTree(cast(root), this);
     this.tree.observe.add(() => this.markDirty());
@@ -264,12 +264,12 @@ class FileSystemDocument implements Document {
   }
   postEditUpdate(
     node: ViewModelNode,
-    change: 'connected' | 'disconnected' | 'changed'
+    change: 'connected' | 'disconnected' | 'changed',
   ) {
     if (node.type === 'paragraph') {
       this.library.backLinks.postEditUpdate(
         node as InlineViewModelNode,
-        change
+        change,
       );
     }
     if (node.type === 'code-block') {
@@ -281,13 +281,13 @@ class FileSystemDocument implements Document {
     if (node.type === 'paragraph') {
       this.library.metadata.updateInlineNode(
         node as InlineViewModelNode,
-        change
+        change,
       );
     }
   }
   async refresh() {
     const {root, lastModified} = cast(
-      await this.library.load(this.filename, this.lastModified)
+      await this.library.load(this.filename, this.lastModified),
     );
     if (root) {
       this.lastModified = lastModified;
@@ -301,7 +301,7 @@ class FileSystemDocument implements Document {
     const handle = await getFileHandleFromPath(
       this.library.directory,
       this.filename + '.md',
-      true
+      true,
     );
     const stream = await handle.createWritable();
     await stream.write(text);
@@ -313,7 +313,7 @@ class FileSystemDocument implements Document {
     this.tree.setRoot(
       this.tree.add<DocumentNode>({
         type: 'document',
-      })
+      }),
     );
     this.library.cache.delete(normalizeName(this.filename));
     await deleteFile(this.library.directory, this.filename + '.md');

@@ -16,7 +16,7 @@ function wrap(request: IDBRequest) {
   return new Promise<IDBRequest>(
     (resolve, reject) => (
       (request.onsuccess = () => resolve(request)), (request.onerror = reject)
-    )
+    ),
   );
 }
 
@@ -30,7 +30,7 @@ async function getDatabase(): Promise<IDBDatabase> {
 }
 
 export async function getDirectory(
-  key: string
+  key: string,
 ): Promise<FileSystemDirectoryHandle | undefined> {
   const db = await getDatabase();
   const result = (
@@ -38,7 +38,7 @@ export async function getDirectory(
       db
         .transaction('directories', 'readwrite')
         .objectStore('directories')!
-        .get(key)
+        .get(key),
     )
   ).result;
   return result;
@@ -46,13 +46,13 @@ export async function getDirectory(
 
 export async function setDirectory(
   key: string,
-  directory: FileSystemDirectoryHandle
+  directory: FileSystemDirectoryHandle,
 ) {
   const db = await getDatabase();
   await wrap(
     db
       .transaction('directories', 'readwrite')
       .objectStore('directories')!
-      .put(directory, key)
+      .put(directory, key),
   );
 }
