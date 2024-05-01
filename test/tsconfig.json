@@ -5,7 +5,9 @@
       "node",
       "webdriverio/async",
       "@wdio/jasmine-framework",
-      "expect-webdriverio"
+      "expect-webdriverio",
+      "@wdio/globals/types",
+      "@types/jasmine"
     ],
     "target": "es2019"
   }
