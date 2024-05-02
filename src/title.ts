@@ -23,7 +23,7 @@ import {
   html,
   LitElement,
 } from './deps/lit.js';
-import {contextProvided} from './deps/lit-labs-context.js';
+import {consume} from './deps/lit-context.js';
 import {libraryContext} from './app-context.js';
 import {getLogicalContainingBlock} from './block-util.js';
 import {Observers, Observer} from './observe.js';
@@ -41,7 +41,7 @@ export class Title extends LitElement {
   }
   @property({attribute: false})
   node?: ViewModelNode;
-  @contextProvided({context: libraryContext, subscribe: true})
+  @consume({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
   observers?: Observers;
@@ -49,7 +49,7 @@ export class Title extends LitElement {
   override render() {
     if (!this.node) return ``;
     this.observers?.clear();
-    let containers = [];
+    const containers: ViewModelNode[] = [];
     let next: ViewModelNode | undefined = this.node;
     while (next) {
       containers.unshift(next);
@@ -60,9 +60,9 @@ export class Title extends LitElement {
         (container) =>
           new Observer(
             () => container.viewModel.observe,
+            () => this.requestUpdate(),
             (target, observer) => target.add(observer),
             (target, observer) => target.remove(observer),
-            () => this.requestUpdate(),
           ),
       ),
     );
@@ -99,16 +99,18 @@ declare global {
 }
 function getTitle(node: ViewModelNode, library: Library): string {
   switch (node.type) {
-    case 'list-item':
+    case 'list-item': {
       const inline = findNextEditable(node, node, false);
       // TODO: convert nodes to text
       return inline?.content.substring(0, 10) ?? 'no-inline';
+    }
     case 'section':
       // TODO: use metadata
       return node.content;
-    case 'document':
+    case 'document': {
       const document = library.getDocumentByTree(node.viewModel.tree);
       return document?.name ?? 'no-document';
+    }
     default:
       assert(false);
   }

@@ -18,7 +18,7 @@ import './command-palette-dialog.js';
 
 import {libraryContext} from './app-context.js';
 import {CommandPaletteDialog} from './command-palette-dialog.js';
-import {contextProvider} from './deps/lit-labs-context.js';
+import {provide} from './deps/lit-context.js';
 import {
   customElement,
   html,
@@ -72,7 +72,7 @@ if (!window.opener && !main) {
 export class PkmApp extends LitElement {
   @query('pkm-editor') editor!: Editor;
   @query('pkm-command-palette-dialog') commandPalette!: CommandPaletteDialog;
-  @contextProvider({context: libraryContext}) @state() library!: Library;
+  @provide({context: libraryContext}) @state() library!: Library;
   constructor() {
     super();
     document.addEventListener('keydown', (e) => {
@@ -140,7 +140,7 @@ export class PkmApp extends LitElement {
     try {
       const url = new URL(location.toString());
       let library;
-      let parent = window.opener?.document.querySelector('pkm-app')?.library;
+      const parent = window.opener?.document.querySelector('pkm-app')?.library;
       if (parent) {
         library = parent;
         console.log('used parent!');
@@ -178,7 +178,8 @@ declare global {
 }
 
 onunhandledrejection = (e) => console.error(e.reason);
-onerror = (event, source, lineno, colno, error) => console.error(event, error);
+onerror = (event, _source, _lineno, _colno, error) =>
+  console.error(event, error);
 
 render(html`<pkm-app></pkm-app>`, document.body);
 

@@ -22,19 +22,20 @@ import {
 } from '../deps/lit.js';
 
 import {MarkdownInline} from './inline-render.js';
+import {isInlineNode} from './node.js';
 import type {ViewModelNode} from './view-model-node.js';
 import './transclusion.js';
 import {hostContext, HostContext} from './host-context.js';
-import {contextProvider, contextProvided} from '../deps/lit-labs-context.js';
+import {provide, consume} from '../deps/lit-context.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement {
   @property({type: Boolean, reflect: true}) selected?: boolean;
-  @property({type: String, reflect: true}) checked?: boolean;
+  @property({type: Boolean, reflect: true}) checked?: boolean;
   @property({type: Boolean, reflect: true}) root?: boolean;
   @property({type: String, reflect: true}) type = '';
-  @property({attribute: false}) node: ViewModelNode | undefined;
-  @contextProvided({context: hostContext, subscribe: true})
+  @property({attribute: false}) node?: ViewModelNode;
+  @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
   hostContext: HostContext | undefined;
   constructor() {
@@ -69,9 +70,7 @@ export class MarkdownBlock extends LitElement {
     if (node.type === 'code-block' && node.info === 'tc') {
       return html`<md-transclusion .node=${node}></md-transclusion>`;
     }
-    return html`${node.type === 'paragraph' ||
-    node.type === 'code-block' ||
-    node.type === 'section'
+    return html`${isInlineNode(node)
       ? html`<md-inline .node=${node}></md-inline>`
       : ''}
     ${node.children?.map((node) => html`<md-block .node=${node}></md-block>`)} `;
@@ -218,11 +217,11 @@ export class MarkdownRenderer extends LitElement {
     ];
   }
 
-  @contextProvider({context: hostContext})
+  @provide({context: hostContext})
   @state()
   readonly hostContext = new HostContext();
 
-  @property({type: Object, reflect: false}) block!: ViewModelNode;
+  @property({attribute: false}) block!: ViewModelNode;
   override render() {
     this.hostContext.root = this.block;
     if (!this.block) return html``;

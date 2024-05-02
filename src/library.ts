@@ -232,8 +232,7 @@ export class FileSystemLibrary implements Library {
     }
     const {root, lastModified} = (await this.load(name, 0)) ?? {};
     if (!root || lastModified == null) return;
-    const library = this;
-    const result = new FileSystemDocument(library, lastModified, root, name);
+    const result = new FileSystemDocument(this, lastModified, root, name);
     this.cache.set(normalizeName(name), result);
     return result;
   }
@@ -322,7 +321,7 @@ class FileSystemDocument implements Document {
   async markDirty() {
     // TODO: The tree could be in an inconsistent state, don't trigger the
     // the observer until the edit is finished, or wait for normalization.
-    await 0;
+    await Promise.resolve();
     this.dirty = true;
     this.observe.notify();
     if (this.pendingModifications++) return;

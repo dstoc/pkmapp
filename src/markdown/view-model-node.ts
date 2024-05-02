@@ -15,9 +15,9 @@ interface ViewModelNode {
 type ViewModelNodeType = MarkdownNode & ViewModelNode;
 export {ViewModelNodeType as ViewModelNode};
 
-type InlineViewModelNodeType = InlineNode & InlineViewModelNode;
-interface InlineViewModelNode {
+interface InlineViewModelNode extends ViewModelNode {
   viewModel: InlineViewModel;
   children?: (MarkdownNode & ViewModelNode)[];
 }
+type InlineViewModelNodeType = InlineNode & InlineViewModelNode;
 export {InlineViewModelNodeType as InlineViewModelNode};

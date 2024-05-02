@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {contextProvided} from '../deps/lit-labs-context.js';
+import {consume} from '../deps/lit-context.js';
 import {
   css,
   customElement,
@@ -142,12 +142,10 @@ export class MarkdownInline extends LitElement {
       this.hasFocus = false;
     });
   }
-  @contextProvided({context: hostContext, subscribe: true})
+  @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
   hostContext: HostContext | undefined;
-  @property({type: Object, reflect: false}) node:
-    | InlineViewModelNode
-    | undefined;
+  @property({type: Object, reflect: false}) node?: InlineViewModelNode;
   @property({type: Boolean, reflect: true}) contenteditable = true;
   @property({type: Boolean, reflect: true}) active = false;
   @query('md-span') span!: MarkdownSpan;
@@ -229,9 +227,9 @@ export class MarkdownInline extends LitElement {
     if (node instanceof MarkdownInline) {
       return {index: 0};
     }
-    let parent = node.parentElement;
+    let parent: HTMLElement = cast(node.parentElement);
     while (!(parent instanceof MarkdownSpan)) {
-      parent = parent?.parentElement!;
+      parent = cast(parent.parentElement);
     }
     const walker = document.createTreeWalker(
       parent,
@@ -249,7 +247,7 @@ export class MarkdownInline extends LitElement {
       }
       previous = walker.previousNode();
     }
-    let index = (cast(previous) as MarkdownSpan).node!.startIndex + offset;
+    const index = (cast(previous) as MarkdownSpan).node!.startIndex + offset;
     return {
       span: parent as MarkdownSpan,
       index,
@@ -384,7 +382,7 @@ export class MarkdownInline extends LitElement {
       }),
     );
   }
-  onPointerDown(event: PointerEvent) {
+  onPointerDown() {
     this.hostContext?.clearSelection();
   }
   private readonly observer = (node: ViewModelNode) => {
@@ -422,7 +420,7 @@ export class MarkdownSpan extends LitElement {
     });
   }
   override async performUpdate() {
-    await super.performUpdate();
+    super.performUpdate();
     await Promise.all(
       Array.from(this.spans).map((span) => span.updateComplete),
     );
@@ -561,7 +559,7 @@ export class MarkdownSpan extends LitElement {
   private renderText(content: string): TemplateResult {
     // TODO: skip if the parent (ancestor?) is already a link
     // TODO: Prefixes should come from configuration.
-    const parts = content.split(/(\b(?:https?:\/|go|b|cl)\/[^\s]*[\w\/=?])/u);
+    const parts = content.split(/(\b(?:https?:\/|go|b|cl)\/[^\s]*[\w/=?])/u);
     if (parts.length === 0) {
       return html`${parts[0]}`;
     }

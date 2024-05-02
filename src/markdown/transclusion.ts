@@ -28,7 +28,7 @@ import {CodeBlockNode} from './node.js';
 import {Library} from '../library.js';
 import {libraryContext} from '../app-context.js';
 import './block-render.js';
-import {contextProvided} from '../deps/lit-labs-context.js';
+import {consume} from '../deps/lit-context.js';
 import {HostContext, hostContext} from './host-context.js';
 import {findNextEditable, findFinalEditable} from './view-model-util.js';
 
@@ -37,11 +37,11 @@ export class MarkdownTransclusion extends LitElement {
   @property({attribute: false}) node:
     | (ViewModelNode & CodeBlockNode)
     | undefined;
-  @contextProvided({context: libraryContext, subscribe: true})
+  @consume({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
 
-  @contextProvided({context: hostContext, subscribe: true})
+  @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
   hostContext: HostContext | undefined;
 
@@ -50,7 +50,7 @@ export class MarkdownTransclusion extends LitElement {
 
   @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
 
-  override update(changedProperties: Map<string, any>) {
+  override update(changedProperties: Map<string, unknown>) {
     super.update(changedProperties);
     if (changedProperties.has('node')) {
       this.root = undefined;

@@ -14,7 +14,7 @@
 
 import {assert, cast} from '../asserts.js';
 
-import type {ViewModelNode} from './view-model-node.js';
+import type {MaybeViewModelNode, ViewModelNode} from './view-model-node.js';
 import {
   CodeBlockNode,
   MarkdownNode,
@@ -204,6 +204,6 @@ export function cloneNode(
     ...node,
     children: [...cloneChildren(node.children ?? [], predicate)],
   };
-  delete (result as any).viewModel;
+  delete (result as MaybeViewModelNode).viewModel;
   return result;
 }

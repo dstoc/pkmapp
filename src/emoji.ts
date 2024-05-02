@@ -99,7 +99,7 @@ async function getConsistentEmoji(value: string) {
 export class Emoji extends LitElement {
   @property() text?: string;
   @state() private emoji?: string;
-  override shouldUpdate(changedProperties: Map<string, any>) {
+  override shouldUpdate(changedProperties: Map<string, unknown>) {
     if (changedProperties.has('text')) {
       this.updateEmoji();
     }

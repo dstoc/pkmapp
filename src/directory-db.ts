@@ -22,7 +22,7 @@ function wrap(request: IDBRequest) {
 
 async function getDatabase(): Promise<IDBDatabase> {
   const request = indexedDB.open('pkmapp-directories');
-  request.onupgradeneeded = (e) => {
+  request.onupgradeneeded = () => {
     const database = request.result;
     database.createObjectStore('directories');
   };

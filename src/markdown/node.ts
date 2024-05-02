@@ -30,6 +30,17 @@ export type ParentNode =
   | ListItemNode
   | SectionNode;
 
+export function isInlineNode(node: MarkdownNode): node is InlineNode {
+  switch (node.type) {
+    case 'paragraph':
+    case 'code-block':
+    case 'section':
+      return true;
+    default:
+      return false;
+  }
+}
+
 // TODO: ID, Sequence Number (per tree?)
 interface Node {
   readonly children?: MarkdownNode[];
