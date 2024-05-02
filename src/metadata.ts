@@ -59,14 +59,14 @@ class SetBiMap<T> {
     normalizedTargets.add(target);
   }
   remove(target: T, value: string) {
-    let targets = this.index.get(value);
+    const targets = this.index.get(value);
     targets?.delete(target);
     if (targets?.size === 0) this.index.delete(value);
-    let values = this.reverse.get(target);
+    const values = this.reverse.get(target);
     values?.delete(value);
     if (values?.size === 0) this.reverse.delete(target);
     const normalizedValue = value.toLowerCase();
-    let normalizedTargets = this.normalized.get(normalizedValue);
+    const normalizedTargets = this.normalized.get(normalizedValue);
     normalizedTargets?.delete(target);
     if (normalizedTargets?.size === 0) this.normalized.delete(normalizedValue);
   }

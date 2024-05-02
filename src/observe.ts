@@ -56,12 +56,12 @@ export class Observe<T> {
   }
 }
 
-export class Observer<T, O> {
+export class Observer<T, O = <V>(value: V) => void> {
   constructor(
     private target: () => T,
-    private add: (target: T, observer: (value: O) => void) => void,
-    private remove: (target: T, observer: (value: O) => void) => void,
-    private observer: (value: O) => void,
+    private observer: O,
+    private add: (target: T, observer: O) => void,
+    private remove: (target: T, observer: O) => void,
   ) {}
   private cache?: T;
   update(clear = false) {
@@ -86,7 +86,7 @@ export class Observers {
   constructor(...observers: Observer<any, any>[]) {
     this.observers = observers;
   }
-  private observers: Observer<any, any>[];
+  private observers: Observer<unknown>[];
   update(clear = false) {
     for (const observer of this.observers) observer.update(clear);
   }

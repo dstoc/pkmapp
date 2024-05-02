@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {createContext} from '../deps/lit-labs-context.js';
+import {createContext} from '../deps/lit-context.js';
 
 import type {ViewModelNode} from './view-model-node.js';
 

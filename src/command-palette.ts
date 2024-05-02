@@ -67,7 +67,8 @@ export class SimpleCommandBundle {
 
 @customElement('pkm-command-palette')
 export class CommandPalette extends LitElement {
-  @property({attribute: true}) noHeader = false;
+  @property({type: Boolean, attribute: true}) noHeader = false;
+  @property({type: Boolean, attribute: true}) collapsed = false;
   @state() activeIndex = 0;
   @state() bundle: CommandBundle | undefined;
   @state() activeItems: Command[] = [];

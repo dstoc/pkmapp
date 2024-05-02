@@ -34,7 +34,7 @@ const packages = [
   'lit',
   'lit/decorators.js',
   'lit/directives/repeat.js',
-  '@lit-labs/context',
+  '@lit/context',
 ];
 
 await generator.install(packages);

@@ -23,7 +23,7 @@ import {
   CommandBundle,
   SimpleCommandBundle,
 } from './command-palette.js';
-import {contextProvided} from './deps/lit-labs-context.js';
+import {consume} from './deps/lit-context.js';
 import {
   css,
   customElement,
@@ -105,7 +105,7 @@ export class Editor extends LitElement {
   @state() private root?: ViewModelNode;
   private name?: string;
   @property({type: Boolean, reflect: true}) dirty = false;
-  @contextProvided({context: libraryContext, subscribe: true})
+  @consume({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
   @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
@@ -113,9 +113,9 @@ export class Editor extends LitElement {
   private observers = new Observers(
     new Observer(
       () => this.document?.observe,
+      () => this.requestUpdate(),
       (t, o) => t?.add(o),
       (t, o) => t?.remove(o),
-      () => this.requestUpdate(),
     ),
   );
   static override get styles() {
@@ -1256,7 +1256,7 @@ function insertMarkdown(markdown: string, node: ViewModelNode) {
     const newNodes = root.children.map((newNode) =>
       node.viewModel.tree.add<MarkdownNode>(newNode),
     );
-    let newFocus = findFinalEditable(newNodes[0]);
+    const newFocus = findFinalEditable(newNodes[0]);
     performLogicalInsertion(node, newNodes);
     return newFocus;
   } finally {

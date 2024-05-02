@@ -15,7 +15,7 @@
 import './markdown/block-render.js';
 import './command-palette.js';
 
-import {contextProvided} from './deps/lit-labs-context.js';
+import {consume} from './deps/lit-context.js';
 import {libraryContext} from './app-context.js';
 import {
   css,
@@ -65,12 +65,12 @@ export class Autocomplete extends LitElement {
   }
   @query('pkm-command-palette') palette!: CommandPalette;
   @property({reflect: true})
-  private state: 'active' | 'inactive' = 'inactive';
+  state: 'active' | 'inactive' = 'inactive';
   node?: InlineViewModelNode;
   startIndex: number = 0;
   @state()
   endIndex: number = 0;
-  @contextProvided({context: libraryContext, subscribe: true})
+  @consume({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
   override render() {
@@ -81,9 +81,7 @@ export class Autocomplete extends LitElement {
       ></pkm-command-palette>
     `;
   }
-  onInlineKeyDown({
-    detail: {inline, node, keyboardEvent},
-  }: CustomEvent<InlineKeyDown>) {
+  onInlineKeyDown({detail: {keyboardEvent}}: CustomEvent<InlineKeyDown>) {
     if (this.state !== 'active') return false;
     if (keyboardEvent.key === 'ArrowUp') {
       this.palette.previous();

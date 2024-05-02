@@ -25,7 +25,7 @@ import {dfs} from './view-model-util.js';
 
 export class ViewModel {
   constructor(
-    readonly self: MarkdownNode & ViewModelNode,
+    readonly self: ViewModelNode,
     readonly tree: MarkdownTree,
     public parent?: ViewModelNode,
     childIndex?: number,
@@ -332,7 +332,7 @@ export class MarkdownTree {
     return result;
   }
 
-  serialize(node?: MarkdownNode & ViewModelNode): MarkdownNode {
+  serialize(node?: ViewModelNode): MarkdownNode {
     node = node ?? this.root;
     assert(node.viewModel.tree === this);
     assert(this.state === 'idle');
