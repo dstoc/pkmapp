@@ -1251,6 +1251,7 @@ function insertMarkdown(markdown: string, node: ViewModelNode) {
   const {node: root} = parseBlocks(markdown + '\n');
   if (!root) return;
   assert(root.type === 'document' && root.children);
+  // TODO: show a warning if the document had metadata
   const finishEditing = node.viewModel.tree.edit();
   try {
     const newNodes = root.children.map((newNode) =>

@@ -19,6 +19,7 @@ PKMAPP_ROOT=$PWD
   (
     export EXTENSION_TAGS=1
     export EXTENSION_GFM=1
+    export EXTENSION_MINUS_METADATA=1
     export NO_DEFAULT_EXTENSIONS=1
     (
       cd $PKMAPP_ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown

@@ -15,7 +15,7 @@
 import Parser from '../deps/tree-sitter.js';
 import type {MarkdownNode, ParagraphNode} from './node.js';
 import {resolve} from '../resolve.js';
-import {cast} from '../asserts.js';
+import {assert, cast} from '../asserts.js';
 
 await Parser.init({
   locateFile(path: string) {
@@ -23,7 +23,7 @@ await Parser.init({
   },
 });
 const blocks = await Parser.Language.load(
-  resolve('./deps/tree-sitter-markdown.wasm')
+  resolve('./deps/tree-sitter-markdown.wasm'),
 );
 const parser = new Parser();
 parser.setLanguage(blocks);
@@ -33,7 +33,7 @@ export type Tree = Parser.Tree;
 export function parseBlocks(
   markdown: string,
   tree?: Parser.Tree,
-  edit?: Parser.Edit
+  edit?: Parser.Edit,
 ) {
   if (tree) {
     tree.edit(cast(edit));
@@ -43,7 +43,7 @@ export function parseBlocks(
 }
 
 function* convertNodes(
-  nodes: Parser.SyntaxNode[]
+  nodes: Parser.SyntaxNode[],
 ): IterableIterator<MarkdownNode> {
   for (const node of nodes) {
     const result = convertNode(node);
@@ -58,30 +58,45 @@ const emptyParagraph: ParagraphNode = {
 
 function ensureContent(
   children: MarkdownNode[],
-  result: MarkdownNode[] = [{...emptyParagraph}]
+  result: MarkdownNode[] = [{...emptyParagraph}],
 ): MarkdownNode[] {
   if (children.length) return children;
   return result;
+}
+
+function extractFrontMatter(text?: string) {
+  if (text === undefined) return undefined;
+  return text.match(/^---\s*(.*)\n---[\s\n]*$/)?.[1];
 }
 
 function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
   switch (node.type) {
     case 'document': {
       let children = node.namedChildren;
-      const section = children[0];
+      let childIndex = 0;
+      const metadata =
+        children.length && children[0].type === 'minus_metadata'
+          ? children[0]
+          : undefined;
+      if (metadata) childIndex++;
+      const section = children[childIndex];
       if (section?.type === 'section') {
         const sectionChildren = section.namedChildren;
         if (!sectionChildren.length) {
-          children = children.slice(1);
+          // TODO: do we need to check the next section too?
+          // assert(node.previousSibling!.type === 'minus_metadata');
+          children = children.slice(childIndex + 1);
         } else if (sectionChildren[0].type !== 'atx_heading') {
-          children = [...sectionChildren, ...children.slice(1)];
+          // TODO: What is this case?
+          children = [...sectionChildren, ...children.slice(childIndex + 1)];
         }
       }
       return {
         type: 'document',
+        metadata: extractFrontMatter(metadata?.text),
         children: ensureContent(
           [...convertNodes(children)],
-          [{...emptyParagraph}]
+          [{...emptyParagraph}],
         ),
       };
     }
@@ -136,7 +151,7 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
       const children = node.namedChildren;
       const info = children.find((node) => node.type === 'info_string');
       const content = children.find(
-        (node) => node.type === 'code_fence_content'
+        (node) => node.type === 'code_fence_content',
       );
       const offset = content?.startPosition.column ?? 0;
       const prefix = new RegExp(`(?<=\n).{${offset}}`, 'g');
@@ -146,6 +161,9 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
         content: content?.text.replace(prefix, '').trimEnd() ?? '',
       };
     }
+    case 'minus_metadata':
+      // handled in 'document'
+      assert(false);
     case 'atx_heading':
     case 'block_continuation':
     case 'list_marker_star':
@@ -161,7 +179,6 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
     case 'thematic_break':
     case 'indented_code_block':
     case 'html_block':
-    case 'minus_metadata':
     case 'link_reference_definition':
     case 'pipe_table':
       return {
