@@ -23,6 +23,7 @@ import {
 } from 'fs';
 import {pathToFileURL} from 'url';
 import {join, dirname} from 'path';
+import prettier from 'prettier';
 
 const generator = new Generator({
   defaultProvider: 'nodemodules',
@@ -32,6 +33,8 @@ const generator = new Generator({
 
 const packages = [
   'lit',
+  'lit-html',
+  '@lit/reactive-element/css-tag.js',
   'lit/decorators.js',
   'lit/directives/repeat.js',
   '@lit/context',
@@ -51,9 +54,18 @@ for (const dep of deps) {
   copyFileSync(file, target);
 }
 
-const inputHtml = readFileSync('src/index.html').toString();
-const outputHtml = await generator.htmlInject(inputHtml, {
-  esModuleShims: false,
-});
+generator.importMap.imports['web-tree-sitter'] = './deps/tree-sitter.js';
+const {map} = await generator.extractMap(generator.traceMap.pins);
+map.imports['web-tree-sitter'] = './deps/tree-sitter.js';
+const importMap = await prettier.format(JSON.stringify(map), { parser: "json" });
+const outputHtml = `<!DOCTYPE html>
+<title>pkmapp</title>
+<script type="importmap">
+${importMap}
+</script>
+<link rel=manifest href="manifest.json">
+<script type="module" src="./pkmapp.js"></script>
+<script type="module" src="./serviceworker.js"></script>
+`;
 writeFileSync('build/index.html', outputHtml);
 copyFileSync('src/manifest.json', 'build/manifest.json');

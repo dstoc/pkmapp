@@ -29,15 +29,16 @@ import {
 } from './deps/lit.js';
 import {Editor} from './editor.js';
 import {FileSystemLibrary, Library} from './library.js';
-import {styles} from './style.js';
+import {styles, loadFonts} from './style.js';
 import {getDirectory, setDirectory} from './directory-db.js';
 import {EditorNavigation} from './editor.js';
 import {resolve} from './resolve.js';
 import {CommandBundle} from './command-palette.js';
 import {assert} from './asserts.js';
 
-// TODO: why can't we place this in an element's styles?
 document.adoptedStyleSheets = [...styles];
+// TODO: Use import attributes to add these above, once it's supported in vite.
+loadFonts();
 
 const allowedScripts = ['./serviceworker.js'];
 self.trustedTypes?.createPolicy('default', {
@@ -86,6 +87,9 @@ export class PkmApp extends LitElement {
     });
   }
   private initialLocation = location.toString();
+  static override get styles() {
+    return styles;
+  }
   override render() {
     const url = new URL(this.initialLocation);
     const basePath = new URL(resolve('./')).pathname;
@@ -183,4 +187,4 @@ onerror = (event, _source, _lineno, _colno, error) =>
 
 render(html`<pkm-app></pkm-app>`, document.body);
 
-navigator.serviceWorker.register('./serviceworker.js');
+// navigator.serviceWorker.register('./serviceworker.js');

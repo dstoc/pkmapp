@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Main} from '../pages/main';
-import {testRoundtrip} from '../util/test_roundtrip';
-import {testState} from '../util/test_state';
+import {Main} from '../pages/main.js';
+import {testRoundtrip} from '../util/test_roundtrip.js';
+import {testState} from '../util/test_state.js';
 import {browser} from '@wdio/globals';
 
 describe('roundtrip parse/serialize', () => {

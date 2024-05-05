@@ -24,7 +24,7 @@ import {
   repeat,
   TemplateResult,
 } from '../deps/lit.js';
-import Parser from '../deps/tree-sitter.js';
+import Parser from 'web-tree-sitter';
 import {cast} from '../asserts.js';
 
 import {HostContext, hostContext} from './host-context.js';
