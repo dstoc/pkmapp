@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Main} from '../pages/main';
-import {input, removeLeadingWhitespace} from '../util/input';
-import {testState} from '../util/test_state';
+import {Main} from '../pages/main.js';
+import {input, removeLeadingWhitespace} from '../util/input.js';
+import {testState} from '../util/test_state.js';
 import {$, browser} from '@wdio/globals';
 
 describe('input helper', () => {
@@ -61,7 +61,7 @@ describe('main', () => {
       await state.main.runCommand('sync');
       await state.main.runCommand('insert transclusion', 'transclusion');
       await browser.waitUntil(
-        state.main.host.$('>>>md-transclusion').isExisting
+        state.main.host.$('>>>md-transclusion').isExisting,
       );
       // TODO: shouldn't be required
       await browser.keys(['ArrowDown']);
@@ -73,7 +73,7 @@ describe('main', () => {
            \`\`\`tc
            transclusion
            \`\`\`
-           `
+           `,
       );
       // TODO: does not wait for save
       await checkFileContent('transclusion.md', 'content\n');
@@ -83,7 +83,7 @@ describe('main', () => {
       await state.fs.setFile('transclusion.md', '');
       await state.main.runCommand('insert transclusion', 'transclusion');
       await browser.waitUntil(
-        state.main.host.$('>>>md-transclusion').isExisting
+        state.main.host.$('>>>md-transclusion').isExisting,
       );
       // TODO: shouldn't be required
       await browser.keys(['ArrowDown']);
@@ -104,8 +104,8 @@ describe('main', () => {
             
             # 2
             b
-            `
-      )
+            `,
+      ),
     );
     it(
       'nest correctly',
@@ -124,8 +124,8 @@ describe('main', () => {
               b
             
             # 3
-            `
-      )
+            `,
+      ),
     );
     it(
       'nest correctly when ranges are not all contiguous',
@@ -135,16 +135,16 @@ describe('main', () => {
                  2
                  3
                  # outer${['Shift', 'Tab', 'Shift']}${Array(2).fill(
-          'ArrowUp'
-        )}# `,
+                   'ArrowUp',
+                 )}# `,
         `# top
             * 1
             * # 2
             * 3
 
             # outer
-            `
-      )
+            `,
+      ),
     );
   });
   it(
@@ -154,24 +154,24 @@ describe('main', () => {
           b`,
       `* a
           * b
-          `
-    )
+          `,
+    ),
   );
   describe('checklists', () => {
     it(
       'can generate unchecked',
-      inputOutputTest(input`* [ ] milk\neggs`, `* [ ] milk\n* [ ] eggs\n`)
+      inputOutputTest(input`* [ ] milk\neggs`, `* [ ] milk\n* [ ] eggs\n`),
     );
     it(
       'can generate checked',
-      inputOutputTest(input`* [x] milk\neggs`, `* [x] milk\n* [ ] eggs\n`)
+      inputOutputTest(input`* [x] milk\neggs`, `* [x] milk\n* [ ] eggs\n`),
     );
     it(
       'ignores double check',
       inputOutputTest(
         input`* [x] [ ] milk\neggs`,
-        `* [x] [ ] milk\n* [ ] eggs\n`
-      )
+        `* [x] [ ] milk\n* [ ] eggs\n`,
+      ),
     );
   });
   it(
@@ -182,8 +182,8 @@ describe('main', () => {
       `*a
 
           b
-          `
-    )
+          `,
+    ),
   );
   describe('paragraph insertion', () => {
     it(
@@ -192,8 +192,8 @@ describe('main', () => {
         input`* ab${['ArrowLeft']}\nc`,
         `* a
             * cb
-            `
-      )
+            `,
+      ),
     );
     it(
       'will stay on the current line when splitting at start',
@@ -201,8 +201,8 @@ describe('main', () => {
         input`* b${['ArrowLeft']}\na`,
         `* a
             * b
-            `
-      )
+            `,
+      ),
     );
     it(
       'will move to the next line if empty',
@@ -210,8 +210,8 @@ describe('main', () => {
         input`* \nb`,
         `* 
             * b
-            `
-      )
+            `,
+      ),
     );
   });
   describe('indentation', () => {
@@ -220,12 +220,12 @@ describe('main', () => {
       inputOutputTest(
         input`a${['Tab']}`,
         `* a
-            `
-      )
+            `,
+      ),
     );
     it(
       'can unindent a list-item in a list-item',
-      inputOutputTest(input`* * a${['Shift', 'Tab', 'Shift']}`, `* a\n`)
+      inputOutputTest(input`* * a${['Shift', 'Tab', 'Shift']}`, `* a\n`),
     );
   });
   describe('links', () => {
@@ -234,32 +234,32 @@ describe('main', () => {
       inputOutputTest(
         input`[test`,
         `[test]
-            `
-      )
+            `,
+      ),
     );
     it(
       "doesn't insert duplicate `]`",
       inputOutputTest(
         input`[]`,
         `[]
-            `
-      )
+            `,
+      ),
     );
     it(
       'completes suggestions with <Tab>',
       inputOutputTest(
         input`[te${['Tab']}`,
         `[test]
-            `
-      )
+            `,
+      ),
     );
     it(
       'accepts freeform links',
       inputOutputTest(
         input`[doesnt exist${['Tab']}`,
         `[doesnt exist]
-            `
-      )
+            `,
+      ),
     );
   });
   describe('selection', () => {
@@ -268,8 +268,8 @@ describe('main', () => {
       inputOutputTest(
         input`a\nb\nc${['Shift', 'ArrowUp', 'Shift', 'Backspace']}`,
         `a
-            `
-      )
+            `,
+      ),
     );
     it(
       'can select a single block',
@@ -277,8 +277,8 @@ describe('main', () => {
         input`* a\nb\nc${['ArrowUp', 'Control', 'a', 'Control', 'Backspace']}`,
         `* a
             * c
-            `
-      )
+            `,
+      ),
     );
   });
 });

@@ -109,7 +109,7 @@ export function findPreviousEditable(
   node: ViewModelNode,
   root: ViewModelNode,
   include = false,
-) {
+): Editable | null {
   if (include && editable(node)) return node;
   return findPreviousDfs(node, root, editable);
 }
@@ -118,12 +118,15 @@ export function findNextEditable(
   node: ViewModelNode,
   root: ViewModelNode,
   include = false,
-) {
+): Editable | null {
   if (include && editable(node)) return node;
   return findNextDfs(node, root, editable);
 }
 
-export function findFinalEditable(node: ViewModelNode, include = false) {
+export function findFinalEditable(
+  node: ViewModelNode,
+  include = false,
+): ViewModelNode | null {
   let result: Editable | null = null;
   if (include && editable(node)) result = node;
   for (const next of dfs(node)) {

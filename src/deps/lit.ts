@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// There are needed for tsc to be able to generate declarations.
+import 'lit-html';
+import '@lit/reactive-element/css-tag.js';
+
 export * from 'lit';
 export * from 'lit/decorators.js';
 export * from 'lit/directives/repeat.js';

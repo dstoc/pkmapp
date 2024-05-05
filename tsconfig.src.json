@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "lib": ["esnext", "dom"],
+    "types": ["wicg-file-system-access", "trusted-types"],
+    "esModuleInterop": true,
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "rootDir": "src",
+    "outDir": "build",
+    "plugins": [
+      {
+        "name": "ts-lit-plugin",
+        "strict": true
+      }
+    ],
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "allowUnreachableCode": false,
+    "inlineSources": true,
+    "noEmitOnError": false,
+    "noErrorTruncation": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUnusedLocals": true,
+    "preserveConstEnums": false,
+    "skipDefaultLibCheck": true,
+    "sourceMap": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "stripInternal": true,
+    "useUnknownInCatchVariables": true,
+    "composite": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/wdio.conf.ts"
+  ]
+}

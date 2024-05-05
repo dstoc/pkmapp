@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {fira, notoemoji} from './deps/fonts.js';
 import {css} from './deps/lit.js';
 
 export const styles = [
@@ -46,6 +45,25 @@ export const styles = [
       }
     }
   `.styleSheet!,
-  fira,
-  notoemoji,
 ];
+
+export async function loadFonts() {
+  // TODO: this is fragile, returns a CSSStyleSheet in vite dev,
+  // but a string in vite build. Only injects into head in vite
+  // build.
+  const [{default: fira}, {default: noto}] = await Promise.all([
+    import('./deps/firacode/fira_code.css', {
+      with: {type: 'css'},
+    }),
+    import('./deps/noto-emoji/400.css', {
+      with: {type: 'css'},
+    }),
+  ]);
+  if (!import.meta.env?.PROD) {
+    document.adoptedStyleSheets = [
+      ...document.adoptedStyleSheets,
+      fira as unknown as CSSStyleSheet,
+      noto as unknown as CSSStyleSheet,
+    ];
+  }
+}

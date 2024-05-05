@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {control} from '../util/input';
+import {control} from '../util/input.js';
 import {$, browser} from '@wdio/globals';
-import {Page} from './page';
+import {Page} from './page.js';
 
 type Status = 'loading' | 'loaded' | 'error';
 export class Main extends Page {
@@ -25,7 +25,7 @@ export class Main extends Page {
   isClean = async () => (await this.host.getAttribute('dirty')) === null;
   async status(...status: Status[]): Promise<Status> {
     await browser.waitUntil(async () =>
-      status.includes((await this.host.getAttribute('status')) as Status)
+      status.includes((await this.host.getAttribute('status')) as Status),
     );
     return this.host.getAttribute('status') as Promise<Status>;
   }
@@ -60,7 +60,7 @@ export class FileSystem {
         }
       })();
     `,
-      [fileName]
+      [fileName],
     );
     if (typeof result === 'string') return result;
     const error = new Error(result.message);
@@ -87,7 +87,7 @@ export class FileSystem {
         }
       })();
     `,
-      [fileName, content]
+      [fileName, content],
     );
     if (typeof result === 'string') return;
     const error = new Error(result.message);

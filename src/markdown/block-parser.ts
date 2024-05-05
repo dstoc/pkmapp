@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import Parser from '../deps/tree-sitter.js';
+import Parser from 'web-tree-sitter';
 import type {MarkdownNode, ParagraphNode} from './node.js';
-import {resolve} from '../resolve.js';
 import {assert, cast} from '../asserts.js';
 
 await Parser.init({
   locateFile(path: string) {
-    return resolve(`./deps/${path}`);
+    if (path == 'tree-sitter.wasm') {
+      return new URL('../deps/tree-sitter.wasm', import.meta.url).href;
+    }
+    throw new Error(`unknown resource: ${path}`);
   },
 });
 const blocks = await Parser.Language.load(
-  resolve('./deps/tree-sitter-markdown.wasm'),
+  new URL('../deps/tree-sitter-markdown.wasm', import.meta.url).href,
 );
 const parser = new Parser();
 parser.setLanguage(blocks);
