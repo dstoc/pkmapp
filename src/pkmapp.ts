@@ -28,7 +28,7 @@ import {
   state,
 } from './deps/lit.js';
 import {Editor} from './editor.js';
-import {FileSystemLibrary, Library} from './library.js';
+import {IdbLibrary, Library} from './library.js';
 import {styles, loadFonts} from './style.js';
 import {getDirectory, setDirectory} from './directory-db.js';
 import {EditorNavigation} from './editor.js';
@@ -141,31 +141,15 @@ export class PkmApp extends LitElement {
     this.loading = true;
     try {
       const url = new URL(this.initialLocation);
-      let library;
+      let library: Library;
       const parent = window.opener?.document.querySelector('pkm-app')?.library;
       if (parent) {
         library = parent;
         console.log('used parent!');
-      } else if (url.searchParams.has('opfs')) {
-        const opfs = await navigator.storage.getDirectory();
-        const path = url.searchParams.get('opfs')!;
-        library = new FileSystemLibrary(
-          path == ''
-            ? opfs
-            : await opfs.getDirectoryHandle(path, {create: true}),
-        );
       } else {
-        if (!navigator.userActivation?.isActive) return;
-        let directory = await getDirectory('default');
-        if (!directory) {
-          directory = await showDirectoryPicker({mode: 'readwrite'});
-        }
-        await setDirectory('default', directory);
-        const status = await directory.requestPermission({mode: 'readwrite'});
-        if (status !== 'granted') return;
-        library = new FileSystemLibrary(directory);
+        library = await IdbLibrary.init('library');
       }
-      await library.sync();
+      await library.restore();
       this.library = library;
     } finally {
       this.loading = false;

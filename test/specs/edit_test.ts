@@ -38,17 +38,25 @@ describe('main', () => {
   function inputOutputTest(keys: string[], output: string) {
     return async () => {
       await browser.keys(keys);
-      await checkFileContent('test.md', output);
+      await checkExport('test.md', output);
     };
   }
-  async function checkFileContent(file: string, output: string) {
+  async function importFile(file: string, contents: string) {
+    await state.fs.setFile(file, contents);
+    await state.main.runCommand('Import from OPFS');
+    await state.fs.clear();
+  }
+  async function checkExport(file: string, output: string) {
     output = removeLeadingWhitespace(output);
     await browser.waitUntil(state.main.isClean);
-    expect(await state.fs.getFile(file)).toEqual(output);
+    await state.main.runCommand('Export to OPFS');
+    const contents = await state.fs.getFile(file);
+    await state.fs.clear();
+    expect(contents).toEqual(output);
   }
   beforeEach(async () => {
-    await state.fs.setFile('test.md', '');
-    await state.main.runCommand('sync');
+    await state.main.runCommand('Clear Library');
+    await importFile('test.md', '');
     await state.main.runCommand('open', 'test');
     await state.main.status('loaded');
     const inline = $('>>>[contenteditable]');
@@ -57,8 +65,7 @@ describe('main', () => {
   describe('transclusions', () => {
     it('can be inserted and edited', async () => {
       await browser.keys(input`test`);
-      await state.fs.setFile('transclusion.md', '');
-      await state.main.runCommand('sync');
+      await importFile('transclusion.md', '');
       await state.main.runCommand('insert transclusion', 'transclusion');
       await browser.waitUntil(
         state.main.host.$('>>>md-transclusion').isExisting,
@@ -66,7 +73,7 @@ describe('main', () => {
       // TODO: shouldn't be required
       await browser.keys(['ArrowDown']);
       await browser.keys(input`content`);
-      await checkFileContent(
+      await checkExport(
         'test.md',
         `test
 
@@ -76,11 +83,11 @@ describe('main', () => {
            `,
       );
       // TODO: does not wait for save
-      await checkFileContent('transclusion.md', 'content\n');
+      await checkExport('transclusion.md', 'content\n');
     });
     it('can be inserted and deleted', async () => {
       await browser.keys(input`test`);
-      await state.fs.setFile('transclusion.md', '');
+      await importFile('transclusion.md', '');
       await state.main.runCommand('insert transclusion', 'transclusion');
       await browser.waitUntil(
         state.main.host.$('>>>md-transclusion').isExisting,
@@ -88,7 +95,7 @@ describe('main', () => {
       // TODO: shouldn't be required
       await browser.keys(['ArrowDown']);
       await state.main.runCommand('delete transclusion');
-      await checkFileContent('test.md', `test\n`);
+      await checkExport('test.md', `test\n`);
     });
   });
   describe('sections', () => {

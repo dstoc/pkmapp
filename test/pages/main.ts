@@ -18,7 +18,7 @@ import {Page} from './page.js';
 
 type Status = 'loading' | 'loaded' | 'error';
 export class Main extends Page {
-  path = '/?opfs&no-default';
+  path = '/?no-default&debug';
   host = $('>>>pkm-editor');
   isReady = this.host.shadow$('*').isExisting;
   fileSystem = new FileSystem();
@@ -41,6 +41,18 @@ export class Main extends Page {
 }
 
 export class FileSystem {
+  async clear() {
+    await browser.executeAsyncScript(
+      `
+      const [callback] = arguments;
+      (async () => {
+        await (await navigator.storage.getDirectory()).remove({recursive: true})
+        callback();
+      })();
+      `,
+      [],
+    );
+  }
   async getFile(fileName: string): Promise<string> {
     const result = await browser.executeAsyncScript(
       `

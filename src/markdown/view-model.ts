@@ -167,10 +167,15 @@ export class InlineViewModel extends ViewModel {
     childIndex?: number,
   ) {
     super(self, tree, parent, childIndex);
-    this.inlineTree = inlineParser.parse(self.content);
     this.self = self;
   }
-  inlineTree: Parser.Tree;
+  inlineTree_?: Parser.Tree;
+  get inlineTree() {
+    if (!this.inlineTree_) {
+      this.inlineTree_ = inlineParser.parse(this.self.content);
+    }
+    return this.inlineTree_;
+  }
   override self: InlineNode & ViewModelNode;
   edit({startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit) {
     const oldText = this.self.content.substring(startIndex, oldEndIndex);
@@ -190,8 +195,8 @@ export class InlineViewModel extends ViewModel {
     (this.self as {content: string}).content = newContent;
     const newNodes = this.maybeReplaceWithBlocks();
     if (newNodes) return newNodes;
-    this.inlineTree = this.inlineTree!.edit(result);
-    this.inlineTree = inlineParser.parse(this.self.content, this.inlineTree);
+    this.inlineTree_ = this.inlineTree!.edit(result);
+    this.inlineTree_ = inlineParser.parse(this.self.content, this.inlineTree);
     this.signalMutation();
     return null;
   }
@@ -338,7 +343,7 @@ export class MarkdownTree {
     assert(this.state === 'idle');
     const result: MarkdownNode & MaybeViewModelNode = {...node};
     delete result.viewModel;
-    result.children = node.children?.map(this.serialize);
+    result.children = node.children?.map((node) => this.serialize(node));
     return result;
   }
 }

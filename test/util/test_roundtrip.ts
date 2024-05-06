@@ -20,13 +20,14 @@ export async function testRoundtrip(
   main: Main,
   fs: FileSystem,
   removeWhitespace = false,
-  expectedFailure?: string
+  expectedFailure?: string,
 ) {
   await fs.setFile('test.md', content);
-  await main.runCommand('sync');
+  await main.runCommand('Clear Library');
+  await main.runCommand('Import from OPFS');
   await main.runCommand('open', 'test');
   expect(await main.status('loaded', 'error')).toEqual('loaded');
-  await main.runCommand('force save');
+  await main.runCommand('Export to OPFS');
   await browser.waitUntil(main.isClean);
   const result = await fs.getFile('test.md');
   const resultv = removeWhitespace ? result.replace(/\s+/g, '') : result;

@@ -41,7 +41,9 @@ export function parseBlocks(
     tree.edit(cast(edit));
   }
   tree = parser.parse(markdown);
-  return {node: cast(convertNode(tree.rootNode)), tree};
+  const node = cast(convertNode(tree.rootNode));
+  assert(node.type === 'document');
+  return {node, tree};
 }
 
 function* convertNodes(
