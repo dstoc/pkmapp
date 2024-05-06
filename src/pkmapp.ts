@@ -32,7 +32,6 @@ import {FileSystemLibrary, Library} from './library.js';
 import {styles, loadFonts} from './style.js';
 import {getDirectory, setDirectory} from './directory-db.js';
 import {EditorNavigation} from './editor.js';
-import {resolve} from './resolve.js';
 import {CommandBundle} from './command-palette.js';
 import {assert} from './asserts.js';
 
@@ -92,10 +91,9 @@ export class PkmApp extends LitElement {
   }
   override render() {
     const url = new URL(this.initialLocation);
-    const basePath = new URL(resolve('./')).pathname;
     const defaultName = url.searchParams.has('no-default')
       ? undefined
-      : decodeURIComponent(url.pathname.substring(basePath.length)) || 'index';
+      : decodeURIComponent(url.pathname.substring(1)) || 'index';
     if (!this.library) {
       return html`pkmapp`;
     }
@@ -127,8 +125,8 @@ export class PkmApp extends LitElement {
     // TODO: use root name (metadata)
     const name = navigation.document.name ?? 'pkmapp';
     document.title = `${name}`;
-    const url = new URL(this.initialLocation.toString());
-    url.pathname = new URL(resolve('./' + name)).pathname;
+    const url = new URL(this.initialLocation);
+    url.pathname = name;
     url.searchParams.delete('path');
     if (navigation.kind === 'replace' || !history.state) {
       history.replaceState(name, '', url.toString());
@@ -142,7 +140,7 @@ export class PkmApp extends LitElement {
     if (this.loading) return;
     this.loading = true;
     try {
-      const url = new URL(location.toString());
+      const url = new URL(this.initialLocation);
       let library;
       const parent = window.opener?.document.querySelector('pkm-app')?.library;
       if (parent) {
