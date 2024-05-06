@@ -12,17 +12,20 @@ A local-only personal knowledge management app.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for details.
 
-## Building
+## Setup
 
 1. Clone this repo.
-1. `git submodule update --init --recursive`
-1. `npm install`
-1. `npm run build`
-1. `npm run dev`
+1. `pnpm install`
+1. `pnpm run build-deps`
 
-## Testing
+## Develop
 
-1. `npm run test`
+1. `pnpm run dev`
+
+## Test
+
+1. Automation tests `pnpm run preview` & `pnpm run test`
+1. Unit tests `pnpm run unittest`
 
 ## License
 

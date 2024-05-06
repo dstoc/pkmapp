@@ -32,6 +32,6 @@
         "src/wdio.conf.ts"
     ],
   "references": [
-    { "path": "./tsconfig.src.json" }
+    { "path": "./tsconfig.json" }
   ]
 }

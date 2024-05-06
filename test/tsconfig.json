@@ -11,6 +11,7 @@
       "@wdio/globals/types",
       "@types/jasmine"
     ],
-    "target": "es2019"
-  }
+    "target": "es2019",
+    "composite": true
+  },
 }
