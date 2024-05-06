@@ -2,7 +2,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "preview": "vite preview",
+    "preview": "pnpm run vitebuild && vite preview",
     "vitebuild": "vite build --target esnext",
     "check": "tsc --noEmit -p tsconfig.json",
     "update-deps": "./build-wasm.sh && ./build-fonts.sh",

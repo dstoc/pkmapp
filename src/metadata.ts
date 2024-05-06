@@ -219,6 +219,9 @@ export class Metadata {
       this.tagMap.update(node, []);
     } else {
       const tags = new Set<string>();
+      // TODO: Cache the results in the view model to avoid the need
+      // to generate the inlineTree. Modifying caches should mark
+      // for saving. Edits should wipe out caches before postEditUpdate.
       for (const next of dfs(node.viewModel.inlineTree.rootNode)) {
         if (next.type !== 'tag') continue;
         tags.add(next.text);

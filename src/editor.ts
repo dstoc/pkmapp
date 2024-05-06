@@ -89,6 +89,7 @@ import {
   BlockCommandBundle,
 } from './block-command-bundle.js';
 import {getLanguageTools} from './language-tool-bundle.js';
+import {debugCommands} from './debug-commands.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -576,7 +577,7 @@ export class Editor extends LitElement {
       },
       {
         description: 'Sync all',
-        execute: async () => void (await this.library.sync()),
+        execute: async () => void (await this.library.restore()),
       },
       {
         description: 'Force save',
@@ -864,6 +865,7 @@ export class Editor extends LitElement {
       ...(activeInline?.hostContext?.hasSelection
         ? getLanguageTools(() => serializeSelection(activeInline.hostContext!))
         : []),
+      ...debugCommands(this.library),
     ]);
   }
 }

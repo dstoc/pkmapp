@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {parseBlocks} from './markdown/block-parser.js';
-import {serializeToString} from './markdown/block-serializer.js';
 import {DocumentNode} from './markdown/node.js';
 import {MarkdownTree} from './markdown/view-model.js';
 import {
@@ -28,7 +26,7 @@ import {resolveDateAlias} from './date-aliases.js';
 import {getLogicalContainingBlock} from './block-util.js';
 
 export interface Document {
-  refresh(): Promise<void>;
+  replace(root: DocumentNode): Promise<void>;
   save(): Promise<void>;
   delete(): Promise<void>;
   readonly name: string;
@@ -46,80 +44,37 @@ export interface Library {
   getAllNames(): Promise<string[]>;
   readonly backLinks: BackLinks;
   readonly metadata: Metadata;
-  sync(): Promise<void>;
+  restore(): Promise<void>;
+  import(root: DocumentNode, key: string): Promise<Document>;
 }
 
 function normalizeName(name: string) {
   return name.toLowerCase();
 }
 
-async function* allFiles(
-  prefix: string,
-  directory: FileSystemDirectoryHandle,
-): AsyncGenerator<string, void, unknown> {
-  for await (const entry of directory.values()) {
-    if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-      yield prefix + entry.name.replace(/\.md$/i, '');
-    } else if (entry.kind === 'directory') {
-      yield* allFiles(prefix + entry.name + '/', entry);
-    }
-  }
+function wrap<T>(request: IDBRequest<T>) {
+  return new Promise<IDBRequest<T>>(
+    (resolve, reject) => (
+      (request.onsuccess = () => resolve(request)), (request.onerror = reject)
+    ),
+  );
 }
 
-async function createNewFile(
-  directory: FileSystemDirectoryHandle,
-  name: string,
-  content: string,
-) {
-  let n = 0;
-  while (true) {
-    const resultName = `${name}${n > 0 ? '-' + String(n) : ''}`;
-    const filename = `${resultName}.md`;
-    try {
-      await directory.getFileHandle(filename);
-      n++;
-      continue;
-    } catch (e) {
-      if ((e as DOMException).name !== 'NotFoundError') {
-        throw e;
-      }
-    }
-    const file = await directory.getFileHandle(filename, {create: true});
-    const writable = await file.createWritable();
-    await writable.write(content);
-    await writable.close();
-    return resultName;
-  }
+interface StoredDocument {
+  root: DocumentNode;
 }
 
-async function getFileHandleFromPath(
-  directory: FileSystemDirectoryHandle,
-  path: string,
-  create = false,
-) {
-  const parts = path.split('/');
-  const name: string = parts.pop()!;
-  for (const part of parts) {
-    directory = await directory.getDirectoryHandle(part, {create});
+export class IdbLibrary implements Library {
+  constructor(readonly database: IDBDatabase) {}
+  static async init(dbName: string) {
+    const request = indexedDB.open(dbName);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      database.createObjectStore('documents');
+    };
+    const {result: database} = await wrap(request);
+    return new IdbLibrary(database);
   }
-  return directory.getFileHandle(name, {create});
-}
-
-async function deleteFile(
-  directory: FileSystemDirectoryHandle,
-  path: string,
-  create = false,
-) {
-  const parts = path.split('/');
-  const name: string = parts.pop()!;
-  for (const part of parts) {
-    directory = await directory.getDirectoryHandle(part, {create});
-  }
-  return directory.removeEntry(name);
-}
-
-export class FileSystemLibrary implements Library {
-  constructor(readonly directory: FileSystemDirectoryHandle) {}
   async getAllNames() {
     const result = new Set<string>();
     for (const name of this.metadata.getAllNames()) {
@@ -144,11 +99,16 @@ export class FileSystemLibrary implements Library {
     }
     return undefined;
   }
-  async sync() {
-    for await (const name of allFiles('', this.directory)) {
-      const document = await this.loadDocument(name);
-      assert(document);
-      await document.refresh();
+  async restore() {
+    const {result: keys} = await wrap(
+      this.database
+        .transaction('documents')
+        .objectStore('documents')
+        .getAllKeys(),
+    );
+    for (const key of keys) {
+      assert(typeof key === 'string');
+      assert(await this.loadDocument(key));
     }
   }
   private findByName(name: string) {
@@ -196,52 +156,69 @@ export class FileSystemLibrary implements Library {
   }
   async newDocument(name: string): Promise<Document> {
     name = resolveDateAlias(name) ?? name;
-    const content = `# ${name}`;
-    const filename = await createNewFile(
-      this.directory,
-      name.toLowerCase(),
-      content,
-    );
-    return cast(await this.loadDocument(filename));
+    const content: StoredDocument = {
+      root: {
+        type: 'document',
+        children: [{type: 'section', marker: '#', content: name}],
+      },
+    };
+    name = normalizeName(name);
+    let n = 0;
+    while (true) {
+      const key = `${name}${n > 0 ? '-' + String(n) : ''}`;
+      try {
+        await wrap(
+          this.database
+            .transaction('documents', 'readwrite')
+            .objectStore('documents')
+            .add(content, key),
+        );
+      } catch (e) {
+        // TODO: verify that e is correct
+        n++;
+        continue;
+      }
+      return cast(await this.loadDocument(key));
+    }
   }
-  async load(name: string, ifModifiedSince: number) {
-    let text = '';
-    let lastModified = new Date().getTime();
+  async load(key: string) {
+    let content: StoredDocument;
     try {
-      const filename = name + '.md';
-      const handle = await getFileHandleFromPath(this.directory, filename);
-      const file = await handle.getFile();
-      // TODO: also check that the content has actually changed
-      if (ifModifiedSince >= file.lastModified)
-        return {lastModified: file.lastModified};
-      const decoder = new TextDecoder();
-      text = decoder.decode(await file.arrayBuffer());
-      lastModified = file.lastModified;
+      ({result: content} = await wrap(
+        this.database
+          .transaction('documents', 'readwrite')
+          .objectStore('documents')
+          .get(key),
+      ));
     } catch (e) {
       console.error(e);
       return undefined;
     }
-    const {node: root} = parseBlocks(text);
+    const {root} = content;
     assert(root && root.type === 'document');
-    return {root, lastModified};
+    return {root};
   }
   private async loadDocument(name: string): Promise<Document | undefined> {
     const cached = this.cache.get(normalizeName(name));
     if (cached) {
       return cached;
     }
-    const {root, lastModified} = (await this.load(name, 0)) ?? {};
-    if (!root || lastModified == null) return;
-    const result = new FileSystemDocument(this, lastModified, root, name);
+    const {root} = (await this.load(name)) ?? {};
+    if (!root) return;
+    const result = new IdbDocument(this, root, name);
     this.cache.set(normalizeName(name), result);
     return result;
   }
+  async import(root: DocumentNode, key: string) {
+    const doc = await this.newDocument(key);
+    doc.replace(root);
+    return doc;
+  }
 }
 
-class FileSystemDocument implements Document {
+class IdbDocument implements Document {
   constructor(
-    private library: FileSystemLibrary,
-    private lastModified: number,
+    private library: IdbLibrary,
     root: DocumentNode,
     readonly filename: string,
   ) {
@@ -284,28 +261,23 @@ class FileSystemDocument implements Document {
       );
     }
   }
-  async refresh() {
-    const {root, lastModified} = cast(
-      await this.library.load(this.filename, this.lastModified),
-    );
-    if (root) {
-      this.lastModified = lastModified;
-      this.tree.setRoot(this.tree.add<DocumentNode>(root));
-      this.tree.observe.notify();
-    }
+  async replace(root: DocumentNode) {
+    this.tree.setRoot(this.tree.add<DocumentNode>(root));
+    this.tree.observe.notify();
   }
   async save() {
     if (this.state !== 'active') return;
-    const text = serializeToString(this.tree.root);
-    const handle = await getFileHandleFromPath(
-      this.library.directory,
-      this.filename + '.md',
-      true,
+    const root = this.tree.serialize();
+    assert(root.type === 'document');
+    const content: StoredDocument = {
+      root,
+    };
+    await wrap(
+      this.library.database
+        .transaction('documents', 'readwrite')
+        .objectStore('documents')
+        .put(content, this.filename),
     );
-    const stream = await handle.createWritable();
-    await stream.write(text);
-    await stream.close();
-    this.lastModified = new Date().getTime();
   }
   async delete() {
     this.state = 'deleted';
@@ -315,7 +287,13 @@ class FileSystemDocument implements Document {
       }),
     );
     this.library.cache.delete(normalizeName(this.filename));
-    await deleteFile(this.library.directory, this.filename + '.md');
+    // TODO: tombstone
+    await wrap(
+      this.library.database
+        .transaction('documents', 'readwrite')
+        .objectStore('documents')
+        .delete(this.filename),
+    );
   }
   private pendingModifications = 0;
   async markDirty() {
