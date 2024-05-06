@@ -31,34 +31,34 @@ jobs:
         uses: actions/checkout@main
         with:
           persist-credentials: false
-          submodules: recursive
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3.0.0
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: 'npm'
+          cache: 'pnpm'
       - name: Cache build
         id: cache-build
         uses: actions/cache@v3
         with:
-          key: build-${{ hashFiles('package-lock.json', 'build-wasm.sh') }}
+          key: build-${{ hashFiles('pnpm-lock.json', 'build-wasm.sh') }}
           path: build
       - name: install
-        run: npm install
-      - if: ${{ steps.cache-build.outputs.cache-hit == 'true' }}
-        name: build (cached)
-        run: npm run build-cached
+        run: pnpm install
       - if: ${{ steps.cache-build.outputs.cache-hit != 'true' }}
-        name: build
-        run: npm run build
+        name: update-deps
+        run: pnpm run update-deps
       - uses: browser-actions/setup-chrome@latest
         with:
           chrome-version: stable
         id: setup-chrome
-      - name: test
+      - name: Unit Tests
+        run: CHROMIUM_BIN=$(which chrome) pnpm run unittest
+      - name: Automation Tests
         run: |
-          npm run serve &
+          pnpm run preview &
           sleep 5 &&
-          CHROMIUM_BIN=$(which chrome) npm run test
+          CHROMIUM_BIN=$(which chrome) pnpm run test
       - name: 'Upload test logs'
         uses: actions/upload-artifact@v3
         if: always()
