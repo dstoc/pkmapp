@@ -30,6 +30,7 @@ PKMAPP_ROOT=$PWD
       $PKMAPP_ROOT/node_modules/.bin/tree-sitter generate || exit 1
     )
   )
+  mkdir -p build/deps/
   cd build/deps/
   $PKMAPP_ROOT/node_modules/.bin/tree-sitter build --wasm $PKMAPP_ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown || exit 1
   $PKMAPP_ROOT/node_modules/.bin/tree-sitter build --wasm $PKMAPP_ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1

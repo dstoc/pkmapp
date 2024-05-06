@@ -558,7 +558,7 @@ export class Editor extends LitElement {
     } = this.markdownRenderer.getInlineSelection();
     const activeNode = activeInline?.node;
     const inTopLevelDocument =
-      activeNode?.viewModel.tree === this.root?.viewModel.tree ?? false;
+      activeNode?.viewModel.tree === (this.root?.viewModel.tree ?? false);
     const transclusion =
       activeInline && getContainingTransclusion(activeInline);
     return new SimpleCommandBundle('Choose command...', [

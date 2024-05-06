@@ -186,5 +186,3 @@ onerror = (event, _source, _lineno, _colno, error) =>
   console.error(event, error);
 
 render(html`<pkm-app></pkm-app>`, document.body);
-
-// navigator.serviceWorker.register('./serviceworker.js');

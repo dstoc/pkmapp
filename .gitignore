@@ -1,4 +1,5 @@
 node_modules/**/*
+dist/**/*
 build/**/*
-*.wasm
 test/logs/**/*
+tsconfig.tsbuildinfo
