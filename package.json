@@ -1,5 +1,6 @@
 {
   "type": "module",
+  "packageManager": "pnpm@9.0.6",
   "scripts": {
     "dev": "vite dev",
     "preview": "pnpm run vitebuild && vite preview",
