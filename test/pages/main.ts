@@ -20,9 +20,9 @@ type Status = 'loading' | 'loaded' | 'error';
 export class Main extends Page {
   path = '/?no-default&debug';
   host = $('>>>pkm-editor');
+  dialog = $('>>>dialog[open]');
   isReady = this.host.shadow$('*').isExisting;
   fileSystem = new FileSystem();
-  isClean = async () => (await this.host.getAttribute('dirty')) === null;
   async status(...status: Status[]): Promise<Status> {
     await browser.waitUntil(async () =>
       status.includes((await this.host.getAttribute('status')) as Status),
@@ -33,10 +33,12 @@ export class Main extends Page {
     await browser.keys(control('p'));
     await browser.keys(command.split(''));
     await browser.keys('\n');
+    // TODO: Does the component correctly buffer these keystrokes?
     if (argument !== undefined) {
       await browser.keys(argument.split(''));
       await browser.keys('\n');
     }
+    await this.host.$('>>>dialog[open]').waitForExist({reverse: true});
   }
 }
 
