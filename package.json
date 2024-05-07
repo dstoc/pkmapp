@@ -31,18 +31,18 @@
     "@wdio/mocha-framework": "^8.36.1",
     "@wdio/spec-reporter": "^8.36.1",
     "chromedriver": "^124.0.0",
-    "eslint": "^8.57.0",
+    "eslint": "^9.2.0",
     "eslint-config-prettier": "^9.1.0",
     "firacode": "^6.2.0",
     "lit": "^3.1.2",
     "prettier": "3.2.5",
-    "tree-sitter-cli": "^0.22.5",
+    "tree-sitter-cli": "^0.22.6",
     "ts-lit-plugin": "^2.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
     "vite": "^5.2.11",
     "wdio-chromedriver-service": "^8.1.1",
-    "web-tree-sitter": "^0.22.5",
+    "web-tree-sitter": "^0.22.6",
     "webdriverio": "^8.24.1"
   }
 }
