@@ -3,14 +3,7 @@ import * as os from 'os';
 
 const instances = Math.max(1, Math.round(os.cpus().length / 2));
 export const config: Options.Testrunner = {
-  runner: [
-    'browser',
-    {
-      viteConfig: {
-        publicDir: 'build',
-      },
-    },
-  ],
+  runner: 'browser',
   autoCompileOpts: {
     autoCompile: true,
     tsNodeOpts: {
