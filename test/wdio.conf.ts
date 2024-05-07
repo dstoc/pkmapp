@@ -16,8 +16,9 @@ import {browser} from '@wdio/globals';
 import type {Options} from '@wdio/types';
 import * as os from 'os';
 
-const instances = Math.max(1, Math.round(os.cpus().length / 2));
+const instances = Math.max(1, Math.round(os.cpus().length * 0.75));
 export const config: Options.Testrunner = {
+  runner: 'local',
   autoCompileOpts: {
     autoCompile: true,
     tsNodeOpts: {transpileOnly: true, project: 'test/tsconfig.json'},
@@ -27,7 +28,7 @@ export const config: Options.Testrunner = {
   maxInstances: instances,
   capabilities: [
     {
-      maxInstances: instances,
+      'wdio:maxInstances': instances,
       browserName: 'chrome',
       acceptInsecureCerts: true,
       'goog:chromeOptions': {
@@ -36,7 +37,6 @@ export const config: Options.Testrunner = {
       },
     },
   ],
-  // Level of logging verbosity: trace | debug | info | warn | error | silent
   logLevel: 'warn',
   outputDir: 'test/logs',
   bail: 0,
@@ -44,7 +44,7 @@ export const config: Options.Testrunner = {
   waitforTimeout: 10000,
   connectionRetryTimeout: 120000,
   connectionRetryCount: 3,
-  services: ['chromedriver'],
+  services: [],
   framework: 'jasmine',
   reporters: ['spec'],
   jasmineOpts: {

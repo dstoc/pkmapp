@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import {FileSystem, Main} from '../pages/main';
-import {browser} from '@wdio/globals';
 
 export async function testRoundtrip(
   content: string,
@@ -28,7 +27,6 @@ export async function testRoundtrip(
   await main.runCommand('open', 'test');
   expect(await main.status('loaded', 'error')).toEqual('loaded');
   await main.runCommand('Export to OPFS');
-  await browser.waitUntil(main.isClean);
   const result = await fs.getFile('test.md');
   const resultv = removeWhitespace ? result.replace(/\s+/g, '') : result;
   const contentv = removeWhitespace ? content.replace(/\s+/g, '') : result;

@@ -23,7 +23,7 @@ describe('roundtrip parse/serialize', () => {
   });
   const state = testState(async () => {
     const main = await new Main().load();
-    return {main, fs: await main.fileSystem};
+    return {main, fs: main.fileSystem};
   });
   const roundtrip = (content: string) =>
     testRoundtrip(content, state.main, state.fs);

@@ -48,7 +48,6 @@ describe('main', () => {
   }
   async function checkExport(file: string, output: string) {
     output = removeLeadingWhitespace(output);
-    await browser.waitUntil(state.main.isClean);
     await state.main.runCommand('Export to OPFS');
     const contents = await state.fs.getFile(file);
     await state.fs.clear();
@@ -82,7 +81,6 @@ describe('main', () => {
            \`\`\`
            `,
       );
-      // TODO: does not wait for save
       await checkExport('transclusion.md', 'content\n');
     });
     it('can be inserted and deleted', async () => {

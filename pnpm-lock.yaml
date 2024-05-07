@@ -86,9 +86,6 @@ importers:
       vite:
         specifier: ^5.2.11
         version: 5.2.11(@types/node@20.12.8)
-      wdio-chromedriver-service:
-        specifier: ^8.1.1
-        version: 8.1.1(@wdio/types@8.36.1)(chromedriver@124.0.1)(webdriverio@8.36.1(typescript@5.4.5))
       web-tree-sitter:
         specifier: ^0.22.6
         version: 0.22.6
@@ -3251,19 +3248,6 @@ packages:
 
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
-
-  wdio-chromedriver-service@8.1.1:
-    resolution: {integrity: sha512-pN3GiOkTIMnalfq4PJAHdX95pDp1orHnTY8W1fIbd6ok81ba97UjerTgS7lUDRUh1p0MAm35Ww0uc0/9wzB7SA==}
-    engines: {node: ^16.13 || >=18}
-    peerDependencies:
-      '@wdio/types': ^7.0.0 || ^8.0.0-alpha.219
-      chromedriver: '*'
-      webdriverio: ^7.0.0 || ^8.0.0-alpha.219
-    peerDependenciesMeta:
-      '@wdio/types':
-        optional: true
-      chromedriver:
-        optional: true
 
   web-component-analyzer@2.0.0:
     resolution: {integrity: sha512-UEvwfpD+XQw99sLKiH5B1T4QwpwNyWJxp59cnlRwFfhUW6JsQpw5jMeMwi7580sNou8YL3kYoS7BWLm+yJ/jVQ==}
@@ -6710,19 +6694,6 @@ snapshots:
   wcwidth@1.0.1:
     dependencies:
       defaults: 1.0.4
-
-  wdio-chromedriver-service@8.1.1(@wdio/types@8.36.1)(chromedriver@124.0.1)(webdriverio@8.36.1(typescript@5.4.5)):
-    dependencies:
-      '@wdio/logger': 8.28.0
-      fs-extra: 11.2.0
-      split2: 4.2.0
-      tcp-port-used: 1.0.2
-      webdriverio: 8.36.1(typescript@5.4.5)
-    optionalDependencies:
-      '@wdio/types': 8.36.1
-      chromedriver: 124.0.1
-    transitivePeerDependencies:
-      - supports-color
 
   web-component-analyzer@2.0.0:
     dependencies:
