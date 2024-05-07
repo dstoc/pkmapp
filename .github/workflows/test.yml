@@ -52,8 +52,8 @@ jobs:
         with:
           chrome-version: stable
         id: setup-chrome
-      # - name: Unit Tests
-      #   run: CHROMIUM_BIN=$(which chrome) pnpm run unittest
+      - name: Unit Tests
+        run: CHROMIUM_BIN=$(which chrome) pnpm run unittest
       - name: Automation Tests
         run: |
           pnpm run preview &
