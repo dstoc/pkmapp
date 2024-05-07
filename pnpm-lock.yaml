@@ -72,8 +72,8 @@ importers:
         specifier: 3.2.5
         version: 3.2.5
       tree-sitter-cli:
-        specifier: ^0.22.5
-        version: 0.22.5
+        specifier: ^0.22.6
+        version: 0.22.6
       ts-lit-plugin:
         specifier: ^2.0.2
         version: 2.0.2
@@ -90,8 +90,8 @@ importers:
         specifier: ^8.1.1
         version: 8.1.1(@wdio/types@8.36.1)(chromedriver@124.0.1)(webdriverio@8.36.1(typescript@5.4.5))
       web-tree-sitter:
-        specifier: ^0.22.5
-        version: 0.22.5
+        specifier: ^0.22.6
+        version: 0.22.6
       webdriverio:
         specifier: ^8.24.1
         version: 8.36.1(typescript@5.4.5)
@@ -3043,8 +3043,8 @@ packages:
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
-  tree-sitter-cli@0.22.5:
-    resolution: {integrity: sha512-c3VT46Bc3a6pEd0JAwufbqEw9Q2FRLDp5E230hGvnr+Hivw+Y6jyeP+3T89KDptvn48MOPVmbgaLm69xYgLVTw==}
+  tree-sitter-cli@0.22.6:
+    resolution: {integrity: sha512-s7mYOJXi8sIFkt/nLJSqlYZP96VmKTc3BAwIX0rrrlRxWjWuCwixFqwzxWZBQz4R8Hx01iP7z3cT3ih58BUmZQ==}
     hasBin: true
 
   tree-sitter@0.21.1:
@@ -3273,8 +3273,8 @@ packages:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
     engines: {node: '>= 8'}
 
-  web-tree-sitter@0.22.5:
-    resolution: {integrity: sha512-rGX2jRXjcGOhf35zWyO0i/+Wjz4/KVUYN9Oh3AhDsZ0fGOgTIkw/bMhqwvc8L7HgMK8rqDq9RcROWc7lnsnhWg==}
+  web-tree-sitter@0.22.6:
+    resolution: {integrity: sha512-hS87TH71Zd6mGAmYCvlgxeGDjqd9GTeqXNqTT+u0Gs51uIozNIaaq/kUAbV/Zf56jb2ZOyG8BxZs2GG9wbLi6Q==}
 
   webdriver@8.36.1:
     resolution: {integrity: sha512-547RivYCHStVqtiGQBBcABAkzJbPnAWsxpXGzmj5KL+TOM2JF41N2iQRtUxXqr0jme1Nzzye7WS7Y7iSnK6i1g==}
@@ -6535,7 +6535,7 @@ snapshots:
 
   tr46@0.0.3: {}
 
-  tree-sitter-cli@0.22.5: {}
+  tree-sitter-cli@0.22.6: {}
 
   tree-sitter@0.21.1:
     dependencies:
@@ -6733,7 +6733,7 @@ snapshots:
 
   web-streams-polyfill@3.3.3: {}
 
-  web-tree-sitter@0.22.5: {}
+  web-tree-sitter@0.22.6: {}
 
   webdriver@8.36.1:
     dependencies:
