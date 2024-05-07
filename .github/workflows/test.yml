@@ -33,13 +33,13 @@ jobs:
           persist-credentials: false
       - name: Install pnpm
         uses: pnpm/action-setup@v3.0.0
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
       - name: Cache build
         id: cache-build
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           key: build-${{ hashFiles('pnpm-lock.json', 'build-wasm.sh') }}
           path: build
