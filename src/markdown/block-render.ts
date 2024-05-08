@@ -34,6 +34,7 @@ export class MarkdownBlock extends LitElement {
   @property({type: String, reflect: true}) checked?: 'true' | 'false';
   @property({type: Boolean, reflect: true}) root?: boolean;
   @property({type: String, reflect: true}) type = '';
+  @property({type: String, reflect: true}) marker?: string;
   @property({attribute: false}) node?: ViewModelNode;
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
@@ -72,6 +73,12 @@ export class MarkdownBlock extends LitElement {
             ? 'true'
             : 'false';
     }
+    if (node.type === 'section') {
+      const idx = Math.min(node.marker.length - 1, 9);
+      const n = '₁₂₃₄₅₆₇₈₉ₙ'[idx];
+      this.marker = `#${n}`;
+    }
+    // TODO: maybe this is were extensions get injected?
     if (node.type === 'code-block' && node.info === 'tc') {
       return html`<md-transclusion .node=${node}></md-transclusion>`;
     }
@@ -127,30 +134,37 @@ export class MarkdownRenderer extends LitElement {
       css`
         md-block {
           display: block;
-          margin-block-start: 1em;
-          margin-block-end: 1em;
+          margin-block-start: 0.25lh;
+          margin-block-end: 0.25lh;
         }
         md-block[root] {
           margin-block: 0;
         }
         md-block[type='list'] {
-          list-style-type: disc;
-          padding-inline-start: 17px;
         }
         md-block[type='list-item']:not([root]) {
           display: list-item;
           white-space: initial;
           margin-block: 0;
+
+          display: grid;
+          grid-template-columns: auto 1fr;
+          align-items: baseline;
         }
-        md-block[type='list-item']::marker {
+        md-block[type='list-item']::before {
+          width: 15px;
+          margin-right: 3px;
+          content: '●';
           color: var(--md-accent-color);
           cursor: pointer;
+          grid-row: 1 / 999999;
+          align-self: stretch;
         }
-        md-block[type='list-item'][checked='true']::marker {
-          content: '🗹 ';
+        md-block[type='list-item'][checked='true']::before {
+          content: '☑';
         }
-        md-block[type='list-item'][checked='false']::marker {
-          content: '☐ ';
+        md-block[type='list-item'][checked='false']::before {
+          content: '☐';
         }
         md-block[type='code-block'] md-inline {
           font-family: monospace;
@@ -159,35 +173,52 @@ export class MarkdownRenderer extends LitElement {
         md-block[type='section'] > md-inline {
           font-weight: bold;
         }
+        md-block[type='section'] > md-block[type='section'] {
+          margin-left: calc(-1 * var(--section-gutter));
+        }
         md-block[type='section'] {
-          margin-inline-start: 15px;
+          --section-gutter: 20px;
+          display: grid;
+          grid-template-columns: var(--section-gutter) 1fr;
+          align-items: baseline;
+          margin-block-end: 0.75lh;
         }
-        md-block[type='section'] > md-inline {
-          display: list-item;
+        md-block[type='section']:focus-within:not(
+            :has(md-block[type='section']:focus-within)
+          ) {
+          /* TODO: how to highlight active block? */
+          border-left: solid var(--md-accent-color) 1px;
+          border-left: initial;
         }
-        md-block[type='section'] > md-inline::marker {
-          content: '# ';
+        md-block[type='section']::before {
+          margin-right: 3px;
+          content: attr(marker);
+          text-align: right;
           color: var(--md-accent-color);
+          grid-row: 1 / 999999;
+          align-self: stretch;
         }
+        /* Reduce gap between block and list */
         md-block + md-block[type='list'] {
-          margin-block-start: -0.5em !important;
+          margin-block-start: -0.25lh !important;
         }
+        /* Remove gap between list item and nested list */
         md-block[type='list-item']
           > md-block[type='paragraph']
           + md-block[type='list'] {
-          margin-block-start: -1em !important;
+          margin-block-start: -0.25lh !important;
         }
+        /* Reduce gap between section title and first content */
         md-block[type='section'] > md-block:nth-child(2) {
-          margin-block-start: 0.5em !important;
+          margin-block-start: 0.25lh !important;
         }
+        /* No gap before the first nested block */
         md-block > md-block:first-child {
-          margin-block-start: 0em;
+          margin-block-start: 0;
         }
+        /* No gap after the last nested block */
         md-block > md-block:last-child {
-          margin-block-end: 0em;
-        }
-        md-block[type='list'] + md-block {
-          margin-block-start: 0em;
+          margin-block-end: 0;
         }
         md-block[selected]:not([type='section']),
         md-block[selected][type='section'] > md-inline {
