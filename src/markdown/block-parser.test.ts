@@ -1,9 +1,9 @@
-import {expect} from '@wdio/globals';
+import {expect, test, describe} from 'vitest';
 import {assert} from '../asserts.js';
 import {parseBlocks} from './block-parser.js';
 
 describe('parseBlocks', () => {
-  it('should extract front matter into the document metadata', async () => {
+  test('should extract front matter into the document metadata', async () => {
     const {node: result} = parseBlocks(`---
 a: 1
 ---
