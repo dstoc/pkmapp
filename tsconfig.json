@@ -35,15 +35,7 @@
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
     "stripInternal": true,
-    "useUnknownInCatchVariables": true,
-    "composite": true
+    "useUnknownInCatchVariables": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": [
-    "src/**/*.test.ts",
-    "src/wdio.conf.ts"
-  ],
-  "references": [
-    { "path": "./tsconfig.test.json" }
-  ]
+  "include": ["src/**/*.ts"]
 }

@@ -30,7 +30,6 @@ import {
 import {Editor} from './editor.js';
 import {IdbLibrary, Library} from './library.js';
 import {styles, loadFonts} from './style.js';
-import {getDirectory, setDirectory} from './directory-db.js';
 import {EditorNavigation} from './editor.js';
 import {CommandBundle} from './command-palette.js';
 import {assert} from './asserts.js';
@@ -140,7 +139,6 @@ export class PkmApp extends LitElement {
     if (this.loading) return;
     this.loading = true;
     try {
-      const url = new URL(this.initialLocation);
       let library: Library;
       const parent = window.opener?.document.querySelector('pkm-app')?.library;
       if (parent) {
