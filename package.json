@@ -3,12 +3,12 @@
   "packageManager": "pnpm@9.0.6",
   "scripts": {
     "dev": "vite dev",
-    "preview": "pnpm run vitebuild && vite preview",
+    "preview": "pnpm vitebuild && vite preview",
     "vitebuild": "vite build --target esnext",
     "check": "tsc --noEmit -p tsconfig.json",
     "update-deps": "./build-wasm.sh && ./build-fonts.sh",
-    "build": "pnpm run update-deps && pnpm run vitebuild",
-    "build-cached": "pnpm run vitebuild",
+    "build": "pnpm update-deps && pnpm vitebuild",
+    "build-cached": "pnpm vitebuild",
     "unittest": "vitest --browser.name=chrome --browser.headless",
     "test": "playwright test"
   },

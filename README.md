@@ -11,17 +11,17 @@ A local-only personal knowledge management app.
 ## Setup
 
 1. Clone this repo.
-1. `pnpm install`
-1. `pnpm run build-deps`
+1. `pnpm i`
+1. `pnpm build-deps`
 
 ## Develop
 
-1. `pnpm run dev`
+1. `pnpm dev`
 
 ## Test
 
-1. Automation tests `pnpm run preview` & `pnpm run test`
-1. Unit tests `pnpm run unittest`
+* Unit tests `pnpm unittest`
+* Automation tests `pnpm test`
 
 ## Contributing
 
