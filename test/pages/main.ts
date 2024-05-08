@@ -31,6 +31,7 @@ export class Main extends Page {
   }
   async runCommand(command: string, argument?: string) {
     await browser.keys(control('p'));
+    await $('>>>dialog[open]').waitForExist();
     await browser.keys(command.split(''));
     await browser.keys('\n');
     // TODO: Does the component correctly buffer these keystrokes?
@@ -38,7 +39,7 @@ export class Main extends Page {
       await browser.keys(argument.split(''));
       await browser.keys('\n');
     }
-    await this.host.$('>>>dialog[open]').waitForExist({reverse: true});
+    await $('>>>dialog[open]').waitForExist({reverse: true});
   }
 }
 
