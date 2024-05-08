@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {type Keyboard} from '@playwright/test';
+
 export function removeLeadingWhitespace(input: string, leading?: string) {
   if (leading == undefined) {
     leading = /(\n +)/.exec(input)?.[1];
@@ -19,19 +21,23 @@ export function removeLeadingWhitespace(input: string, leading?: string) {
   return leading ? input.replace(new RegExp(leading, 'g'), '\n') : input;
 }
 
+export type KeyboardSequence = (keyboard: Keyboard) => Promise<void>;
+
 export function input(
   strings: TemplateStringsArray,
   ...keys: string[][]
-): string[] {
+): KeyboardSequence {
   const leading = /(\n +)/.exec(strings.join(''))?.[1];
-  const result: string[] = [];
+  const steps: ((keyboard: Keyboard) => Promise<void>)[] = [];
   for (let i = 0; i < strings.length; i++) {
-    result.push(...removeLeadingWhitespace(strings[i], leading).split(''));
-    result.push(...(keys[i] ?? []));
+    steps.push((keyboard) =>
+      keyboard.type(removeLeadingWhitespace(strings[i], leading)),
+    );
+    for (const key of keys[i] ?? []) {
+      steps.push((keyboard) => keyboard.press(key));
+    }
   }
-  return result;
-}
-
-export function control(...keys: string[]) {
-  return ['Control', ...keys, 'Control'];
+  return async (keyboard) => {
+    for (const step of steps) await step(keyboard);
+  };
 }

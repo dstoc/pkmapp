@@ -1,5 +1,6 @@
 node_modules/**/*
 dist/**/*
 build/**/*
-test/logs/**/*
+tests/results/**/*
+tests/report/**/*
 tsconfig.tsbuildinfo

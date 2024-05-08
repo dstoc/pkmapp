@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {expect} from '@playwright/test';
 import {FileSystem, Main} from '../pages/main';
 
 export async function testRoundtrip(

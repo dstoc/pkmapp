@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {config as base} from './wdio.conf';
+import {test, type Page} from '@playwright/test';
 
-export const config = {
-  ...base,
-  specs: ['./test/extra/**/*test.ts'],
-};
+export function testState<T>(makeState: (page: Page) => T | Promise<T>): T {
+  const result = {};
+  test.beforeEach(async ({page}) => {
+    Object.assign(result, await makeState(page));
+  });
+  return result as T;
+}

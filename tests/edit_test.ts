@@ -12,32 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Main} from '../pages/main.js';
-import {input, removeLeadingWhitespace} from '../util/input.js';
-import {testState} from '../util/test_state.js';
-import {$, browser} from '@wdio/globals';
+import {Main} from './pages/main.js';
+import {
+  type KeyboardSequence,
+  input,
+  removeLeadingWhitespace,
+} from './util/input.js';
+import {testState} from './util/test_state.js';
+import {test, expect} from '@playwright/test';
 
-describe('input helper', () => {
-  it('removes leading whitespace', () => {
-    expect(input`a
-                 b`).toEqual(['a', '\n', 'b']);
-  });
-  it('merges keys', () => {
-    expect(input`a${['Tab']}b`).toEqual(['a', 'Tab', 'b']);
-  });
-});
-
-describe('main', () => {
-  afterEach(async () => {
-    expect(await browser.getLogs('browser')).toEqual([]);
-  });
-  const state = testState(async () => {
-    const main = await new Main().load();
+test.describe('editing', () => {
+  const state = testState(async (page) => {
+    const main = await new Main(page).load();
     return {main, fs: main.fileSystem};
   });
-  function inputOutputTest(keys: string[], output: string) {
+
+  test.beforeEach(async () => {
+    await importFile('test.md', '');
+    await state.main.runCommand('open', 'test');
+    await state.main.status('loaded');
+    const inline = state.main.host.locator('[contenteditable]').first();
+    await inline.click();
+  });
+
+  test.afterEach(async () => {
+    // TODO: how to fail on logs?
+    // expect(await browser.getLogs('browser')).toEqual([]);
+  });
+
+  function inputOutputTest(sequence: KeyboardSequence, output: string) {
     return async () => {
-      await browser.keys(keys);
+      await sequence(state.main.page.keyboard);
       await checkExport('test.md', output);
     };
   }
@@ -50,128 +55,118 @@ describe('main', () => {
     output = removeLeadingWhitespace(output);
     await state.main.runCommand('Export to OPFS');
     const contents = await state.fs.getFile(file);
-    await state.fs.clear();
     expect(contents).toEqual(output);
+    await state.fs.clear();
   }
-  beforeEach(async () => {
-    await state.main.runCommand('Clear Library');
-    await importFile('test.md', '');
-    await state.main.runCommand('open', 'test');
-    await state.main.status('loaded');
-    const inline = $('>>>[contenteditable]');
-    await inline.click();
-  });
-  describe('transclusions', () => {
-    it('can be inserted and edited', async () => {
-      await browser.keys(input`test`);
-      await importFile('transclusion.md', '');
+  test.describe('transclusions', () => {
+    test('can be inserted and edited', async ({page}) => {
+      await page.keyboard.type('test');
+      await importFile('transclusion.md', 'aaa');
       await state.main.runCommand('insert transclusion', 'transclusion');
-      await browser.waitUntil(
-        state.main.host.$('>>>md-transclusion').isExisting,
-      );
+      await state.main.host
+        .locator('md-transclusion')
+        .waitFor({state: 'visible'});
       // TODO: shouldn't be required
-      await browser.keys(['ArrowDown']);
-      await browser.keys(input`content`);
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.type('content');
       await checkExport(
         'test.md',
         `test
 
-           \`\`\`tc
-           transclusion
-           \`\`\`
-           `,
+             \`\`\`tc
+             transclusion
+             \`\`\`
+             `,
       );
-      await checkExport('transclusion.md', 'content\n');
+      await checkExport('transclusion.md', 'contentaaa\n');
     });
-    it('can be inserted and deleted', async () => {
-      await browser.keys(input`test`);
+    test('can be inserted and deleted', async ({page}) => {
+      await page.keyboard.type('test');
       await importFile('transclusion.md', '');
       await state.main.runCommand('insert transclusion', 'transclusion');
-      await browser.waitUntil(
-        state.main.host.$('>>>md-transclusion').isExisting,
-      );
+      await state.main.host
+        .locator('md-transclusion')
+        .waitFor({state: 'visible'});
       // TODO: shouldn't be required
-      await browser.keys(['ArrowDown']);
+      await page.keyboard.press('ArrowDown');
       await state.main.runCommand('delete transclusion');
       await checkExport('test.md', `test\n`);
     });
   });
-  describe('sections', () => {
-    it(
+  test.describe('sections', () => {
+    test(
       'can generate multiple sections',
       inputOutputTest(
         input`# 1
-            a
-            # 2
-            b`,
+              a
+              # 2
+              b`,
         `# 1
-            a
-            
-            # 2
-            b
-            `,
+              a
+
+              # 2
+              b
+              `,
       ),
     );
-    it(
+    test(
       'nest correctly',
       inputOutputTest(
         input`a
-            # 1
-            a
-            ## 2
-            b
-            # 3${Array(4).fill('ArrowUp')}${['Tab']}`,
-        `a
-            * # 1
+              # 1
               a
-              
               ## 2
               b
-            
-            # 3
-            `,
+              # 3${Array(4).fill('ArrowUp')}${['Tab']}`,
+        `a
+              * # 1
+                a
+                
+                ## 2
+                b
+              
+              # 3
+              `,
       ),
     );
-    it(
+    test(
       'nest correctly when ranges are not all contiguous',
       inputOutputTest(
         input`# top
-                 * 1
-                 2
-                 3
-                 # outer${['Shift', 'Tab', 'Shift']}${Array(2).fill(
-                   'ArrowUp',
-                 )}# `,
+                   * 1
+                   2
+                   3
+                   # outer${['Shift+Tab']}${['Home', 'ArrowUp', 'ArrowUp']}# `,
         `# top
-            * 1
-            * # 2
-            * 3
+              * 1
+              * # 2
+              * 3
 
-            # outer
-            `,
+              # outer
+              `,
       ),
     );
   });
-  it(
+  test(
     'can generate a list',
     inputOutputTest(
       input`* a
-          b`,
+            b`,
       `* a
-          * b
-          `,
+            * b
+            `,
     ),
   );
-  describe('checklists', () => {
-    it(
+  test.describe('checklists', () => {
+    test(
       'can generate unchecked',
       inputOutputTest(input`* [ ] milk\neggs`, `* [ ] milk\n* [ ] eggs\n`),
     );
-    it(
+    test(
       'can generate checked',
       inputOutputTest(input`* [x] milk\neggs`, `* [x] milk\n* [ ] eggs\n`),
     );
-    it(
+    test(
       'ignores double check',
       inputOutputTest(
         input`* [x] [ ] milk\neggs`,
@@ -179,110 +174,110 @@ describe('main', () => {
       ),
     );
   });
-  it(
+  test(
     'does not generate lists in ambiguous situations',
     inputOutputTest(
       input`*a
-          b`,
+            b`,
       `*a
 
-          b
-          `,
+            b
+            `,
     ),
   );
-  describe('paragraph insertion', () => {
-    it(
+  test.describe('paragraph insertion', () => {
+    test(
       'will split a paragraph',
       inputOutputTest(
         input`* ab${['ArrowLeft']}\nc`,
         `* a
-            * cb
-            `,
+              * cb
+              `,
       ),
     );
-    it(
+    test(
       'will stay on the current line when splitting at start',
       inputOutputTest(
         input`* b${['ArrowLeft']}\na`,
         `* a
-            * b
-            `,
+              * b
+              `,
       ),
     );
-    it(
+    test(
       'will move to the next line if empty',
       inputOutputTest(
         input`* \nb`,
         `* 
-            * b
-            `,
+              * b
+              `,
       ),
     );
   });
-  describe('indentation', () => {
-    it(
+  test.describe('indentation', () => {
+    test(
       'can indent a top level paragraph',
       inputOutputTest(
         input`a${['Tab']}`,
         `* a
-            `,
+              `,
       ),
     );
-    it(
+    test(
       'can unindent a list-item in a list-item',
-      inputOutputTest(input`* * a${['Shift', 'Tab', 'Shift']}`, `* a\n`),
+      inputOutputTest(input`* * a${['Shift+Tab']}`, `* a\n`),
     );
   });
-  describe('links', () => {
-    it(
+  test.describe('links', () => {
+    test(
       'automatically inserts closing `]`',
       inputOutputTest(
         input`[test`,
         `[test]
-            `,
+              `,
       ),
     );
-    it(
+    test(
       "doesn't insert duplicate `]`",
       inputOutputTest(
         input`[]`,
         `[]
-            `,
+              `,
       ),
     );
-    it(
+    test(
       'completes suggestions with <Tab>',
       inputOutputTest(
         input`[te${['Tab']}`,
         `[test]
-            `,
+              `,
       ),
     );
-    it(
+    test(
       'accepts freeform links',
       inputOutputTest(
         input`[doesnt exist${['Tab']}`,
         `[doesnt exist]
-            `,
+              `,
       ),
     );
   });
-  describe('selection', () => {
-    it(
+  test.describe('selection', () => {
+    test(
       'can select and delete',
       inputOutputTest(
-        input`a\nb\nc${['Shift', 'ArrowUp', 'Shift', 'Backspace']}`,
+        input`a\nb\nc${['Shift+ArrowUp', 'Backspace']}`,
         `a
-            `,
+              `,
       ),
     );
-    it(
+    test(
       'can select a single block',
       inputOutputTest(
-        input`* a\nb\nc${['ArrowUp', 'Control', 'a', 'Control', 'Backspace']}`,
+        input`* a\nb\nc${['ArrowUp', 'Control+a', 'Backspace']}`,
         `* a
-            * c
-            `,
+              * c
+              `,
       ),
     );
   });
