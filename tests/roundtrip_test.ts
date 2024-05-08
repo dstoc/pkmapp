@@ -12,23 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Main} from '../pages/main.js';
-import {testRoundtrip} from '../util/test_roundtrip.js';
-import {testState} from '../util/test_state.js';
-import {browser} from '@wdio/globals';
+import {test} from '@playwright/test';
+import {Main} from './pages/main.js';
+import {testRoundtrip} from './util/test_roundtrip.js';
+import {testState} from './util/test_state.js';
 
-describe('roundtrip parse/serialize', () => {
-  afterEach(async () => {
-    expect(await browser.getLogs('browser')).toEqual([]);
-  });
-  const state = testState(async () => {
-    const main = await new Main().load();
+test.describe('roundtrip parse/serialize', () => {
+  const state = testState(async (page) => {
+    const main = await new Main(page).load();
     return {main, fs: main.fileSystem};
   });
   const roundtrip = (content: string) =>
     testRoundtrip(content, state.main, state.fs);
 
-  it('preserves codeblock content inside blockquote', async () =>
+  test('preserves codeblock content inside blockquote', async () =>
     roundtrip(`
       > \`\`\`
       > a

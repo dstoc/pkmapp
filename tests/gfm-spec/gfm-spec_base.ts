@@ -12,27 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {test, expect, type Browser} from '@playwright/test';
 import {FileSystem, Main} from '../pages/main';
 import {testRoundtrip} from '../util/test_roundtrip';
 
-async function getTests() {
-  await browser.url('https://github.github.com/gfm');
-  const result = JSON.parse(
-    await browser.executeScript(
-      `
-    function extract(a) {
+interface TestSpec {
+  name: string;
+  href: string;
+  content: string;
+}
+
+async function getTests(browser: Browser): Promise<TestSpec[]> {
+  const page = await browser.newPage();
+  await page.goto('https://github.github.com/gfm');
+  const result = await page.waitForFunction(async () => {
+    function extract(a: Element) {
+      if (!(a instanceof HTMLAnchorElement))
+        throw new Error('malformed document');
       const name = a.textContent;
       const href = a.href;
-      const content = a.parentElement.nextElementSibling.textContent;
+      const content = a.parentElement!.nextElementSibling!.textContent;
       return {name, href, content};
     }
-    return JSON.stringify([...document.querySelectorAll('[href^="#example"]')].map(extract));
-  `,
-      []
-    )
-  );
-  await browser.back();
-  return result;
+    return JSON.stringify(
+      [...document.querySelectorAll('[href^="#example"]')].map(extract),
+    );
+  });
+  const tests = JSON.parse(await result.jsonValue());
+  await page.close();
+  return tests;
 }
 
 const expectedFailures = {
@@ -57,23 +65,24 @@ const expectedFailures = {
   315: '', // normalized code block
 };
 
-export function runTests(start = 1, limit = 678) {
-  describe('github flavored markdown', () => {
-    let tests = [];
+const TEST_COUNT = 677;
+
+export function runTests(start = 1, limit = TEST_COUNT + 1) {
+  test.describe(`github flavored markdown`, () => {
+    let tests: TestSpec[] = [];
     let main: Main;
     let fs: FileSystem;
-    afterEach(async () => {
-      expect(await browser.getLogs('browser')).toEqual([]);
+    test.beforeAll(async ({browser}) => {
+      tests = await getTests(browser);
+      expect(tests.length).toEqual(TEST_COUNT);
+      tests.unshift(undefined);
     });
-    beforeAll(async () => {
-      tests = await getTests();
-      tests.unshift(null);
-      expect(tests.length).toEqual(677);
-      main = await new Main().load();
+    test.beforeEach(async ({page}) => {
+      main = await new Main(page).load();
       fs = main.fileSystem;
     });
-    for (let i = start; i < Math.min(limit, 678); i++) {
-      it(`can ${
+    for (let i = start; i < Math.min(limit, TEST_COUNT + 1); i++) {
+      test(`can ${
         expectedFailures[i] !== undefined ? '(not) ' : ''
       }roundtrip https://github.github.com/gfm/#example-${i}`, async () =>
         testRoundtrip(
@@ -81,7 +90,7 @@ export function runTests(start = 1, limit = 678) {
           main,
           fs,
           true,
-          expectedFailures[i]
+          expectedFailures[i],
         ));
     }
   });

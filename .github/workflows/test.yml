@@ -55,14 +55,11 @@ jobs:
       - name: Unit Tests
         run: CHROMIUM_BIN=$(which chrome) pnpm run unittest
       - name: Automation Tests
-        run: |
-          pnpm run preview &
-          sleep 5 &&
-          CHROMIUM_BIN=$(which chrome) pnpm run test
-      - name: 'Upload test logs'
+        run: CHROMIUM_BIN=$(which chrome) pnpm run test
+      - name: 'Upload test report'
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ !cancelled() }}
         with:
-          name: test-logs
-          path: test/logs/*
+          name: test-report
+          path: tests/report/*
           retention-days: 5
