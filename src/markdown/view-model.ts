@@ -343,7 +343,9 @@ export class MarkdownTree {
     assert(this.state === 'idle');
     const result: MarkdownNode & MaybeViewModelNode = {...node};
     delete result.viewModel;
-    result.children = node.children?.map((node) => this.serialize(node));
+    result.children = node.children?.map((node: ViewModelNode) =>
+      this.serialize(node),
+    );
     return result;
   }
 }
