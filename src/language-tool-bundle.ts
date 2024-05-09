@@ -134,8 +134,10 @@ async function* palm(prompt: string): AsyncGenerator<string> {
       if (part.startsWith('data: ')) {
         const value = part.substring(6);
         if (value === '[DONE]') return;
-        const content = JSON.parse(value).candidates[0].content.parts[0].text;
+        const content: unknown =
+          JSON.parse(value).candidates[0].content.parts[0].text;
         if (content != null) {
+          assert(typeof content === 'string');
           yield content;
         }
       }
@@ -176,8 +178,9 @@ export async function* openAiChat(prompt: string): AsyncGenerator<string> {
       if (part.startsWith('data: ')) {
         const value = part.substring(6);
         if (value === '[DONE]') return;
-        const content = JSON.parse(value).choices[0].delta.content;
+        const content: unknown = JSON.parse(value).choices[0].delta.content;
         if (content != null) {
+          assert(typeof content === 'string');
           yield content;
         }
       }
@@ -185,7 +188,7 @@ export async function* openAiChat(prompt: string): AsyncGenerator<string> {
   }
 }
 
-function iterateStream(stream: ReadableStream) {
+function iterateStream<T>(stream: ReadableStream<T>) {
   return {
     [Symbol.asyncIterator]: async function* () {
       const reader = stream.getReader();

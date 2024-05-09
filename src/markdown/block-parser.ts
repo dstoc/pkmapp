@@ -168,6 +168,7 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
     case 'minus_metadata':
       // handled in 'document'
       assert(false);
+    // eslint-disable-next-line no-fallthrough
     case 'atx_heading':
     case 'block_continuation':
     case 'list_marker_star':

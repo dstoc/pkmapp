@@ -79,8 +79,8 @@ export class ViewModel {
     if (this.nextSibling) {
       this.nextSibling.viewModel.previousSibling = this.previousSibling;
     }
-    const index = this.parent!.children!.indexOf(this.self);
-    this.parent!.children!.splice(index, 1);
+    const index = this.parent.children!.indexOf(this.self);
+    this.parent.children!.splice(index, 1);
     if (!this.previousSibling)
       this.parent.viewModel.firstChild = this.nextSibling;
     if (!this.nextSibling)
@@ -195,7 +195,7 @@ export class InlineViewModel extends ViewModel {
     (this.self as {content: string}).content = newContent;
     const newNodes = this.maybeReplaceWithBlocks();
     if (newNodes) return newNodes;
-    this.inlineTree_ = this.inlineTree!.edit(result);
+    this.inlineTree_ = this.inlineTree.edit(result);
     this.inlineTree_ = inlineParser.parse(this.self.content, this.inlineTree);
     this.signalMutation();
     return null;
@@ -249,7 +249,7 @@ export class MarkdownTree {
   private editResumeObserve: () => void = () => void 0;
   root: ViewModelNode & DocumentNode;
   readonly observe = new Observe(this);
-  removed: Set<ViewModelNode> = new Set();
+  removed = new Set<ViewModelNode>();
 
   setRoot(node: DocumentNode & ViewModelNode) {
     assert(node.viewModel.tree === this);

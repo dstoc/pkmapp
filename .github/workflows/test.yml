@@ -48,6 +48,8 @@ jobs:
       - if: ${{ steps.cache-build.outputs.cache-hit != 'true' }}
         name: update-deps
         run: pnpm run update-deps
+      - name: lint
+        run: pnpm lint
       - uses: browser-actions/setup-chrome@latest
         with:
           chrome-version: stable

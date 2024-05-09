@@ -24,6 +24,7 @@ import {Metadata} from './metadata.js';
 import {assert, cast} from './asserts.js';
 import {resolveDateAlias} from './date-aliases.js';
 import {getLogicalContainingBlock} from './block-util.js';
+import {noAwait} from './async.js';
 
 export interface Document {
   replace(root: DocumentNode): Promise<void>;
@@ -87,7 +88,7 @@ export class IdbLibrary implements Library {
     }
     return [...result];
   }
-  cache: Map<string, Document> = new Map();
+  cache = new Map<string, Document>();
   backLinks = new BackLinks();
   metadata = new Metadata();
   getDocumentByTree(tree: MarkdownTree): Document | undefined {
@@ -128,7 +129,10 @@ export class IdbLibrary implements Library {
   async findAll(name: string) {
     name = resolveDateAlias(name) ?? name;
 
-    type Result = {document: Document; root: ViewModelNode};
+    interface Result {
+      document: Document;
+      root: ViewModelNode;
+    }
     const parts = name.split('/');
     const blocks: Result[][] = [];
     for (let i = 0; i < parts.length; i++) {
@@ -184,12 +188,13 @@ export class IdbLibrary implements Library {
   async load(key: string) {
     let content: StoredDocument;
     try {
-      ({result: content} = await wrap(
+      const result = await wrap(
         this.database
           .transaction('documents', 'readwrite')
           .objectStore('documents')
           .get(key),
-      ));
+      );
+      content = cast(result.result) as StoredDocument;
     } catch (e) {
       console.error(e);
       return undefined;
@@ -211,7 +216,7 @@ export class IdbLibrary implements Library {
   }
   async import(root: DocumentNode, key: string) {
     const doc = await this.newDocument(key);
-    doc.replace(root);
+    await doc.replace(root);
     return doc;
   }
 }
@@ -223,7 +228,7 @@ class IdbDocument implements Document {
     readonly filename: string,
   ) {
     this.tree = new MarkdownTree(cast(root), this);
-    this.tree.observe.add(() => this.markDirty());
+    this.tree.observe.add(() => noAwait(this.markDirty()));
   }
   state: 'active' | 'deleted' = 'active';
   readonly tree: MarkdownTree;

@@ -14,13 +14,13 @@
 
 export function assert(val: unknown): asserts val {
   if (!val) {
-    throw new Error(`assertion failed: ${val}`);
+    throw new Error(`assertion failed: ${String(val)}`);
   }
 }
 
 export function cast<T>(val: T): NonNullable<T> {
   if (val === null || val === undefined) {
-    throw new Error(`cast failed: ${val}`);
+    throw new Error(`cast failed: ${String(val)}`);
   }
   return val as NonNullable<T>;
 }

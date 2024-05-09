@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-function wrap(request: IDBRequest) {
-  return new Promise<IDBRequest>(
+import {assert} from './asserts.js';
+
+function wrap<T extends IDBRequest>(request: T) {
+  return new Promise<T>(
     (resolve, reject) => (
       (request.onsuccess = () => resolve(request)), (request.onerror = reject)
     ),
@@ -33,14 +35,15 @@ export async function getDirectory(
   key: string,
 ): Promise<FileSystemDirectoryHandle | undefined> {
   const db = await getDatabase();
-  const result = (
+  const result: unknown = (
     await wrap(
       db
         .transaction('directories', 'readwrite')
-        .objectStore('directories')!
+        .objectStore('directories')
         .get(key),
     )
   ).result;
+  assert(result instanceof FileSystemDirectoryHandle || result === undefined);
   return result;
 }
 
@@ -52,7 +55,7 @@ export async function setDirectory(
   await wrap(
     db
       .transaction('directories', 'readwrite')
-      .objectStore('directories')!
+      .objectStore('directories')
       .put(directory, key),
   );
 }

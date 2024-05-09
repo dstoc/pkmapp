@@ -37,39 +37,38 @@ import {
 import {focusNode} from './markdown/host-context.js';
 import {Library} from './library.js';
 import {BlockCommandBundle} from './block-command-bundle.js';
+import {noAwait} from './async.js';
 
 @customElement('pkm-autocomplete')
 export class Autocomplete extends LitElement {
-  static override get styles() {
-    return css`
-      :host {
-        display: none;
-      }
-      :host([state='active']) {
-        display: block;
-        position: absolute;
-        top: var(--y);
-        left: var(--x);
-        color: var(--root-color);
-        margin-top: 5px;
-        background: var(--pkm-dialog-bgcolor);
-        border: 3px solid var(--md-accent-color);
-        border-radius: 10px;
-        width: 500px;
-        display: grid;
-        padding: 0;
-        max-height: 300px;
-        overflow: hidden;
-      }
-    `;
-  }
+  static override styles = css`
+    :host {
+      display: none;
+    }
+    :host([state='active']) {
+      display: block;
+      position: absolute;
+      top: var(--y);
+      left: var(--x);
+      color: var(--root-color);
+      margin-top: 5px;
+      background: var(--pkm-dialog-bgcolor);
+      border: 3px solid var(--md-accent-color);
+      border-radius: 10px;
+      width: 500px;
+      display: grid;
+      padding: 0;
+      max-height: 300px;
+      overflow: hidden;
+    }
+  `;
   @query('pkm-command-palette') palette!: CommandPalette;
   @property({reflect: true})
   state: 'active' | 'inactive' = 'inactive';
   node?: InlineViewModelNode;
-  startIndex: number = 0;
+  startIndex = 0;
   @state()
-  endIndex: number = 0;
+  endIndex = 0;
   @consume({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
@@ -92,7 +91,7 @@ export class Autocomplete extends LitElement {
       keyboardEvent.preventDefault();
       return true;
     } else if (['Tab', 'Enter'].includes(keyboardEvent.key)) {
-      this.palette.commit();
+      noAwait(this.palette.commit());
       keyboardEvent.preventDefault();
       return true;
     } else if (
@@ -126,12 +125,12 @@ export class Autocomplete extends LitElement {
     const action = async ({name: arg}: {name: string}) => {
       const finish = node.viewModel.tree.edit();
       try {
-        const newEndIndex = this.startIndex + arg!.length;
+        const newEndIndex = this.startIndex + arg.length;
         node.viewModel.edit({
           startIndex: this.startIndex,
           newEndIndex,
           oldEndIndex: this.endIndex,
-          newText: arg!,
+          newText: arg,
         });
         focusNode(inline.hostContext!, inline.node!, newEndIndex + 1);
       } finally {
@@ -158,14 +157,18 @@ export class Autocomplete extends LitElement {
           newText: '[]',
         });
         this.endIndex = this.startIndex;
-        focusNode(inline.hostContext!, node!, this.startIndex);
+        focusNode(inline.hostContext!, node, this.startIndex);
         return command.execute(command, updatePreview);
       },
       description: command.description,
     };
   }
 
-  onInlineEdit(inline: MarkdownInline, newText: string, cursorIndex: number) {
+  async onInlineEdit(
+    inline: MarkdownInline,
+    newText: string,
+    cursorIndex: number,
+  ) {
     const node = inline.node;
     if (!node) return;
     if (this.node !== node || cursorIndex < this.startIndex) {
@@ -180,9 +183,9 @@ export class Autocomplete extends LitElement {
           oldEndIndex: cursorIndex,
           newText: ']',
         });
-        this.palette.triggerCommand(this.getLinkInsertionCommand(inline));
+        await this.palette.triggerCommand(this.getLinkInsertionCommand(inline));
       } else if (newText === '/') {
-        this.palette.trigger(
+        await this.palette.trigger(
           new SimpleCommandBundle('Run command...', [
             this.getSlashCommandWrapper(
               inline,
@@ -209,7 +212,7 @@ export class Autocomplete extends LitElement {
       this.endIndex = cursorIndex;
     }
     if (this.state === 'active') {
-      this.palette.setInput(
+      await this.palette.setInput(
         node.content.substring(this.startIndex, this.endIndex),
       );
     }
