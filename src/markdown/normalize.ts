@@ -34,9 +34,9 @@ function moveTrailingNodesIntoSections(tree: MarkdownTree) {
 }
 
 function normalizeContiguousSections(
-  sections: Array<SectionNode & ViewModelNode>,
+  sections: (SectionNode & ViewModelNode)[],
 ) {
-  const activeSections: Array<SectionNode & ViewModelNode> = [];
+  const activeSections: (SectionNode & ViewModelNode)[] = [];
   function activeSection() {
     return activeSections[activeSections.length - 1];
   }

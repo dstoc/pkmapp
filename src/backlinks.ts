@@ -17,8 +17,8 @@ import {InlineViewModelNode} from './markdown/view-model-node.js';
 import {Library, Document} from './library.js';
 
 export class BackLinks {
-  private links: Map<InlineViewModelNode, Set<string>> = new Map();
-  private backLinks: Map<string, Set<InlineViewModelNode>> = new Map();
+  private links = new Map<InlineViewModelNode, Set<string>>();
+  private backLinks = new Map<string, Set<InlineViewModelNode>>();
 
   private getBacklinksByName(name: string) {
     return [...(this.backLinks.get(name)?.values() ?? [])].map(
@@ -42,19 +42,18 @@ export class BackLinks {
     node: InlineViewModelNode,
     change: 'connected' | 'disconnected' | 'changed',
   ) {
-    const ivmn = node as InlineViewModelNode;
     if (change === 'disconnected') {
-      const links = this.links.get(ivmn);
+      const links = this.links.get(node);
       if (links) {
         for (const target of links) {
-          this.backLinks.get(target)?.delete(ivmn);
+          this.backLinks.get(target)?.delete(node);
         }
-        this.links.delete(ivmn);
+        this.links.delete(node);
       }
     } else {
-      let links = this.links.get(ivmn);
+      let links = this.links.get(node);
       const preLinks = new Set(links?.values() ?? []);
-      for (const next of dfs(ivmn.viewModel.inlineTree.rootNode)) {
+      for (const next of dfs(node.viewModel.inlineTree.rootNode)) {
         if (next.type === 'inline_link' || next.type === 'shortcut_link') {
           const text =
             next.namedChildren.find((node) => node.type === 'link_text')
@@ -64,7 +63,7 @@ export class BackLinks {
               ?.text ?? text;
           if (!links) {
             links = new Set();
-            this.links.set(ivmn, links);
+            this.links.set(node, links);
           }
           links.add(destination);
           let backLinks = this.backLinks.get(destination);
@@ -72,13 +71,13 @@ export class BackLinks {
             backLinks = new Set();
             this.backLinks.set(destination, backLinks);
           }
-          backLinks.add(ivmn);
+          backLinks.add(node);
           preLinks.delete(destination);
         }
       }
       for (const target of preLinks) {
-        this.backLinks.get(target)?.delete(ivmn);
-        this.links.get(ivmn)?.delete(target);
+        this.backLinks.get(target)?.delete(node);
+        this.links.get(node)?.delete(target);
       }
     }
   }

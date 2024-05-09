@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {noAwait} from './async.js';
 import {customElement, html, LitElement, state, property} from './deps/lit.js';
 
 async function getConsistentEmoji(value: string) {
@@ -101,7 +102,7 @@ export class Emoji extends LitElement {
   @state() private emoji?: string;
   override shouldUpdate(changedProperties: Map<string, unknown>) {
     if (changedProperties.has('text')) {
-      this.updateEmoji();
+      noAwait(this.updateEmoji());
     }
     return changedProperties.has('emoji');
   }

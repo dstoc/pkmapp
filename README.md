@@ -17,6 +17,7 @@ A local-only personal knowledge management app.
 ## Develop
 
 1. `pnpm dev`
+1. `pnpm lint`
 
 ## Test
 

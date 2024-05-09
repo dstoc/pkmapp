@@ -31,6 +31,7 @@ import './block-render.js';
 import {consume} from '../deps/lit-context.js';
 import {HostContext, hostContext} from './host-context.js';
 import {findNextEditable, findFinalEditable} from './view-model-util.js';
+import {noAwait} from '../async.js';
 
 @customElement('md-transclusion')
 export class MarkdownTransclusion extends LitElement {
@@ -54,7 +55,9 @@ export class MarkdownTransclusion extends LitElement {
     super.update(changedProperties);
     if (changedProperties.has('node')) {
       this.root = undefined;
-      if (this.node) this.load(this.node.content.trim());
+      if (this.node) {
+        noAwait(this.load(this.node.content.trim()));
+      }
     }
   }
   override render() {
@@ -65,16 +68,14 @@ export class MarkdownTransclusion extends LitElement {
         `
       : '';
   }
-  static override get styles() {
-    return css`
-      :host {
-        display: block;
-        background: var(--md-code-block-bgcolor);
-        padding: 10px;
-        border-radius: 10px;
-      }
-    `;
-  }
+  static override styles = css`
+    :host {
+      display: block;
+      background: var(--md-code-block-bgcolor);
+      padding: 10px;
+      border-radius: 10px;
+    }
+  `;
   async load(name: string) {
     // TODO: disambiguate if there's more than one result
     const [{root}] = await this.library.findAll(name);
@@ -89,7 +90,7 @@ export class MarkdownTransclusion extends LitElement {
       (this.hostContext.focusOffset ?? -1) >= 0
         ? findNextEditable(this.root, this.root, true)
         : findFinalEditable(this.root, true);
-    this.markdownRenderer.hostContext.focusNode = node || undefined;
+    this.markdownRenderer.hostContext.focusNode = node ?? undefined;
     this.markdownRenderer.hostContext.focusOffset =
       this.hostContext.focusOffset;
     this.hostContext.focusNode = undefined;

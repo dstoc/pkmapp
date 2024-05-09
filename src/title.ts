@@ -31,14 +31,12 @@ import type {ViewModelNode} from './markdown/view-model-node.js';
 
 @customElement('pkm-title')
 export class Title extends LitElement {
-  static override get styles() {
-    return css`
-      .item {
-        text-decoration: underline;
-        cursor: pointer;
-      }
-    `;
-  }
+  static override styles = css`
+    .item {
+      text-decoration: underline;
+      cursor: pointer;
+    }
+  `;
   @property({attribute: false})
   node?: ViewModelNode;
   @consume({context: libraryContext, subscribe: true})

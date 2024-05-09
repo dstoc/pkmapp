@@ -13,14 +13,15 @@
 // limitations under the License.
 
 import {assert, cast} from './asserts.js';
+import {noAwait} from './async.js';
 
-export class Observe<T> {
+export class Observe<T, D = unknown> {
   private observers = new Set<(target: T) => void>();
   private state: 'active' | 'suspended' | 'delegated';
   private resumed?: Promise<void>;
   constructor(
     readonly target: T,
-    private delegate?: Observe<any>,
+    private delegate?: Observe<D, unknown>,
   ) {
     this.state = delegate ? 'delegated' : 'active';
   }
@@ -41,7 +42,9 @@ export class Observe<T> {
   notify() {
     if ((this.delegate?.state ?? this.state) === 'suspended') {
       // TODO: coalesce
-      cast(this.delegate?.resumed ?? this.resumed).then(() => this.notify());
+      noAwait(
+        cast(this.delegate?.resumed ?? this.resumed).then(() => this.notify()),
+      );
       return;
     }
     for (const observer of this.observers.values()) {
@@ -56,7 +59,7 @@ export class Observe<T> {
   }
 }
 
-export class Observer<T, O = <V>(value: V) => void> {
+export class Observer<T, O = <V>(value: V) => void> implements Updatable {
   constructor(
     private target: () => T,
     private observer: O,
@@ -82,11 +85,15 @@ export class Observer<T, O = <V>(value: V) => void> {
   }
 }
 
+interface Updatable {
+  update(clear: boolean): void;
+}
+
 export class Observers {
-  constructor(...observers: Observer<any, any>[]) {
+  constructor(...observers: Updatable[]) {
     this.observers = observers;
   }
-  private observers: Observer<unknown>[];
+  private observers: Updatable[];
   update(clear = false) {
     for (const observer of this.observers) observer.update(clear);
   }

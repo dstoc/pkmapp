@@ -260,7 +260,7 @@ export class MarkdownRenderer extends LitElement {
       if (!active || active instanceof MarkdownInline) {
         const selection = active?.getSelection();
         return {
-          inline: active || undefined,
+          inline: active ?? undefined,
           startIndex: selection?.start.index,
           endIndex: selection?.end.index,
         };

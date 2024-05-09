@@ -33,10 +33,11 @@ import {styles, loadFonts} from './style.js';
 import {EditorNavigation} from './editor.js';
 import {CommandBundle} from './command-palette.js';
 import {assert} from './asserts.js';
+import {noAwait} from './async.js';
 
 document.adoptedStyleSheets = [...styles];
 // TODO: Use import attributes to add these above, once it's supported in vite.
-loadFonts();
+noAwait(loadFonts());
 
 const allowedScripts = ['./serviceworker.js'];
 self.trustedTypes?.createPolicy('default', {
@@ -51,15 +52,21 @@ self.trustedTypes?.createPolicy('default', {
 // shared between them.
 const bc = new BroadcastChannel('launch');
 const main = await new Promise((resolve) => {
-  navigator.locks.request('main', {ifAvailable: true}, async (lock) => {
-    resolve(!!lock);
-    navigator.locks.request('main', async () => {
-      bc.onmessage = (message) => {
-        window.open(message.data.location);
-      };
-      return new Promise(() => {});
-    });
-  });
+  noAwait(
+    navigator.locks.request('main', {ifAvailable: true}, async (lock) => {
+      resolve(!!lock);
+      noAwait(
+        navigator.locks.request('main', async () => {
+          bc.onmessage = (message) => {
+            const location: unknown = message.data.location;
+            assert(typeof location === 'string');
+            window.open(location);
+          };
+          return new Promise(() => {});
+        }),
+      );
+    }),
+  );
 });
 if (!window.opener && !main) {
   bc.postMessage({location: String(window.location)});
@@ -81,7 +88,9 @@ export class PkmApp extends LitElement {
       }
     });
     window.addEventListener('popstate', (e) => {
-      this.editor.navigateByName(e.state);
+      const name: unknown = e.state;
+      assert(typeof name === 'string');
+      noAwait(this.editor.navigateByName(name));
     });
   }
   private initialLocation = location.toString();
@@ -107,13 +116,14 @@ export class PkmApp extends LitElement {
   }
   override async connectedCallback() {
     super.connectedCallback();
+    // TODO: Remove this loop, it's no longer needed.
     const task = async () => {
       await this.trySetDirectory();
       if (!this.library) {
-        setTimeout(task, 100);
+        setTimeout(() => noAwait(task()), 100);
       }
     };
-    task();
+    noAwait(task());
   }
   private onCommands({detail: commands}: CustomEvent<CommandBundle>) {
     this.commandPalette.trigger(commands);
@@ -140,7 +150,8 @@ export class PkmApp extends LitElement {
     this.loading = true;
     try {
       let library: Library;
-      const parent = window.opener?.document.querySelector('pkm-app')?.library;
+      const opener = window.opener as Window | undefined;
+      const parent = opener?.document.querySelector('pkm-app')?.library;
       if (parent) {
         library = parent;
         console.log('used parent!');

@@ -20,7 +20,6 @@ export type MarkdownNode =
   | ListNode
   | BlockQuoteNode
   | ListItemNode
-  | SectionNode
   | UnsupportedNode;
 export type InlineNode = ParagraphNode | CodeBlockNode | SectionNode;
 export type ParentNode =

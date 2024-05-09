@@ -29,6 +29,7 @@ import {cast} from '../asserts.js';
 
 import {HostContext, hostContext} from './host-context.js';
 import {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
+import {noAwait} from '../async.js';
 
 export interface InlineInputPoint {
   span?: MarkdownSpan;
@@ -157,7 +158,7 @@ export class MarkdownInline extends LitElement {
   override render() {
     if (!this.node) return;
     return html`<md-span
-      .node=${this.node.viewModel.inlineTree!.rootNode}
+      .node=${this.node.viewModel.inlineTree.rootNode}
       .active=${this.active}
     ></md-span>`;
   }
@@ -169,7 +170,7 @@ export class MarkdownInline extends LitElement {
     }
   }
   override updated() {
-    this.maybeSetFocus();
+    noAwait(this.maybeSetFocus());
   }
   async maybeSetFocus() {
     if (this.hostContext?.focusNode !== this.node) return;
@@ -178,7 +179,7 @@ export class MarkdownInline extends LitElement {
     await this.span.updateComplete;
     if (this.hostContext?.focusNode !== this.node) return;
     if (!this.isConnected) return;
-    const selection = (this.getRootNode()! as Document).getSelection()!;
+    const selection = (this.getRootNode() as Document).getSelection()!;
     const range = document.createRange();
     range.setStart(this, 0);
     selection.removeAllRanges();
@@ -252,7 +253,7 @@ export class MarkdownInline extends LitElement {
     }
     const index = (cast(previous) as MarkdownSpan).node!.startIndex + offset;
     return {
-      span: parent as MarkdownSpan,
+      span: parent,
       index,
     };
   }
@@ -272,7 +273,7 @@ export class MarkdownInline extends LitElement {
     direction: 'backward' | 'forward',
     granularity: 'line' | 'character' | 'word',
   ): true | number {
-    const selection = (this.getRootNode()! as Document).getSelection()!;
+    const selection = (this.getRootNode() as Document).getSelection()!;
     const focusNode = selection.focusNode!;
     const focusOffset = selection.focusOffset;
     const initial = MarkdownInline.nodeOffsetToInputPoint(
@@ -331,13 +332,13 @@ export class MarkdownInline extends LitElement {
   }
   getSelection() {
     const selection: Selection = (
-      this.getRootNode()! as Document
+      this.getRootNode() as Document
     ).getSelection()!;
     if (!selection.focusNode) return;
     return MarkdownInline.getSelectionRange(selection);
   }
   getCaretPosition() {
-    let {x, y, height} = (this.getRootNode()! as Document)
+    let {x, y, height} = (this.getRootNode() as Document)
       .getSelection()!
       .getRangeAt(0)
       .getBoundingClientRect();
@@ -364,13 +365,13 @@ export class MarkdownInline extends LitElement {
     if (!this.node) return;
     e.preventDefault();
     const selection: Selection = (
-      this.getRootNode()! as Document
+      this.getRootNode() as Document
     ).getSelection()!;
     const {start: inputStart, end: inputEnd} =
       MarkdownInline.getSelectionRange(selection);
     const inlineInput: InlineInput = {
       inline: this,
-      node: this.node!,
+      node: this.node,
       inputEvent: e,
       inputStart,
       inputEnd,
@@ -552,7 +553,7 @@ export class MarkdownSpan extends LitElement {
     let nextId = -Number.MAX_SAFE_INTEGER;
     const key = (result: Result) => {
       if (!result.node) return nextId++;
-      return this.nodeIds!.get(result.node);
+      return this.nodeIds.get(result.node);
     };
     const content = repeat(results, key, (item) => {
       return item.result;
@@ -580,7 +581,7 @@ export class MarkdownSpan extends LitElement {
 }
 
 class NodeIds {
-  private idMap: Map<number, number> = new Map();
+  private idMap = new Map<number, number>();
   private nextId = 0;
   get(node: Parser.SyntaxNode) {
     return this.idMap.get(node.id)!;

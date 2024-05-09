@@ -16,33 +16,32 @@ import './command-palette.js';
 
 import {css, customElement, html, LitElement, query} from './deps/lit.js';
 import {CommandPalette, CommandBundle} from './command-palette.js';
+import {noAwait} from './async.js';
 
 @customElement('pkm-command-palette-dialog')
 export class CommandPaletteDialog extends LitElement {
   @query('dialog') dialog!: HTMLDialogElement;
   @query('pkm-command-palette') palette!: CommandPalette;
-  static override get styles() {
-    return css`
-      dialog[open] {
-        color: var(--root-color);
-        margin: 50px;
-        background: red;
-        background: var(--pkm-dialog-bgcolor);
-        border: 3px solid var(--md-accent-color);
-        border-radius: 10px;
-        width: auto;
-        height: calc(100vh - 100px);
-        align-items: center;
-        padding: 0;
-        overflow: hidden;
-        container-type: size;
-      }
-      dialog::backdrop {
-        backdrop-filter: blur(3px);
-        background: rgba(128, 128, 128, 0.2);
-      }
-    `;
-  }
+  static override styles = css`
+    dialog[open] {
+      color: var(--root-color);
+      margin: 50px;
+      background: red;
+      background: var(--pkm-dialog-bgcolor);
+      border: 3px solid var(--md-accent-color);
+      border-radius: 10px;
+      width: auto;
+      height: calc(100vh - 100px);
+      align-items: center;
+      padding: 0;
+      overflow: hidden;
+      container-type: size;
+    }
+    dialog::backdrop {
+      backdrop-filter: blur(3px);
+      background: rgba(128, 128, 128, 0.2);
+    }
+  `;
   override render() {
     return html`
       <dialog>
@@ -54,7 +53,7 @@ export class CommandPaletteDialog extends LitElement {
     this.dialog.close();
   }
   trigger(bundle: CommandBundle) {
-    this.palette.trigger(bundle);
+    noAwait(this.palette.trigger(bundle));
     this.dialog.showModal();
   }
 }

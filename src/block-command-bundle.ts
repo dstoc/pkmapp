@@ -7,12 +7,12 @@ import {html} from './deps/lit.js';
 import './markdown/block-render.js';
 import './title.js';
 
-type Result = {
+interface Result {
   document: Document;
   root: ViewModelNode;
   name: string;
   description: string;
-};
+}
 
 export class BlockCommandBundle implements CommandBundle {
   constructor(

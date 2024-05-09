@@ -24,6 +24,7 @@ import {
 } from './deps/lit.js';
 import {cast} from './asserts.js';
 import './emoji.js';
+import {noAwait} from './async.js';
 
 export interface CommandBundle {
   readonly description: string;
@@ -76,108 +77,106 @@ export class CommandPalette extends LitElement {
   private activeSearch?: string;
   @query('input') input!: HTMLInputElement;
   @query('#items') items!: HTMLElement;
-  static override get styles() {
-    return css`
+  static override styles = css`
+    :host {
+      display: grid;
+      height: 100%;
+    }
+    :host-context([collapsed]) {
+      /* TODO: not quite correct, use a custom var? */
+      max-height: inherit;
+    }
+    input,
+    .item {
+      border: none;
+      color: var(--root-color);
+      outline: none;
+      background: transparent;
+      font-size: 14pt;
+      padding-left: 10px;
+      font-family: var(--root-font);
+    }
+    input,
+    #items {
+      padding: 10px;
+    }
+    #separator,
+    #preview-separator {
+      height: 100%;
+      background: var(--md-accent-color);
+      opacity: 0.25;
+    }
+    input {
+      grid-area: input;
+    }
+    #separator {
+      grid-area: sep;
+    }
+    #preview-separator {
+      grid-area: psep;
+    }
+    :host-context([collapsed]) input,
+    :host-context([collapsed]) #separator {
+      visibility: hidden;
+    }
+    :host-context([collapsed]) #preview-separator,
+    :host-context([collapsed]) #preview {
+      display: none;
+    }
+    .item {
+      padding-top: 5px;
+      padding-bottom: 5px;
+    }
+    .item[data-active] {
+      background: rgba(128, 128, 128, 0.3);
+      border-radius: 5px;
+    }
+    #items {
+      overflow: auto;
+      grid-area: items;
+    }
+    .icon {
+      font-family: 'noto emoji';
+    }
+    pkm-emoji {
+      font-family: 'noto emoji';
+      font-size: 200px;
+      display: flex;
+      height: 100%;
+      justify-content: center;
+      align-items: center;
+    }
+    #preview {
+      padding: 10px;
+      overflow: auto;
+      grid-area: preview;
+    }
+    :host {
+      grid-template-rows: min-content 1px 1fr 1px 1fr;
+      grid-template-areas:
+        'input'
+        'sep'
+        'items'
+        'psep'
+        'preview';
+    }
+    :host-context([collapsed]) {
+      grid-template-rows: 0 0 1fr 1px;
+    }
+    @container (min-width: 800px) {
       :host {
-        display: grid;
-        height: 100%;
-      }
-      :host-context([collapsed]) {
-        /* TODO: not quite correct, use a custom var? */
-        max-height: inherit;
-      }
-      input,
-      .item {
-        border: none;
-        color: var(--root-color);
-        outline: none;
-        background: transparent;
-        font-size: 14pt;
-        padding-left: 10px;
-        font-family: var(--root-font);
-      }
-      input,
-      #items {
-        padding: 10px;
-      }
-      #separator,
-      #preview-separator {
-        height: 100%;
-        background: var(--md-accent-color);
-        opacity: 0.25;
-      }
-      input {
-        grid-area: input;
-      }
-      #separator {
-        grid-area: sep;
-      }
-      #preview-separator {
-        grid-area: psep;
-      }
-      :host-context([collapsed]) input,
-      :host-context([collapsed]) #separator {
-        visibility: hidden;
-      }
-      :host-context([collapsed]) #preview-separator,
-      :host-context([collapsed]) #preview {
-        display: none;
-      }
-      .item {
-        padding-top: 5px;
-        padding-bottom: 5px;
-      }
-      .item[data-active] {
-        background: rgba(128, 128, 128, 0.3);
-        border-radius: 5px;
-      }
-      #items {
-        overflow: auto;
-        grid-area: items;
-      }
-      .icon {
-        font-family: 'noto emoji';
-      }
-      pkm-emoji {
-        font-family: 'noto emoji';
-        font-size: 200px;
-        display: flex;
-        height: 100%;
-        justify-content: center;
-        align-items: center;
-      }
-      #preview {
-        padding: 10px;
-        overflow: auto;
-        grid-area: preview;
-      }
-      :host {
-        grid-template-rows: min-content 1px 1fr 1px 1fr;
+        grid-template-columns: 500px 1px;
+        grid-template-rows: min-content 1px 1fr;
         grid-template-areas:
-          'input'
-          'sep'
-          'items'
-          'psep'
-          'preview';
+          'input input input'
+          'sep   sep   sep'
+          'items psep  preview';
       }
       :host-context([collapsed]) {
-        grid-template-rows: 0 0 1fr 1px;
+        grid-template-rows: 0 0 1fr;
       }
-      @container (min-width: 800px) {
-        :host {
-          grid-template-columns: 500px 1px;
-          grid-template-rows: min-content 1px 1fr;
-          grid-template-areas:
-            'input input input'
-            'sep   sep   sep'
-            'items psep  preview';
-        }
-        :host-context([collapsed]) {
-          grid-template-rows: 0 0 1fr;
-        }
-      }
-    `;
-  }
+    }
+  `;
   override render() {
     const preview =
       this.activeItems?.[this.activeIndex]?.preview ??
@@ -237,7 +236,7 @@ export class CommandPalette extends LitElement {
         return;
       case 'Enter':
         e.preventDefault();
-        this.commit();
+        noAwait(this.commit());
         return;
     }
   }
@@ -250,7 +249,7 @@ export class CommandPalette extends LitElement {
     this.previewOverride = undefined;
   }
   private handleItemClick() {
-    this.commit();
+    noAwait(this.commit());
   }
   async setInput(input: string) {
     this.input.value = input;

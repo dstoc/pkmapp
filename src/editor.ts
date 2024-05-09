@@ -90,6 +90,7 @@ import {
 } from './block-command-bundle.js';
 import {getLanguageTools} from './language-tool-bundle.js';
 import {debugCommands} from './debug-commands.js';
+import {noAwait} from './async.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -287,10 +288,10 @@ export class Editor extends LitElement {
     if (/^(\w)+:/i.test(destination)) {
       window.open(destination);
     } else {
-      this.navigateByName(destination, true);
+      noAwait(this.navigateByName(destination, true));
     }
   }
-  onTitleItemClick({detail}: CustomEvent) {
+  onTitleItemClick({detail}: CustomEvent<ViewModelNode>) {
     this.root = detail;
   }
   onInlineKeyDown(event: CustomEvent<InlineKeyDown>) {
@@ -389,12 +390,12 @@ export class Editor extends LitElement {
         const {hostContext} = getBlockSelectionTarget(inline) ?? {};
         if (!hostContext) return;
         keyboardEvent.preventDefault();
-        copyMarkdownToClipboard(serializeSelection(hostContext));
+        noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
       } else if (keyboardEvent.key === 'x' && keyboardEvent.ctrlKey) {
         const {hostContext} = getBlockSelectionTarget(inline) ?? {};
         if (!hostContext) return;
         keyboardEvent.preventDefault();
-        copyMarkdownToClipboard(serializeSelection(hostContext));
+        noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
         maybeRemoveSelectedNodesIn(hostContext);
         hostContext.clearSelection();
       } else if (keyboardEvent.key === 'Escape') {
@@ -487,8 +488,10 @@ export class Editor extends LitElement {
           inputEvent.inputType === 'insertReplacementText' ||
           inputEvent.inputType === 'insertFromPaste'
         ) {
-          this.triggerPaste(inline, inline.node, {startIndex, oldEndIndex});
           this.autocomplete.abort();
+          noAwait(
+            this.triggerPaste(inline, inline.node, {startIndex, oldEndIndex}),
+          );
           return;
         } else if (inputEvent.inputType === 'deleteByCut') {
           newText = '';
@@ -515,7 +518,7 @@ export class Editor extends LitElement {
       };
 
       this.editInlineNode(inline.node, edit, cast(inline.hostContext));
-      this.autocomplete.onInlineEdit(inline, newText, newEndIndex);
+      noAwait(this.autocomplete.onInlineEdit(inline, newText, newEndIndex));
     } finally {
       finishEditing();
     }
@@ -587,7 +590,7 @@ export class Editor extends LitElement {
         description: 'Copy all as markdown',
         execute: async () => {
           const markdown = serializeToString(this.document!.tree.root);
-          copyMarkdownToClipboard(markdown);
+          await copyMarkdownToClipboard(markdown);
           return undefined;
         },
       },
@@ -708,7 +711,7 @@ export class Editor extends LitElement {
             {
               description: 'Paste as markdown',
               execute: async () => {
-                this.triggerPaste(
+                await this.triggerPaste(
                   activeInline,
                   activeNode,
                   {startIndex, oldEndIndex: endIndex},
@@ -1067,6 +1070,8 @@ function insertParagraphInSection(
   startIndex: number,
   context: HostContext,
 ): boolean {
+  // TODO: this code should be removed soon
+  // eslint-disable-next-line prefer-const
   let {ancestor: section, path} = findAncestor(node, root, 'section');
   let nextSibling;
   if (section) {
@@ -1214,7 +1219,7 @@ async function sendTo(
     // TODO: We shouldn't need to make the call here, but TS can't
     // figure out `root` that root is defined if we reassign it...
     const root = (await library.newDocument(name)).tree.root;
-    sendTo({root, name}, library, hostContext, mode);
+    await sendTo({root, name}, library, hostContext, mode);
     return;
   }
   const markdown = serializeSelection(hostContext);
@@ -1267,10 +1272,10 @@ function insertMarkdown(markdown: string, node: ViewModelNode) {
   }
 }
 
-function copyMarkdownToClipboard(markdown: string) {
+async function copyMarkdownToClipboard(markdown: string) {
   const textType = 'text/plain';
   const mdType = 'web text/markdown';
-  navigator.clipboard.write([
+  await navigator.clipboard.write([
     new ClipboardItem({
       [textType]: new Blob([markdown], {type: textType}),
       [mdType]: new Blob([markdown], {type: mdType}),
