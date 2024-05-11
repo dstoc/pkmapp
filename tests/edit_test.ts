@@ -13,13 +13,19 @@
 // limitations under the License.
 
 import {Main} from './pages/main.js';
-import {
-  type KeyboardSequence,
-  input,
-  removeLeadingWhitespace,
-} from './util/input.js';
 import {testState} from './util/test_state.js';
-import {test, expect} from '@playwright/test';
+import {test, expect, addPrettySerializer} from './util/pretty.js';
+
+const exportSymbol = Symbol();
+addPrettySerializer({
+  serialize(val) {
+    const target = val as {content: string};
+    return target.content;
+  },
+  test(val: unknown) {
+    return val !== null && typeof val === 'object' && exportSymbol in val;
+  },
+});
 
 test.describe('editing', () => {
   const state = testState(async (page) => {
@@ -40,23 +46,20 @@ test.describe('editing', () => {
     // expect(await browser.getLogs('browser')).toEqual([]);
   });
 
-  function inputOutputTest(sequence: KeyboardSequence, output: string) {
-    return async () => {
-      await sequence(state.main.page.keyboard);
-      await checkExport('test.md', output);
-    };
-  }
   async function importFile(file: string, contents: string) {
     await state.fs.setFile(file, contents);
     await state.main.runCommand('Import from OPFS');
     await state.fs.clear();
   }
-  async function checkExport(file: string, output: string) {
-    output = removeLeadingWhitespace(output);
+  async function exportMarkdown(file: string = 'test.md') {
     await state.main.runCommand('Export to OPFS');
-    const contents = await state.fs.getFile(file);
-    expect(contents).toEqual(output);
+    const content = await state.fs.getFile(file);
     await state.fs.clear();
+    return {
+      [exportSymbol]: true,
+      file,
+      content,
+    };
   }
   test.describe('transclusions', () => {
     test('can be inserted and edited', async ({page}) => {
@@ -69,16 +72,18 @@ test.describe('editing', () => {
       // TODO: shouldn't be required
       await page.keyboard.press('ArrowDown');
       await page.keyboard.type('content');
-      await checkExport(
-        'test.md',
-        `test
+      expect(await exportMarkdown('test.md')).toMatchPretty(`
+        test
 
-             \`\`\`tc
-             transclusion
-             \`\`\`
-             `,
-      );
-      await checkExport('transclusion.md', 'contentaaa\n');
+        \`\`\`tc
+        transclusion
+        \`\`\`
+
+      `);
+      expect(await exportMarkdown('transclusion.md')).toMatchPretty(`
+        contentaaa
+
+      `);
     });
     test('can be inserted and deleted', async ({page}) => {
       await page.keyboard.type('test');
@@ -90,186 +95,215 @@ test.describe('editing', () => {
       // TODO: shouldn't be required
       await page.keyboard.press('ArrowDown');
       await state.main.runCommand('delete transclusion');
-      await checkExport('test.md', `test\n`);
+      expect(await exportMarkdown('test.md')).toMatchPretty(`
+        test
+
+      `);
     });
   });
   test.describe('sections', () => {
-    test(
-      'can generate multiple sections',
-      inputOutputTest(
-        input`# 1
-              a
-              # 2
-              b`,
-        `# 1
-              a
+    test('can generate multiple sections', async ({page: {keyboard}}) => {
+      await keyboard.type(`# 1\n`);
+      await keyboard.type(`a\n`);
+      await keyboard.type(`# 2\n`);
+      await keyboard.type(`b`);
+      expect(await exportMarkdown()).toMatchPretty(`
+        # 1
+        a
 
-              # 2
-              b
-              `,
-      ),
-    );
-    test(
-      'nest correctly',
-      inputOutputTest(
-        input`a
-              # 1
-              a
-              ## 2
-              b
-              # 3${Array(4).fill('ArrowUp')}${['Tab']}`,
-        `a
-              * # 1
-                a
-                
-                ## 2
-                b
-              
-              # 3
-              `,
-      ),
-    );
-    test(
-      'nest correctly when ranges are not all contiguous',
-      inputOutputTest(
-        input`# top
-                   * 1
-                   2
-                   3
-                   # outer${['Shift+Tab']}${['Home', 'ArrowUp', 'ArrowUp']}# `,
-        `# top
-              * 1
-              * # 2
-              * 3
+        # 2
+        b
 
-              # outer
-              `,
-      ),
-    );
+      `);
+    });
+    test('nest correctly', async ({page: {keyboard}}) => {
+      await keyboard.type(`a\n`);
+      await keyboard.type(`# 1\n`);
+      await keyboard.type(`a\n`);
+      await keyboard.type(`## 2\n`);
+      await keyboard.type(`b\n`);
+      await keyboard.type(`# 3`);
+      for (let i = 0; i < 4; i++) {
+        keyboard.press('ArrowUp');
+      }
+      await keyboard.press('Tab');
+      expect(await exportMarkdown()).toMatchPretty(`
+        a
+        * # 1
+          a
+          
+          ## 2
+          b
+
+        # 3
+
+      `);
+    });
+    test('nest correctly when ranges are not all contiguous', async ({
+      page: {keyboard},
+    }) => {
+      await keyboard.type(`# top\n`);
+      await keyboard.type(`* 1\n`);
+      await keyboard.type(`2\n`);
+      await keyboard.type(`3\n`);
+      await keyboard.type(`# outer`);
+      await keyboard.press('Shift+Tab');
+      await keyboard.press('Home');
+      await keyboard.press('ArrowUp');
+      await keyboard.press('ArrowUp');
+      await keyboard.type(`# `);
+      expect(await exportMarkdown()).toMatchPretty(`
+        # top
+        * 1
+        * # 2
+        * 3
+
+        # outer
+
+      `);
+    });
+    test('can generate a list', async ({page: {keyboard}}) => {
+      await keyboard.type(`* a\nb`);
+      expect(await exportMarkdown()).toMatchPretty(`
+        * a
+        * b
+
+      `);
+    });
   });
-  test(
-    'can generate a list',
-    inputOutputTest(
-      input`* a
-            b`,
-      `* a
-            * b
-            `,
-    ),
-  );
   test.describe('checklists', () => {
-    test(
-      'can generate unchecked',
-      inputOutputTest(input`* [ ] milk\neggs`, `* [ ] milk\n* [ ] eggs\n`),
-    );
-    test(
-      'can generate checked',
-      inputOutputTest(input`* [x] milk\neggs`, `* [x] milk\n* [ ] eggs\n`),
-    );
-    test(
-      'ignores double check',
-      inputOutputTest(
-        input`* [x] [ ] milk\neggs`,
-        `* [x] [ ] milk\n* [ ] eggs\n`,
-      ),
-    );
-  });
-  test(
-    'does not generate lists in ambiguous situations',
-    inputOutputTest(
-      input`*a
-            b`,
-      `*a
+    test('can generate unchecked', async ({page: {keyboard}}) => {
+      await keyboard.type(`* [ ] milk\neggs`);
+      expect(await exportMarkdown()).toMatchPretty(`
+        * [ ] milk
+        * [ ] eggs
 
-            b
-            `,
-    ),
-  );
+      `);
+    });
+    test('can generate checked', async ({page: {keyboard}}) => {
+      await keyboard.type(`* [x] milk\neggs`);
+      expect(await exportMarkdown()).toMatchPretty(`
+        * [x] milk
+        * [ ] eggs
+
+      `);
+    });
+    test('ignores double check', async ({page: {keyboard}}) => {
+      await keyboard.type(`* [x] [ ] milk\neggs`);
+      expect(await exportMarkdown()).toMatchPretty(`
+        * [x] [ ] milk
+        * [ ] eggs
+
+      `);
+    });
+  });
+  test('does not generate lists in ambiguous situations', async ({
+    page: {keyboard},
+  }) => {
+    await keyboard.type(`*a\nb`);
+    expect(await exportMarkdown()).toMatchPretty(`
+      *a
+
+      b
+
+    `);
+  });
   test.describe('paragraph insertion', () => {
-    test(
-      'will split a paragraph',
-      inputOutputTest(
-        input`* ab${['ArrowLeft']}\nc`,
-        `* a
-              * cb
-              `,
-      ),
-    );
-    test(
-      'will stay on the current line when splitting at start',
-      inputOutputTest(
-        input`* b${['ArrowLeft']}\na`,
-        `* a
-              * b
-              `,
-      ),
-    );
+    test('will split a paragraph', async ({page: {keyboard}}) => {
+      await keyboard.type(`* ab`);
+      await keyboard.press('ArrowLeft');
+      await keyboard.type(`\nc`);
+      expect(await exportMarkdown()).toMatchPretty(`
+        * a
+        * cb
+
+      `);
+    });
+    test('will stay on the current line when splitting at start', async ({
+      page: {keyboard},
+    }) => {
+      await keyboard.type(`* b`);
+      await keyboard.press('ArrowLeft');
+      await keyboard.type(`\na`);
+      expect(await exportMarkdown()).toMatchPretty(`
+        * a
+        * b
+
+      `);
+    });
   });
   test.describe('indentation', () => {
-    test(
-      'can indent a top level paragraph',
-      inputOutputTest(
-        input`a${['Tab']}`,
-        `* a
-              `,
-      ),
-    );
-    test(
-      'can unindent a list-item in a list-item',
-      inputOutputTest(input`* * a${['Shift+Tab']}`, `* a\n`),
-    );
+    test('can indent a top level paragraph', async ({page: {keyboard}}) => {
+      await keyboard.type(`a`);
+      await keyboard.press('Tab');
+      expect(await exportMarkdown()).toMatchPretty(`
+        * a
+
+      `);
+    });
+    test('can unindent a list-item in a list-item', async ({
+      page: {keyboard},
+    }) => {
+      await keyboard.type(`* * a`);
+      await keyboard.press('Shift+Tab');
+      expect(await exportMarkdown()).toMatchPretty(`
+        * a
+
+      `);
+    });
   });
   test.describe('links', () => {
-    test(
-      'automatically inserts closing `]`',
-      inputOutputTest(
-        input`[test`,
-        `[test]
-              `,
-      ),
-    );
-    test(
-      "doesn't insert duplicate `]`",
-      inputOutputTest(
-        input`[]`,
-        `[]
-              `,
-      ),
-    );
-    test(
-      'completes suggestions with <Tab>',
-      inputOutputTest(
-        input`[te${['Tab']}`,
-        `[test]
-              `,
-      ),
-    );
-    test(
-      'accepts freeform links',
-      inputOutputTest(
-        input`[doesnt exist${['Tab']}`,
-        `[doesnt exist]
-              `,
-      ),
-    );
+    test('automatically inserts closing `]`', async ({page: {keyboard}}) => {
+      await keyboard.type(`[test`);
+      expect(await exportMarkdown()).toMatchPretty(`
+        [test]
+
+      `);
+    });
+    test("doesn't insert duplicate `]`", async ({page: {keyboard}}) => {
+      await keyboard.type(`[]`);
+      expect(await exportMarkdown()).toMatchPretty(`
+        []
+
+      `);
+    });
+    test('completes suggestions with <Tab>', async ({page: {keyboard}}) => {
+      await keyboard.type(`[te`);
+      await keyboard.press('Tab');
+      expect(await exportMarkdown()).toMatchPretty(`
+        [test]
+
+      `);
+    });
+    test('accepts freeform links', async ({page: {keyboard}}) => {
+      await keyboard.type(`[doesnt exist`);
+      await keyboard.press('Tab');
+      expect(await exportMarkdown()).toMatchPretty(`
+        [doesnt exist]
+
+      `);
+    });
   });
   test.describe('selection', () => {
-    test(
-      'can select and delete',
-      inputOutputTest(
-        input`a\nb\nc${['Shift+ArrowUp', 'Backspace']}`,
-        `a
-              `,
-      ),
-    );
-    test(
-      'can select a single block',
-      inputOutputTest(
-        input`* a\nb\nc${['ArrowUp', 'Control+a', 'Backspace']}`,
-        `* a
-              * c
-              `,
-      ),
-    );
+    test('can select and delete', async ({page: {keyboard}}) => {
+      await keyboard.type(`a\nb\nc`);
+      await keyboard.press('Shift+ArrowUp');
+      await keyboard.press('Backspace');
+      expect(await exportMarkdown()).toMatchPretty(`
+        a
+
+      `);
+    });
+    test('can select a single block', async ({page: {keyboard}}) => {
+      await keyboard.type(`* a\nb\nc`);
+      await keyboard.press('ArrowUp');
+      await keyboard.press('Control+a');
+      await keyboard.press('Backspace');
+      expect(await exportMarkdown()).toMatchPretty(`
+        * a
+        * c
+
+      `);
+    });
   });
 });
