@@ -69,7 +69,7 @@ export const styles = [
     md-block[root] {
       margin-block: 0;
     }
-    md-block[type='list-item']:not([root]) {
+    md-block[type='list-item'] {
       display: list-item;
       white-space: initial;
       margin-block: 0;
