@@ -77,6 +77,7 @@ export const styles = [
       display: grid;
       grid-template-columns: auto 1fr;
       align-items: baseline;
+      background: var(--md-selection-override-bgcolor);
     }
     md-block[type='list-item']::before {
       width: 15px;
@@ -158,6 +159,7 @@ export const styles = [
       --md-code-block-bgcolor: var(--md-block-selection-bgcolor);
       --md-code-span-bgcolor: var(--md-block-selection-bgcolor);
       --md-tag-bgcolor: var(--md-block-selection-bgcolor);
+      --md-selection-override-bgcolor: var(--md-block-selection-bgcolor);
       --root-background-color: var(--md-block-selection-bgcolor);
       caret-color: transparent;
     }
