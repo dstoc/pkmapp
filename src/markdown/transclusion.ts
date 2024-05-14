@@ -71,9 +71,10 @@ export class MarkdownTransclusion extends LitElement {
   static override styles = css`
     :host {
       display: block;
-      background: var(--md-code-block-bgcolor);
       padding: 10px;
       border-radius: 10px;
+      border: solid var(--md-code-block-bgcolor) 1px;
+      background-color: var(--root-background-color);
     }
   `;
   async load(name: string) {
