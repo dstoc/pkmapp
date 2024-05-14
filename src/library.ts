@@ -25,6 +25,7 @@ import {assert, cast} from './asserts.js';
 import {resolveDateAlias} from './date-aliases.js';
 import {getLogicalContainingBlock} from './block-util.js';
 import {noAwait} from './async.js';
+import {Backup} from './backup.js';
 
 export interface DocumentMetadata {
   creationTime: number;
@@ -38,9 +39,9 @@ export interface Document {
   save(): Promise<void>;
   delete(): Promise<void>;
   readonly name: string;
-  readonly metadata: Readonly<DocumentMetadata>;
   readonly allNames: string[];
   readonly tree: MarkdownTree;
+  readonly metadata: Readonly<DocumentMetadata>;
   readonly dirty: boolean;
   readonly observe: Observe<Document>;
 }
@@ -54,6 +55,7 @@ export interface Library {
   readonly metadata: Metadata;
   restore(): Promise<void>;
   import(root: DocumentNode, key: string): Promise<Document>;
+  readonly observeDocuments: Observe<Library, Document>;
 }
 
 function normalizeName(name: string) {
@@ -75,6 +77,13 @@ interface StoredDocument {
 
 export class IdbLibrary implements Library {
   constructor(readonly database: IDBDatabase) {}
+  cache = new Map<string, Document>();
+  backLinks = new BackLinks();
+  metadata = new Metadata();
+  observeDocuments: Observe<Library, Document> = new Observe<Library, Document>(
+    this,
+  );
+  backup = new Backup(this);
   static async init(dbName: string) {
     const request = indexedDB.open(dbName);
     request.onupgradeneeded = () => {
@@ -99,9 +108,6 @@ export class IdbLibrary implements Library {
     }
     return [...result];
   }
-  cache = new Map<string, Document>();
-  backLinks = new BackLinks();
-  metadata = new Metadata();
   getDocumentByTree(tree: MarkdownTree): Document | undefined {
     // TODO: index
     for (const document of this.cache.values()) {
@@ -339,6 +345,7 @@ class IdbDocument implements Document {
       return true;
     }, false);
     noAwait(this.markDirty());
+    this.library.observeDocuments.notify(this);
   }
   private pendingModifications = 0;
   private async markDirty() {
