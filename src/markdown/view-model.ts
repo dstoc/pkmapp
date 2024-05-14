@@ -307,6 +307,8 @@ export class MarkdownTree {
     }
     this.state = 'idle';
     if (this.root.viewModel.version > this.editStartVersion) {
+      // TODO: Probably need to track/notify whether it's a
+      // cache/metadata change, or an edit.
       this.observe.notify();
     }
     this.editResumeObserve();

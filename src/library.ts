@@ -26,12 +26,19 @@ import {resolveDateAlias} from './date-aliases.js';
 import {getLogicalContainingBlock} from './block-util.js';
 import {noAwait} from './async.js';
 
+export interface DocumentMetadata {
+  creationTime: number;
+  modificationTime: number;
+  state: 'active' | 'deleted';
+  filename: string;
+}
+
 export interface Document {
   replace(root: DocumentNode): Promise<void>;
   save(): Promise<void>;
   delete(): Promise<void>;
   readonly name: string;
-  readonly filename: string;
+  readonly metadata: Readonly<DocumentMetadata>;
   readonly allNames: string[];
   readonly tree: MarkdownTree;
   readonly dirty: boolean;
@@ -63,6 +70,7 @@ function wrap<T>(request: IDBRequest<T>) {
 
 interface StoredDocument {
   root: DocumentNode;
+  metadata: DocumentMetadata;
 }
 
 export class IdbLibrary implements Library {
@@ -82,8 +90,11 @@ export class IdbLibrary implements Library {
       result.add(normalizeName(name));
     }
     for (const document of this.cache.values()) {
-      if (normalizeName(document.name) === normalizeName(document.filename)) {
-        result.add(normalizeName(document.filename));
+      if (
+        normalizeName(document.name) ===
+        normalizeName(document.metadata.filename)
+      ) {
+        result.add(normalizeName(document.metadata.filename));
       }
     }
     return [...result];
@@ -118,8 +129,8 @@ export class IdbLibrary implements Library {
     if (this.cache.has(name)) {
       const document = cast(this.cache.get(name));
       if (
-        document.name === document.filename ||
-        document.filename === 'index'
+        document.name === document.metadata.filename ||
+        document.metadata.filename === 'index'
       ) {
         result.add(document.tree.root);
       }
@@ -160,10 +171,17 @@ export class IdbLibrary implements Library {
   }
   async newDocument(name: string): Promise<Document> {
     name = resolveDateAlias(name) ?? name;
+    const now = Date.now();
     const content: StoredDocument = {
       root: {
         type: 'document',
         children: [{type: 'section', marker: '#', content: name}],
+      },
+      metadata: {
+        state: 'active',
+        creationTime: now,
+        modificationTime: now,
+        filename: name,
       },
     };
     name = normalizeName(name);
@@ -185,7 +203,7 @@ export class IdbLibrary implements Library {
       return cast(await this.loadDocument(key));
     }
   }
-  async load(key: string) {
+  async load(key: string): Promise<StoredDocument | undefined> {
     let content: StoredDocument;
     try {
       const result = await wrap(
@@ -199,18 +217,19 @@ export class IdbLibrary implements Library {
       console.error(e);
       return undefined;
     }
-    const {root} = content;
+    const {root, metadata} = content;
     assert(root && root.type === 'document');
-    return {root};
+    assert(metadata);
+    return {root, metadata};
   }
   private async loadDocument(name: string): Promise<Document | undefined> {
     const cached = this.cache.get(normalizeName(name));
     if (cached) {
       return cached;
     }
-    const {root} = (await this.load(name)) ?? {};
-    if (!root) return;
-    const result = new IdbDocument(this, root, name);
+    const stored = await this.load(name);
+    if (!stored) return;
+    const result = new IdbDocument(this, stored.root, stored.metadata);
     this.cache.set(normalizeName(name), result);
     return result;
   }
@@ -225,23 +244,30 @@ class IdbDocument implements Document {
   constructor(
     private library: IdbLibrary,
     root: DocumentNode,
-    readonly filename: string,
+    readonly metadata: Readonly<DocumentMetadata>,
   ) {
     this.tree = new MarkdownTree(cast(root), this);
-    this.tree.observe.add(() => noAwait(this.markDirty()));
+    this.tree.observe.add(() => this.treeChanged());
   }
-  state: 'active' | 'deleted' = 'active';
   readonly tree: MarkdownTree;
   dirty = false;
   observe: Observe<Document> = new Observe<Document>(this);
+  updateMetadata(
+    updater: (metadata: DocumentMetadata) => boolean,
+    markDirty = true,
+  ) {
+    if (!updater(this.metadata)) return;
+    if (markDirty) this.metadataChanged();
+  }
   get name() {
     return (
-      this.library.metadata.getPreferredName(this.tree.root) ?? this.filename
+      this.library.metadata.getPreferredName(this.tree.root) ??
+      this.metadata.filename
     );
   }
   get allNames() {
     const names = [...this.library.metadata.getNames(this.tree.root)];
-    return names.length ? names : [this.filename];
+    return names.length ? names : [this.metadata.filename];
   }
   postEditUpdate(
     node: ViewModelNode,
@@ -271,40 +297,51 @@ class IdbDocument implements Document {
     this.tree.observe.notify();
   }
   async save() {
-    if (this.state !== 'active') return;
+    if (this.metadata.state !== 'active') return;
     const root = this.tree.serialize();
     assert(root.type === 'document');
     const content: StoredDocument = {
       root,
+      metadata: this.metadata,
     };
     await wrap(
       this.library.database
         .transaction('documents', 'readwrite')
         .objectStore('documents')
-        .put(content, this.filename),
+        .put(content, this.metadata.filename),
     );
   }
   async delete() {
-    this.state = 'deleted';
+    this.updateMetadata((metadata) => {
+      metadata.state = 'deleted';
+      return true;
+    }, false);
     this.tree.setRoot(
       this.tree.add<DocumentNode>({
         type: 'document',
       }),
     );
-    this.library.cache.delete(normalizeName(this.filename));
+    this.library.cache.delete(normalizeName(this.metadata.filename));
     // TODO: tombstone
     await wrap(
       this.library.database
         .transaction('documents', 'readwrite')
         .objectStore('documents')
-        .delete(this.filename),
+        .delete(this.metadata.filename),
     );
   }
+  private metadataChanged() {
+    noAwait(this.markDirty());
+  }
+  private treeChanged() {
+    this.updateMetadata((metadata) => {
+      metadata.modificationTime = Date.now();
+      return true;
+    }, false);
+    noAwait(this.markDirty());
+  }
   private pendingModifications = 0;
-  async markDirty() {
-    // TODO: The tree could be in an inconsistent state, don't trigger the
-    // the observer until the edit is finished, or wait for normalization.
-    await Promise.resolve();
+  private async markDirty() {
     this.dirty = true;
     this.observe.notify();
     if (this.pendingModifications++) return;
