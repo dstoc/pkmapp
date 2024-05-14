@@ -210,5 +210,10 @@ export const styles = [
       padding: 3px;
       background: var(--md-tag-bgcolor);
     }
+    md-span[type$='link'] md-span[type='tag'] {
+      border-radius: unset;
+      padding: unset;
+      background: unset;
+    }
   `,
 ];

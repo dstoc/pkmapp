@@ -224,6 +224,7 @@ export class Metadata {
       // for saving. Edits should wipe out caches before postEditUpdate.
       for (const next of dfs(node.viewModel.inlineTree.rootNode)) {
         if (next.type !== 'tag') continue;
+        // TODO: Make sure the tag is not contained within a link
         tags.add(next.text);
       }
       this.tagMap.update(node, tags);
