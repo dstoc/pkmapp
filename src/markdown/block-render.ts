@@ -184,11 +184,9 @@ export class MarkdownRenderer extends LitElement {
           margin-block-end: 0.75lh;
         }
         md-block[type='section']:focus-within:not(
-            :has(md-block[type='section']:focus-within)
-          ) {
-          /* TODO: how to highlight active block? */
-          border-left: solid var(--md-accent-color) 1px;
-          border-left: initial;
+            :has(:is(md-block[type='section'], md-transclusion):focus-within)
+          )::before {
+          background: var(--md-active-block-color);
         }
         md-block[type='section']::before {
           margin-right: 3px;
@@ -220,9 +218,20 @@ export class MarkdownRenderer extends LitElement {
         md-block > md-block:last-child {
           margin-block-end: 0;
         }
-        md-block[selected]:not([type='section']),
-        md-block[selected][type='section'] > md-inline {
-          background: var(--md-block-selection-color);
+        md-block[selected] > md-inline {
+          background: var(--md-block-selection-bgcolor);
+          caret-color: transparent;
+        }
+        md-block[selected]:not(:has(md-block)),
+        md-block:has(md-block[selected]):not(
+            :has(md-block:not([selected]) > md-inline)
+          ) {
+          --md-accent-color: currentcolor;
+          --md-block-quote-bgcolor: var(--md-block-selection-bgcolor);
+          --md-code-block-bgcolor: var(--md-block-selection-bgcolor);
+          --md-code-span-bgcolor: var(--md-block-selection-bgcolor);
+          --md-tag-bgcolor: var(--md-block-selection-bgcolor);
+          --root-background-color: var(--md-block-selection-bgcolor);
           caret-color: transparent;
         }
       `,
@@ -232,15 +241,22 @@ export class MarkdownRenderer extends LitElement {
           font-family: var(--md-code-font-family);
           border-radius: 3px;
           padding: 3px;
-          background: var(--md-code-block-bgcolor);
+          background: var(--md-code-span-bgcolor);
         }
         md-block[type='block-quote'] {
           background: var(--md-block-quote-bgcolor);
           border-left: 10px solid var(--md-accent-color);
           padding: 10px;
+          padding-left: 20px;
           border-radius: 10px;
           background-clip: padding-box;
-          border-bottom: solid transparent 1px;
+          border: var(--md-block-quote-border);
+          background-image: linear-gradient(
+            90deg,
+            var(--md-accent-color) 0,
+            var(--md-accent-color) 10px,
+            transparent 10px
+          );
         }
         md-block[type='code-block'] md-inline {
           font-family: var(--md-code-font-family);
@@ -248,7 +264,7 @@ export class MarkdownRenderer extends LitElement {
           padding: 10px;
           border-radius: 10px;
           background-clip: padding-box;
-          border-bottom: solid transparent 1px;
+          border: var(--md-code-block-border);
         }
         a,
         md-span[type='shortcut_link'],
