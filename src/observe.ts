@@ -15,13 +15,13 @@
 import {assert, cast} from './asserts.js';
 import {noAwait} from './async.js';
 
-export class Observe<T, D = unknown> {
-  private observers = new Set<(target: T) => void>();
+export class Observe<T, V = void, D = unknown> {
+  private observers = new Set<(target: T, value: V) => void>();
   private state: 'active' | 'suspended' | 'delegated';
   private resumed?: Promise<void>;
   constructor(
     readonly target: T,
-    private delegate?: Observe<D, unknown>,
+    private delegate?: Observe<D, void, unknown>,
   ) {
     this.state = delegate ? 'delegated' : 'active';
   }
@@ -39,22 +39,24 @@ export class Observe<T, D = unknown> {
     );
     return result!;
   }
-  notify() {
+  notify(value: V) {
     if ((this.delegate?.state ?? this.state) === 'suspended') {
       // TODO: coalesce
       noAwait(
-        cast(this.delegate?.resumed ?? this.resumed).then(() => this.notify()),
+        cast(this.delegate?.resumed ?? this.resumed).then(() =>
+          this.notify(value),
+        ),
       );
       return;
     }
     for (const observer of this.observers.values()) {
-      observer(this.target);
+      observer(this.target, value);
     }
   }
-  add(observer: (node: T) => void) {
+  add(observer: (target: T, value: V) => void) {
     this.observers.add(observer);
   }
-  remove(observer: (node: T) => void) {
+  remove(observer: (target: T, value: V) => void) {
     this.observers.delete(observer);
   }
 }
