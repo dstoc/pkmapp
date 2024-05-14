@@ -50,7 +50,26 @@ export function debugCommands(library: Library): Command[] {
         const directory = await navigator.storage.getDirectory();
         for (const document of await getAllDocuments(library)) {
           const handle = await directory.getFileHandle(
-            document.filename + '.md',
+            document.metadata.filename + '.md',
+            {create: true},
+          );
+          const stream = await handle.createWritable();
+          await stream.write(serializeToString(document.tree.root));
+          await stream.close();
+        }
+        return undefined;
+      },
+    },
+    {
+      description: '[DEBUG] Export to directory',
+      execute: async () => {
+        const directory = await showDirectoryPicker({
+          mode: 'readwrite',
+          id: 'export',
+        });
+        for (const document of await getAllDocuments(library)) {
+          const handle = await directory.getFileHandle(
+            document.metadata.filename + '.md',
             {create: true},
           );
           const stream = await handle.createWritable();
