@@ -14,7 +14,6 @@
 
 import {consume} from '../deps/lit-context.js';
 import {
-  css,
   customElement,
   html,
   LitElement,
@@ -67,67 +66,6 @@ declare global {
 
 @customElement('md-inline')
 export class MarkdownInline extends LitElement {
-  static override get styles() {
-    return [
-      css`
-        md-inline {
-          display: block;
-          outline: none;
-        }
-        md-inline[active] {
-          white-space: pre;
-          --focus-invalid: --;
-        }
-        md-inline[active] * {
-          white-space: pre-wrap;
-        }
-        md-span a,
-        md-span {
-          visibility: visible;
-          font-size: 16px;
-        }
-        md-span[formatting] {
-          color: var(--md-accent-color);
-        }
-        md-span[type='backslash_escape']::first-letter {
-          font-size: 0;
-        }
-        md-span[type='link_destination'],
-        md-span[type='link_title'],
-        md-span[type='code_span_delimiter'],
-        md-span[type='emphasis_delimiter'] {
-          display: var(--focus-invalid, none);
-        }
-        md-span[type='inline_link'],
-        md-span[type='image'],
-        md-span[type='shortcut_link'] {
-          visibility: var(--focus-invalid, collapse);
-          font-size: var(--focus-invalid, 0);
-        }
-        a,
-        md-span[type='shortcut_link'],
-        md-span[type='uri_autolink'],
-        md-span[type='inline_link'] {
-          color: blue;
-          cursor: pointer;
-          text-decoration: inherit;
-        }
-        md-span[type='emphasis'] {
-          font-style: italic;
-        }
-        md-span[type='strong_emphasis'] {
-          font-weight: bold;
-        }
-        md-span[type='strikethrough'] {
-          text-decoration: line-through;
-        }
-        md-span[type='code_span'] {
-          white-space: pre;
-          font-family: monospace;
-        }
-      `,
-    ];
-  }
   constructor() {
     super();
     this.addEventListener('beforeinput', this.onBeforeInput, {capture: true});
