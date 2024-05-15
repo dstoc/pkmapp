@@ -68,36 +68,21 @@ function ensureContent(
   return result;
 }
 
-function extractFrontMatter(text?: string) {
-  if (text === undefined) return undefined;
-  return text.match(/^---\s*(.*)\n---[\s\n]*$/)?.[1];
-}
-
 function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
   switch (node.type) {
     case 'document': {
       let children = node.namedChildren;
-      let childIndex = 0;
-      const metadata =
-        children.length && children[0].type === 'minus_metadata'
-          ? children[0]
-          : undefined;
-      if (metadata) childIndex++;
-      const section = children[childIndex];
+      const section = children[0];
       if (section?.type === 'section') {
         const sectionChildren = section.namedChildren;
         if (!sectionChildren.length) {
-          // TODO: do we need to check the next section too?
-          // assert(node.previousSibling!.type === 'minus_metadata');
-          children = children.slice(childIndex + 1);
+          children = children.slice(1);
         } else if (sectionChildren[0].type !== 'atx_heading') {
-          // TODO: What is this case?
-          children = [...sectionChildren, ...children.slice(childIndex + 1)];
+          children = [...sectionChildren, ...children.slice(1)];
         }
       }
       return {
         type: 'document',
-        metadata: extractFrontMatter(metadata?.text),
         children: ensureContent(
           [...convertNodes(children)],
           [{...emptyParagraph}],
@@ -165,10 +150,6 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
         content: content?.text.replace(prefix, '').trimEnd() ?? '',
       };
     }
-    case 'minus_metadata':
-      // handled in 'document'
-      assert(false);
-    // eslint-disable-next-line no-fallthrough
     case 'atx_heading':
     case 'block_continuation':
     case 'list_marker_star':
@@ -184,6 +165,7 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
     case 'thematic_break':
     case 'indented_code_block':
     case 'html_block':
+    case 'minus_metadata':
     case 'link_reference_definition':
     case 'pipe_table':
       return {

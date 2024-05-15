@@ -56,7 +56,6 @@ interface Node {
 
 export interface DocumentNode extends Node {
   readonly type: 'document';
-  readonly metadata?: string;
 }
 
 export interface ListNode extends Node {
