@@ -41,15 +41,17 @@ export class Backup {
         await setDirectory('backup', this.directory);
       }
 
-      let state = 'prompt';
+      let permission = 'prompt';
       do {
-        state = await this.directory.queryPermission({mode: 'readwrite'});
-        if (state === 'granted') break;
+        permission = await this.directory.queryPermission({mode: 'readwrite'});
+        if (permission === 'granted') break;
         while (!navigator.userActivation.isActive) {
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
-        state = await this.directory.requestPermission({mode: 'readwrite'});
-      } while (state !== 'granted');
+        permission = await this.directory.requestPermission({
+          mode: 'readwrite',
+        });
+      } while (permission !== 'granted');
       this.state = 'idle';
     }
     if (this.state === 'idle' && this.backlog.size) {
