@@ -57,12 +57,7 @@ export class Backup {
       this.state = 'waiting-to-write';
       while (this.backlog.size) {
         await new Promise((resolve) => requestIdleCallback(resolve));
-        let document: Document | undefined;
-        for (const next of this.backlog) {
-          document = next;
-          break;
-        }
-        assert(document);
+        const [document] = this.backlog;
         const content = serializeToString(document.tree.root);
         const dateDir = await this.directory.getDirectoryHandle(
           formatDate(new Date()),
