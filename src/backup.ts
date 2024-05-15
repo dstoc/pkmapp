@@ -15,7 +15,7 @@ function formatDate(date: Date) {
 export class Backup {
   constructor(library: Library) {
     library.observeDocuments.add((_library, document) =>
-      this.onDocmentUpdated(document),
+      this.onDocumentUpdated(document),
     );
     noAwait(this.maybeUpdateState());
   }
@@ -84,7 +84,7 @@ export class Backup {
       this.state = 'idle';
     }
   }
-  private onDocmentUpdated(document: Document) {
+  private onDocumentUpdated(document: Document) {
     this.backlog.add(document);
     noAwait(this.maybeUpdateState());
   }
