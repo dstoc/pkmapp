@@ -22,7 +22,7 @@ import {
   state,
   property,
 } from './deps/lit.js';
-import {cast} from './asserts.js';
+import {assert} from './asserts.js';
 import './emoji.js';
 import {noAwait} from './async.js';
 
@@ -41,7 +41,7 @@ export interface FreeformCommandTemplate {
   execute(
     command: Command,
     updatePreview: (template: TemplateResult) => void,
-  ): Promise<CommandBundle | undefined>;
+  ): Promise<CommandBundle | void>;
 }
 
 export class SimpleCommandBundle {
@@ -294,7 +294,8 @@ export class CommandPalette extends LitElement {
       command,
       (template) => (this.previewOverride = template),
     );
-    await this.trigger(cast(bundle));
+    assert(bundle);
+    await this.trigger(bundle);
   }
   next() {
     this.activeIndex = Math.min(

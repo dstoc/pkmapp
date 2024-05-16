@@ -93,6 +93,7 @@ import {
 import {getLanguageTools} from './language-tool-bundle.js';
 import {debugCommands} from './debug-commands.js';
 import {noAwait} from './async.js';
+import {backupCommands} from './backup-commands.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -880,6 +881,7 @@ export class Editor extends LitElement {
         ? getLanguageTools(() => serializeSelection(activeInline.hostContext!))
         : []),
       ...debugCommands(this.library),
+      ...backupCommands(this.library.backup),
     ]);
   }
 }

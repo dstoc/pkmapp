@@ -26,6 +26,8 @@ import {resolveDateAlias} from './date-aliases.js';
 import {getLogicalContainingBlock} from './block-util.js';
 import {noAwait} from './async.js';
 import {Backup} from './backup.js';
+import {wrap} from './indexeddb.js';
+import {ConfigStore} from './config-store.js';
 
 export interface DocumentMetadata {
   creationTime: number;
@@ -53,6 +55,7 @@ export interface Library {
   getAllNames(): Promise<string[]>;
   readonly backLinks: BackLinks;
   readonly metadata: Metadata;
+  readonly backup: Backup;
   restore(): Promise<void>;
   import(root: DocumentNode, key: string): Promise<Document>;
   readonly observeDocuments: Observe<Library, Document>;
@@ -62,28 +65,23 @@ function normalizeName(name: string) {
   return name.toLowerCase();
 }
 
-function wrap<T>(request: IDBRequest<T>) {
-  return new Promise<IDBRequest<T>>(
-    (resolve, reject) => (
-      (request.onsuccess = () => resolve(request)), (request.onerror = reject)
-    ),
-  );
-}
-
 interface StoredDocument {
   root: DocumentNode;
   metadata: DocumentMetadata;
 }
 
 export class IdbLibrary implements Library {
-  constructor(readonly database: IDBDatabase) {}
+  constructor(
+    readonly database: IDBDatabase,
+    private store: ConfigStore,
+  ) {}
   cache = new Map<string, Document>();
   backLinks = new BackLinks();
   metadata = new Metadata();
   observeDocuments: Observe<Library, Document> = new Observe<Library, Document>(
     this,
   );
-  backup = new Backup(this);
+  backup: Backup = new Backup(this, this.store);
   static async init(dbName: string) {
     const request = indexedDB.open(dbName);
     request.onupgradeneeded = () => {
@@ -91,7 +89,8 @@ export class IdbLibrary implements Library {
       database.createObjectStore('documents');
     };
     const {result: database} = await wrap(request);
-    return new IdbLibrary(database);
+    const store = await ConfigStore.init('default');
+    return new IdbLibrary(database, store);
   }
   async getAllNames() {
     const result = new Set<string>();
