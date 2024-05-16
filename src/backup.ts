@@ -4,7 +4,7 @@ import {serializeToString} from './markdown/block-serializer.js';
 import {assert} from './asserts.js';
 import {ConfigStore} from './config-store.js';
 
-function formatDate(date: Date) {
+export function formatDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -12,10 +12,17 @@ function formatDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+export function formatTime(date: Date) {
+  return String(date.getHours()).padStart(2, '0');
+}
+
 interface BackupConfig {
   key: 'backup';
   directory: FileSystemDirectoryHandle;
+  grouping: Grouping;
 }
+
+export type Grouping = 'none' | 'hourly' | 'daily';
 
 export class Backup {
   constructor(
@@ -70,13 +77,20 @@ export class Backup {
         await new Promise((resolve) => requestIdleCallback(resolve));
         const [document] = this.backlog;
         const content = serializeToString(document.tree.root);
-        const dateDir = await this.config.directory.getDirectoryHandle(
-          formatDate(new Date()),
-          {
-            create: true,
-          },
-        );
-        const file = await dateDir.getFileHandle(
+        let targetDir = this.config.directory;
+        if (this.config.grouping !== 'none') {
+          targetDir = await targetDir.getDirectoryHandle(
+            formatDate(new Date()),
+            {create: true},
+          );
+          if (this.config.grouping === 'hourly') {
+            targetDir = await targetDir.getDirectoryHandle(
+              formatTime(new Date()),
+              {create: true},
+            );
+          }
+        }
+        const file = await targetDir.getFileHandle(
           `${document.metadata.filename}.md`,
           {
             create: true,
@@ -97,10 +111,14 @@ export class Backup {
   hasConfig() {
     return this.config;
   }
-  async setConfiguration(directory: FileSystemDirectoryHandle) {
-    const config = {
+  async setConfiguration(
+    directory: FileSystemDirectoryHandle,
+    grouping: Grouping,
+  ) {
+    const config: BackupConfig = {
       key: 'backup',
       directory,
+      grouping,
     };
     await this.store.setConfig(config);
     noAwait(this.update());
