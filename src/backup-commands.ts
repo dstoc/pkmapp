@@ -22,24 +22,21 @@ export function backupCommands(backup: Backup): Command[] {
           execute: async () => {
             function chooseFolderAndFinish(grouping: Grouping) {
               return async () =>
-                new SimpleCommandBundle(
-                  `Where do you want to store the backups?`,
-                  [
-                    {
-                      description: 'Choose a folder',
-                      execute: async () => {
-                        const directory = await showDirectoryPicker({
-                          mode: 'readwrite',
-                          id: 'backup',
-                        });
-                        await backup.setConfiguration(directory, grouping);
-                      },
+                new SimpleCommandBundle(`Where do you want to store backups?`, [
+                  {
+                    description: 'Choose a folder',
+                    execute: async () => {
+                      const directory = await showDirectoryPicker({
+                        mode: 'readwrite',
+                        id: 'backup',
+                      });
+                      await backup.setConfiguration(directory, grouping);
                     },
-                  ],
-                );
+                  },
+                ]);
             }
             return new SimpleCommandBundle(
-              `How do you want your backups grouped?`,
+              `How do you want to group backups?`,
               [
                 {
                   description: 'Everything in one folder',

@@ -20,6 +20,7 @@ import {libraryContext} from './app-context.js';
 import {CommandPaletteDialog} from './command-palette-dialog.js';
 import {provide} from './deps/lit-context.js';
 import {
+  css,
   customElement,
   html,
   LitElement,
@@ -34,6 +35,7 @@ import {EditorNavigation} from './editor.js';
 import {CommandBundle} from './command-palette.js';
 import {assert} from './asserts.js';
 import {noAwait} from './async.js';
+import './backup-sidebar.js';
 
 document.adoptedStyleSheets = [...styles];
 // TODO: Use import attributes to add these above, once it's supported in vite.
@@ -95,7 +97,18 @@ export class PkmApp extends LitElement {
   }
   private initialLocation = location.toString();
   static override get styles() {
-    return styles;
+    return [
+      ...styles,
+      css`
+        pkm-backup-sidebar {
+          position: absolute;
+          top: 0;
+          right: 0;
+          padding: 10px;
+          cursor: pointer;
+        }
+      `,
+    ];
   }
   override render() {
     const url = new URL(this.initialLocation);
@@ -111,6 +124,9 @@ export class PkmApp extends LitElement {
         @editor-commands=${this.onCommands}
         .defaultName=${defaultName}
       ></pkm-editor>
+      <pkm-backup-sidebar
+        @backup-commands=${this.onCommands}
+      ></pkm-backup-sidebar>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
   }
