@@ -94,6 +94,7 @@ import {getLanguageTools} from './language-tool-bundle.js';
 import {debugCommands} from './debug-commands.js';
 import {noAwait} from './async.js';
 import {backupCommands} from './backup-commands.js';
+import {yesNoBundle} from './yes-no-bundle.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -611,22 +612,15 @@ export class Editor extends LitElement {
             {
               description: 'Delete document',
               execute: async () => {
-                return new SimpleCommandBundle('Delete document?', [
-                  {
-                    description: 'No',
-                    execute: async () => void 0,
+                return yesNoBundle({
+                  description: `Are you sure you want to delete "${this.document!.name}"?`,
+                  yes: async () => {
+                    const tree = this.document!.tree;
+                    const document = this.library.getDocumentByTree(tree);
+                    await document?.delete();
+                    await this.navigateByName('index', true);
                   },
-                  {
-                    description: 'Yes',
-                    execute: async () => {
-                      const tree = this.document!.tree;
-                      const document = this.library.getDocumentByTree(tree);
-                      await document?.delete();
-                      await this.navigateByName('index', true);
-                      return undefined;
-                    },
-                  },
-                ]);
+                });
               },
             },
           ]

@@ -36,12 +36,14 @@ export interface Command extends FreeformCommandTemplate {
   readonly preview?: () => TemplateResult;
 }
 
+export type Execute = (
+  command: Command,
+  updatePreview: (template: TemplateResult) => void,
+) => Promise<CommandBundle | void>;
+
 export interface FreeformCommandTemplate {
   readonly icon?: string;
-  execute(
-    command: Command,
-    updatePreview: (template: TemplateResult) => void,
-  ): Promise<CommandBundle | void>;
+  execute: Execute;
 }
 
 export class SimpleCommandBundle {
