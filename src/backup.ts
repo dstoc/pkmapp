@@ -20,10 +20,10 @@ export function formatTime(date: Date) {
 interface BackupConfig {
   key: 'backup';
   directory: FileSystemDirectoryHandle;
-  grouping: Grouping;
+  snapshots?: Snapshots;
 }
 
-export type Grouping = 'none' | 'hourly' | 'daily';
+export type Snapshots = 'none' | 'hourly' | 'daily';
 
 export class Backup {
   constructor(
@@ -78,25 +78,22 @@ export class Backup {
         await new Promise((resolve) => requestIdleCallback(resolve));
         const [document] = this.backlog;
         const content = serializeToString(document.tree.root);
-        let targetDir = this.config.directory;
-        if (this.config.grouping !== 'none') {
-          targetDir = await targetDir.getDirectoryHandle(
-            formatDate(new Date()),
-            {create: true},
-          );
-          if (this.config.grouping === 'hourly') {
-            targetDir = await targetDir.getDirectoryHandle(
-              formatTime(new Date()),
-              {create: true},
-            );
-          }
-        }
-        const file = await targetDir.getFileHandle(
+        const file = await this.config.directory.getFileHandle(
           `${document.metadata.filename}.md`,
           {
             create: true,
           },
         );
+        if (this.config.snapshots ?? 'none' !== 'none') {
+          const existing = await file.getFile().catch((e) => {
+            if (e instanceof DOMException && e.name === 'NotFoundError') {
+              return undefined;
+            }
+            throw e;
+          });
+
+          await this.writeSnapshot(existing);
+        }
         const stream = await file.createWritable();
         await stream.write(content);
         await stream.close();
@@ -106,6 +103,37 @@ export class Backup {
       this.observe.notify();
     }
   }
+  async writeSnapshot(existing?: File) {
+    assert(this.config);
+    if (!existing) return;
+    const now = new Date();
+    const lastModified = new Date(existing.lastModified);
+    const newDate = formatDate(now) !== formatDate(lastModified);
+    const newTime =
+      this.config.snapshots === 'hourly' &&
+      formatTime(now) !== formatTime(lastModified);
+    if (!newDate && !newTime) return;
+
+    let snapshotDir = await this.config.directory.getDirectoryHandle(
+      formatDate(lastModified),
+      {create: true},
+    );
+    if (this.config.snapshots === 'hourly') {
+      snapshotDir = await snapshotDir.getDirectoryHandle(
+        formatTime(lastModified),
+        {
+          create: true,
+        },
+      );
+    }
+    const snapshotFile = await snapshotDir.getFileHandle(existing.name, {
+      create: true,
+    });
+    const stream = await snapshotFile.createWritable();
+    await stream.write(await existing.arrayBuffer());
+    await stream.close();
+  }
+
   private onDocumentUpdated(document: Document) {
     this.backlog.add(document);
     noAwait(this.update());
@@ -119,12 +147,12 @@ export class Backup {
   }
   async setConfiguration(
     directory: FileSystemDirectoryHandle,
-    grouping: Grouping,
+    snapshots: Snapshots,
   ) {
     const config: BackupConfig = {
       key: 'backup',
       directory,
-      grouping,
+      snapshots,
     };
     await this.store.setConfig(config);
     noAwait(this.update());
