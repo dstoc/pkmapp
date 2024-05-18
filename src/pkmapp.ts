@@ -132,14 +132,7 @@ export class PkmApp extends LitElement {
   }
   override async connectedCallback() {
     super.connectedCallback();
-    // TODO: Remove this loop, it's no longer needed.
-    const task = async () => {
-      await this.trySetDirectory();
-      if (!this.library) {
-        setTimeout(() => noAwait(task()), 100);
-      }
-    };
-    noAwait(task());
+    noAwait(this.initComponents());
   }
   private onCommands({detail: commands}: CustomEvent<CommandBundle>) {
     this.commandPalette.trigger(commands);
@@ -160,22 +153,19 @@ export class PkmApp extends LitElement {
     }
   }
   loading = false;
-  private async trySetDirectory() {
-    if (this.library) return;
-    if (this.loading) return;
+  private async initComponents() {
+    assert(!this.library);
+    assert(!this.loading);
     this.loading = true;
     try {
-      let library: Library;
       const opener = window.opener as Window | undefined;
       const parent = opener?.document.querySelector('pkm-app')?.library;
       if (parent) {
-        library = parent;
+        this.library = parent;
         console.log('used parent!');
       } else {
-        library = await IdbLibrary.init('library');
+        this.library = await IdbLibrary.init('library');
       }
-      await library.restore();
-      this.library = library;
     } finally {
       this.loading = false;
     }

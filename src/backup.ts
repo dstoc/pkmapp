@@ -1,4 +1,4 @@
-import {Library, Document} from './library.js';
+import {Library, Document, ComponentMetadata} from './library.js';
 import {noAwait} from './async.js';
 import {serializeToString} from './markdown/block-serializer.js';
 import {assert} from './asserts.js';
@@ -23,11 +23,26 @@ interface BackupConfig {
   snapshots?: Snapshots;
 }
 
+interface BackupMetadata extends ComponentMetadata {
+  key: 'backup';
+  backupModificationTime: number;
+}
+
 export type Snapshots = 'none' | 'hourly' | 'daily';
+
+function needsBackup(document: Document) {
+  const metadata = document.metadata.component['backup'] as
+    | BackupMetadata
+    | undefined;
+  return (
+    !metadata ||
+    metadata.backupModificationTime < document.metadata.modificationTime
+  );
+}
 
 export class Backup {
   constructor(
-    library: Library,
+    private readonly library: Library,
     private readonly store: ConfigStore,
   ) {
     library.observeDocuments.add((_library, document) =>
@@ -41,7 +56,7 @@ export class Backup {
     | 'idle'
     | 'waiting-for-config'
     | 'waiting-for-permission'
-    | 'waiting-to-write' = 'waiting-for-config';
+    | 'writing' = 'waiting-for-config';
   private config?: BackupConfig;
   private backlog = new Set<Document>();
   readonly observe = new Observe(this);
@@ -64,12 +79,18 @@ export class Backup {
         this.observe.notify();
         return;
       }
+      await this.library.ready;
+      for (const document of this.library.getAllDocuments()) {
+        if (needsBackup(document)) {
+          this.backlog.add(document);
+        }
+      }
       this.state = 'idle';
       this.observe.notify();
     }
     if (this.state === 'idle' && this.backlog.size) {
       assert(this.config);
-      this.state = 'waiting-to-write';
+      this.state = 'writing';
       this.observe.notify();
       // TODO: update() can have multiple callers, there can be a race here.
       while (this.backlog.size) {
@@ -77,7 +98,6 @@ export class Backup {
         // after each await.
         await new Promise((resolve) => requestIdleCallback(resolve));
         const [document] = this.backlog;
-        const content = serializeToString(document.tree.root);
         const file = await this.config.directory.getFileHandle(
           `${document.metadata.filename}.md`,
           {
@@ -95,9 +115,25 @@ export class Backup {
           await this.writeSnapshot(existing);
         }
         const stream = await file.createWritable();
+        const content = serializeToString(document.tree.root);
+        const modificationTime = document.metadata.modificationTime;
         await stream.write(content);
         await stream.close();
-        this.backlog.delete(document);
+        document.updateMetadata((metadata) => {
+          const backup: BackupMetadata = (metadata.component[
+            'backup'
+          ] as BackupMetadata) ?? {
+            key: 'backup',
+            backupModificationTime: 0,
+          };
+          backup.backupModificationTime = modificationTime;
+          metadata.component['backup'] = backup;
+          return true;
+        });
+        if (document.metadata.modificationTime <= modificationTime) {
+          // Otherwise it was modified while we were writing.
+          this.backlog.delete(document);
+        }
       }
       this.state = 'idle';
       this.observe.notify();
@@ -135,6 +171,7 @@ export class Backup {
   }
 
   private onDocumentUpdated(document: Document) {
+    if (!['idle', 'waiting'].includes(this.state)) return;
     this.backlog.add(document);
     noAwait(this.update());
   }
@@ -160,6 +197,13 @@ export class Backup {
   async resetConfiguration() {
     await this.store.removeConfig('backup');
     this.config = undefined;
-    noAwait(this.update());
+    await this.update();
+    await this.library.ready;
+    for (const document of this.library.getAllDocuments()) {
+      document.updateMetadata((metadata) => {
+        delete metadata.component['backup'];
+        return true;
+      });
+    }
   }
 }

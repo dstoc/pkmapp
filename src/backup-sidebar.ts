@@ -14,7 +14,7 @@ export class BackupSidebar extends LitElement {
     switch (this.library.backup.state) {
       case 'idle':
         return;
-      case 'waiting-to-write':
+      case 'writing':
         return html`💾`;
       default:
         return html`💾⚠️`;

@@ -34,6 +34,11 @@ export interface DocumentMetadata {
   modificationTime: number;
   state: 'active' | 'deleted';
   filename: string;
+  component: Record<string, ComponentMetadata | undefined>;
+}
+
+export interface ComponentMetadata {
+  key: string;
 }
 
 export interface Document {
@@ -46,19 +51,24 @@ export interface Document {
   readonly metadata: Readonly<DocumentMetadata>;
   readonly dirty: boolean;
   readonly observe: Observe<Document>;
+  updateMetadata(updater: (metadata: DocumentMetadata) => boolean): void;
 }
 
 export interface Library {
+  // TODO: Does this need to be async? Make iterable?
   findAll(name: string): Promise<{document: Document; root: ViewModelNode}[]>;
   newDocument(name: string): Promise<Document>;
   getDocumentByTree(tree: MarkdownTree): Document | undefined;
+  // TODO: Does this need to be async? Make iterable?
   getAllNames(): Promise<string[]>;
+  getAllDocuments(): IterableIterator<Document>;
   readonly backLinks: BackLinks;
   readonly metadata: Metadata;
   readonly backup: Backup;
   restore(): Promise<void>;
   import(root: DocumentNode, key: string): Promise<Document>;
   readonly observeDocuments: Observe<Library, Document>;
+  readonly ready: Promise<void>;
 }
 
 function normalizeName(name: string) {
@@ -74,7 +84,11 @@ export class IdbLibrary implements Library {
   constructor(
     readonly database: IDBDatabase,
     private store: ConfigStore,
-  ) {}
+  ) {
+    this.ready = new Promise((resolve) => {
+      noAwait(this.restore().then(resolve));
+    });
+  }
   cache = new Map<string, Document>();
   backLinks = new BackLinks();
   metadata = new Metadata();
@@ -82,6 +96,7 @@ export class IdbLibrary implements Library {
     this,
   );
   backup: Backup = new Backup(this, this.store);
+  ready: Promise<void>;
   static async init(dbName: string) {
     const request = indexedDB.open(dbName);
     request.onupgradeneeded = () => {
@@ -90,7 +105,14 @@ export class IdbLibrary implements Library {
     };
     const {result: database} = await wrap(request);
     const store = await ConfigStore.init('default');
-    return new IdbLibrary(database, store);
+    const library = new IdbLibrary(database, store);
+    // TODO: Don't await this. Other components should wait for restore if
+    // necessary.
+    await library.ready;
+    return library;
+  }
+  getAllDocuments() {
+    return this.cache.values();
   }
   async getAllNames() {
     const result = new Set<string>();
@@ -187,6 +209,7 @@ export class IdbLibrary implements Library {
         creationTime: now,
         modificationTime: now,
         filename: name,
+        component: {},
       },
     };
     name = normalizeName(name);
