@@ -79,17 +79,18 @@ export class BlockCommandBundle implements CommandBundle {
         preview: () => blockPreview(item),
       }));
     if (this.freeformAction && parts.length == 1 && parts[0].length) {
-      commands.push({
-        description: input,
-        icon: '🆕 ',
-        execute: () => cast(this.freeformAction)({name: input}),
-      });
       const resolved = resolveDateAlias(input);
       if (resolved) {
         commands.push({
           description: resolved,
           icon: '🆕 ',
           execute: () => cast(this.freeformAction)({name: resolved}),
+        });
+      } else {
+        commands.push({
+          description: input,
+          icon: '🆕 ',
+          execute: () => cast(this.freeformAction)({name: input}),
         });
       }
     }
