@@ -1,7 +1,7 @@
 import type {Command, CommandBundle} from './command-palette.js';
 import type {Library, Document} from './library.js';
 import type {ViewModelNode} from './markdown/view-model-node.js';
-import {getLogicalContainingBlock, isExplicitlyNamed} from './block-util.js';
+import {getLogicalContainingBlock} from './block-util.js';
 import {cast} from './asserts.js';
 import {html} from './deps/lit.js';
 import './markdown/block-render.js';
