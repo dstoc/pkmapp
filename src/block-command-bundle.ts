@@ -6,6 +6,7 @@ import {cast} from './asserts.js';
 import {html} from './deps/lit.js';
 import './markdown/block-render.js';
 import './title.js';
+import {expandPrefixToAlias, resolveDateAlias} from './date-aliases.js';
 
 interface Result {
   document: Document;
@@ -83,6 +84,14 @@ export class BlockCommandBundle implements CommandBundle {
         icon: '🆕 ',
         execute: () => cast(this.freeformAction)({name: input}),
       });
+      const resolved = resolveDateAlias(input);
+      if (resolved) {
+        commands.push({
+          description: resolved,
+          icon: '🆕 ',
+          execute: () => cast(this.freeformAction)({name: resolved}),
+        });
+      }
     }
     return commands;
   }
@@ -107,5 +116,14 @@ function getFilter(input: string) {
     input.replace(/(.)/g, (c) => c.replace(/[^a-zA-Z0-9]/, '\\$&') + '.*?'),
     'i',
   );
-  return (name: string) => pattern.test(name);
+  return (name: string) => {
+    return (
+      expandPrefixToAlias(input)
+        // TODO: not sure why lowercase is needed here.
+        // `name` for a week includes a lower case 'w', but why?
+        .map((alias) => resolveDateAlias(alias)?.toLowerCase())
+        .filter((value) => value !== undefined)
+        .includes(name) || pattern.test(name)
+    );
+  };
 }

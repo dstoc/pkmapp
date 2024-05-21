@@ -52,3 +52,14 @@ export function resolveDateAlias(alias: string) {
       return;
   }
 }
+
+export function expandPrefixToAlias(prefix: string) {
+  return [
+    'today',
+    'tomorrow',
+    'yesterday',
+    'this week',
+    'next week',
+    'last week',
+  ].filter((v) => v.toLowerCase().startsWith(prefix.toLowerCase()));
+}
