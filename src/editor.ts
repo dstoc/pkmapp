@@ -604,7 +604,6 @@ export class Editor extends LitElement {
         execute: async () => {
           const markdown = serializeToString(this.document!.tree.root);
           await copyMarkdownToClipboard(markdown);
-          return undefined;
         },
       },
       ...(this.document && this.root === this.document.tree.root
@@ -723,7 +722,6 @@ export class Editor extends LitElement {
                   {startIndex, oldEndIndex: endIndex},
                   true,
                 );
-                return undefined;
               },
             },
           ]
@@ -741,7 +739,6 @@ export class Editor extends LitElement {
                   activeNode,
                   startIndex,
                 );
-                return undefined;
               },
             },
           ]
@@ -761,7 +758,6 @@ export class Editor extends LitElement {
                     activeNode,
                     startIndex,
                   );
-                return undefined;
               },
             },
           ]
@@ -778,7 +774,6 @@ export class Editor extends LitElement {
                     activeNode,
                     startIndex,
                   );
-                return undefined;
               },
             },
           ]
@@ -792,7 +787,6 @@ export class Editor extends LitElement {
                 transclusion.node!.viewModel.remove();
                 finished();
                 // TODO: focus
-                return undefined;
               },
             },
           ]
@@ -844,7 +838,6 @@ export class Editor extends LitElement {
                 );
                 finished();
                 focusNode(cast(transclusion.hostContext), newParagraph, 0);
-                return undefined;
               },
             },
           ]
@@ -866,7 +859,6 @@ export class Editor extends LitElement {
                 );
                 finished();
                 focusNode(cast(transclusion.hostContext), newParagraph, 0);
-                return undefined;
               },
             },
           ]
