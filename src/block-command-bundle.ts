@@ -36,12 +36,8 @@ export class BlockCommandBundle implements CommandBundle {
             const blocks = await this.library.findAll(name);
             return blocks.map((item) => ({
               ...item,
-              name:
-                this.library.metadata.getNames(item.root)[0] ??
-                item.document.name,
-              description:
-                this.library.metadata.getNames(item.root)[0] ??
-                item.document.name,
+              name: this.library.metadata.getNames(item.root)[0] ?? name,
+              description: this.library.metadata.getNames(item.root)[0] ?? name,
             }));
           }),
         )
@@ -105,7 +101,8 @@ export function blockPreview({root}: {root: ViewModelNode}) {
   `;
 }
 
-export function blockIcon({root}: {root: ViewModelNode}) {
+export function blockIcon({root, name}: {root: ViewModelNode; name: string}) {
+  if (name.startsWith('#')) return '🏷️ ';
   if (root.type === 'document') return '📚 ';
   else return '📄 ';
 }

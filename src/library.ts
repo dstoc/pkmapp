@@ -120,6 +120,7 @@ export class IdbLibrary implements Library {
       result.add(normalizeName(name));
     }
     for (const document of this.cache.values()) {
+      // TODO: check that the document doesn't have an explicit name?
       if (
         normalizeName(document.name) ===
         normalizeName(document.metadata.filename)

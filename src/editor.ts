@@ -215,7 +215,7 @@ export class Editor extends LitElement {
                 description: document.name,
                 execute: async () =>
                   void this.navigate(document, root, fireEvent),
-                icon: blockIcon({root}),
+                icon: blockIcon({root, name}),
                 preview: () => blockPreview({root}),
               })),
             ),
