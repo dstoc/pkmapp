@@ -72,7 +72,7 @@ export class MarkdownBlock extends LitElement {
         node.viewModel.parent?.type !== 'section' &&
         !node.viewModel.previousSibling
       ) {
-        this.marker = '§';
+        this.marker = undefined;
       } else {
         const idx = Math.min(node.marker.length - 1, 9);
         const n = '₁₂₃₄₅₆₇₈₉ₙ'[idx];

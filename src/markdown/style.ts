@@ -101,22 +101,24 @@ export const styles = [
     md-block[type='section'] > md-inline {
       font-weight: bold;
     }
-    md-block[type='section'] > md-block[type='section'] {
+    md-block[type='section'] {
+      margin-block-end: 0.75lh;
+    }
+    md-block[type='section'][marker] > md-block[type='section'] {
       margin-left: calc(-1 * var(--section-gutter));
     }
-    md-block[type='section'] {
+    md-block[type='section'][marker] {
       --section-gutter: 20px;
       display: grid;
       grid-template-columns: var(--section-gutter) 1fr;
       align-items: baseline;
-      margin-block-end: 0.75lh;
     }
-    md-block[type='section']:focus-within:not(
+    md-block[type='section'][marker]:focus-within:not(
         :has(:is(md-block[type='section'], md-transclusion):focus-within)
       )::before {
       background: var(--md-active-block-color);
     }
-    md-block[type='section']::before {
+    md-block[type='section'][marker]::before {
       margin-right: 3px;
       content: attr(marker);
       text-align: right;
