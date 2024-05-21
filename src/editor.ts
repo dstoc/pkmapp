@@ -68,7 +68,6 @@ import {
   InlineViewModel,
   MarkdownTree,
 } from './markdown/view-model.js';
-import {Observer, Observers} from './observe.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
 import {
@@ -110,20 +109,11 @@ export class Editor extends LitElement {
   @state() private document?: Document;
   @state() private root?: ViewModelNode;
   private name?: string;
-  @property({type: Boolean, reflect: true}) dirty = false;
   @consume({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
   @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
   @query('pkm-autocomplete') private autocomplete!: Autocomplete;
-  private observers = new Observers(
-    new Observer(
-      () => this.document?.observe,
-      () => this.requestUpdate(),
-      (t, o) => t?.add(o),
-      (t, o) => t?.remove(o),
-    ),
-  );
   static override get styles() {
     return [
       css`
@@ -152,10 +142,7 @@ export class Editor extends LitElement {
     super();
   }
   override render() {
-    this.observers.update();
-    this.dirty = this.document?.dirty ?? false;
-    return html` <div id="status">${this.document?.dirty ? '💽' : ''}</div>
-      <pkm-title
+    return html` <pkm-title
         .node=${this.root}
         @title-item-click=${this.onTitleItemClick}
       ></pkm-title>
