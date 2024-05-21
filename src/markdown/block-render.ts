@@ -68,9 +68,16 @@ export class MarkdownBlock extends LitElement {
             : 'false';
     }
     if (node.type === 'section') {
-      const idx = Math.min(node.marker.length - 1, 9);
-      const n = '₁₂₃₄₅₆₇₈₉ₙ'[idx];
-      this.marker = `#${n}`;
+      if (
+        node.viewModel.parent?.type !== 'section' &&
+        !node.viewModel.previousSibling
+      ) {
+        this.marker = '§';
+      } else {
+        const idx = Math.min(node.marker.length - 1, 9);
+        const n = '₁₂₃₄₅₆₇₈₉ₙ'[idx];
+        this.marker = `§${n}`;
+      }
     }
     // TODO: maybe this is were extensions get injected?
     if (node.type === 'code-block' && node.info === 'tc') {

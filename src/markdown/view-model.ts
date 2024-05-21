@@ -96,6 +96,11 @@ export class ViewModel {
 
   insertBefore(parent: ViewModelNode, nextSibling?: ViewModelNode) {
     assert(this.tree.state === 'editing');
+    if (parent === this.parent && nextSibling === this.nextSibling) {
+      return;
+    }
+    // Maybe this is a weird API, but it frequently simplifies calling
+    // code to allow this case.
     if (nextSibling === this.self) {
       assert(parent === this.parent);
       return;

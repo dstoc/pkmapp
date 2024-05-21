@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {assert} from '../asserts.js';
-
 import {SectionNode} from './node.js';
 import {children, dfs} from './view-model-util.js';
 import {MarkdownTree} from './view-model.js';
@@ -33,6 +31,10 @@ function moveTrailingNodesIntoSections(tree: MarkdownTree) {
   }
 }
 
+/**
+ * Given a contiguous run of sections, update their heirarichy so that it
+ * matches their section markers.
+ */
 function normalizeContiguousSections(
   sections: (SectionNode & ViewModelNode)[],
 ) {
@@ -40,35 +42,55 @@ function normalizeContiguousSections(
   function activeSection() {
     return activeSections[activeSections.length - 1];
   }
+  function contains(
+    parent: SectionNode & ViewModelNode,
+    node: SectionNode & ViewModelNode,
+  ) {
+    return (
+      (!parent.viewModel.previousSibling &&
+        parent.viewModel.parent!.type !== 'section') ||
+      node.marker.length > parent.marker.length
+    );
+  }
+  // Note. This logic is quite complex because we want to avoid moving
+  // sections if they are already in the correct position. Normalization
+  // should not mutate the tree if nothing has changed.
   for (const section of sections) {
-    if (activeSections.length) {
-      while (
-        section.marker.length < activeSection().marker.length &&
-        activeSections.length > 1
-      ) {
-        activeSections.pop();
+    let last: (SectionNode & ViewModelNode) | undefined;
+    while (activeSections.length && !contains(activeSection(), section)) {
+      // Pop off sections that cannot contain it.
+      last = cast(activeSections.pop());
+      if (!activeSections.length) {
+        // If we run out of sections, insert it as the next
+        // sibling of the last one we saw. This happens when we have a
+        // run of sections that are not contained by another section.
+        section.viewModel.insertBefore(
+          last!.viewModel.parent!,
+          last!.viewModel.nextSibling,
+        );
       }
-      if (section.marker.length <= activeSection().marker.length) {
-        if (section.viewModel.previousSibling !== activeSection()) {
-          section.viewModel.insertBefore(
-            activeSection().viewModel.parent!,
-            activeSection().viewModel.nextSibling,
-          );
-        }
-        activeSections.pop();
+    }
+    if (activeSections.length && contains(activeSection(), section)) {
+      // If the active section can contain this section...
+      if (last && last.viewModel.parent === activeSection()) {
+        // Place it next to the last section, if that section was also contained
+        // by the active section.
+        section.viewModel.insertBefore(
+          last.viewModel.parent,
+          last.viewModel.nextSibling,
+        );
       } else {
-        assert(section.marker.length > activeSection().marker.length);
-        if (section.viewModel.parent !== activeSection()) {
-          // ensure section is first section child of activeSection
-          let next: ViewModelNode | undefined;
-          for (const child of children(activeSection())) {
-            if (child.type === 'section') {
-              next = child;
-              break;
-            }
+        // Otherwise ensure it's the first section child of the active
+        // section. Find the first section and place it before that. Otherwise,
+        // place it at the very end.
+        let next: ViewModelNode | undefined;
+        for (const child of children(activeSection())) {
+          if (child.type === 'section') {
+            next = child;
+            break;
           }
-          section.viewModel.insertBefore(activeSection(), next);
         }
+        section.viewModel.insertBefore(activeSection(), next);
       }
     }
     activeSections.push(section);
