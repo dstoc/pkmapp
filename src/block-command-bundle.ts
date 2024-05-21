@@ -1,7 +1,7 @@
 import type {Command, CommandBundle} from './command-palette.js';
 import type {Library, Document} from './library.js';
 import type {ViewModelNode} from './markdown/view-model-node.js';
-import {getLogicalContainingBlock} from './block-util.js';
+import {getLogicalContainingBlock, isExplicitlyNamed} from './block-util.js';
 import {cast} from './asserts.js';
 import {html} from './deps/lit.js';
 import './markdown/block-render.js';
@@ -101,9 +101,7 @@ export class BlockCommandBundle implements CommandBundle {
 export function blockPreview({root}: {root: ViewModelNode}) {
   return html`
     <pkm-title .node=${root}></pkm-title>
-    <p>
-      <md-block-render .block=${root}></md-block-render>
-    </p>
+    <md-block-render .block=${root}></md-block-render>
   `;
 }
 

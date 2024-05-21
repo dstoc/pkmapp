@@ -25,7 +25,7 @@ import {
 } from './deps/lit.js';
 import {consume} from './deps/lit-context.js';
 import {libraryContext} from './app-context.js';
-import {getLogicalContainingBlock} from './block-util.js';
+import {getLogicalContainingBlock, isExplicitlyNamed} from './block-util.js';
 import {Observers, Observer} from './observe.js';
 import type {ViewModelNode} from './markdown/view-model-node.js';
 
@@ -46,6 +46,8 @@ export class Title extends LitElement {
 
   override render() {
     if (!this.node) return ``;
+    if (!this.node.viewModel.parent && isExplicitlyNamed(this.node)) return ``;
+
     this.observers?.clear();
     const containers: ViewModelNode[] = [];
     let next: ViewModelNode | undefined = this.node;

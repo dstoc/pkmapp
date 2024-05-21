@@ -40,3 +40,15 @@ export function getLogicalContainingBlock(node?: ViewModelNode) {
   }
   return;
 }
+
+export function isExplicitlyNamed(node?: ViewModelNode) {
+  switch (node?.type) {
+    case 'section':
+      return true;
+    case 'list-item':
+    case 'document':
+      return node.viewModel.firstChild?.type === 'section';
+    default:
+      return false;
+  }
+}
