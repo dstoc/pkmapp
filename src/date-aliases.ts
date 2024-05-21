@@ -18,6 +18,16 @@ function dateToName(date: Date) {
   )}-${String(100 + date.getDate()).substring(1)}`;
 }
 
+// TODO: is this what people use?
+/** ISO week date */
+function dateToWeekName(date: Date) {
+  const currentDate = new Date(date.getTime());
+  currentDate.setDate(currentDate.getDate() + 4 - (currentDate.getDay() || 7));
+  const yearStart = new Date(currentDate.getFullYear(), 0, 1);
+  const weekNo = Math.ceil(((+currentDate - +yearStart) / 86400000 + 1) / 7);
+  return `${date.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
 function relativeDate(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -32,6 +42,12 @@ export function resolveDateAlias(alias: string) {
       return dateToName(relativeDate(1));
     case 'yesterday':
       return dateToName(relativeDate(-1));
+    case 'this week':
+      return dateToWeekName(new Date());
+    case 'next week':
+      return dateToWeekName(relativeDate(+7));
+    case 'last week':
+      return dateToWeekName(relativeDate(-7));
     default:
       return;
   }
