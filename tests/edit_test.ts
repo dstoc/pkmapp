@@ -298,6 +298,7 @@ test.describe('editing', () => {
       await keyboard.type(`* a\nb\nc`);
       await keyboard.press('ArrowUp');
       await keyboard.press('Control+a');
+      await keyboard.press('Control+a');
       await keyboard.press('Backspace');
       expect(await exportMarkdown()).toMatchPretty(`
         * a

@@ -377,10 +377,24 @@ export class Editor extends LitElement {
         if (maybeEditBlockSelectionIndent(inline, mode)) return;
         editInlineIndent(inline, mode);
       } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
-        keyboardEvent.preventDefault();
-        if (!hostContext.hasSelection) {
-          this.autocomplete.abort();
-          hostContext.setSelection(node, node);
+        this.autocomplete.abort();
+        const {hostContext: selectedHostContext} =
+          getBlockSelectionTarget(inline) ?? {};
+        if (selectedHostContext?.hasSelection) {
+          keyboardEvent.preventDefault();
+          // TODO: Grow selection outwards, select all children of
+          // selection roots' parents.
+        } else {
+          const selection = inline.getSelection();
+          if (
+            selection &&
+            selection.start.index === 0 &&
+            selection.end.index === inline.node.content.length
+          ) {
+            keyboardEvent.preventDefault();
+            focusNode(hostContext, inline.node);
+            hostContext.setSelection(node, node);
+          }
         }
       } else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey) {
         const {hostContext} = getBlockSelectionTarget(inline) ?? {};
@@ -1355,7 +1369,7 @@ function serializeSelection(hostContext: HostContext) {
     if (node.viewModel.previousSibling) {
       return result;
     }
-    for (const ancestor of ancestors(node, hostContext.root!)) {
+    for (const ancestor of ancestors(node, cast(hostContext.root))) {
       if (ancestor.type === 'section') {
         break;
       }
@@ -1385,6 +1399,8 @@ function serializeSelection(hostContext: HostContext) {
     type: 'document',
   });
   const finishEditing = tree.edit();
+  // The document will have an empty paragraph due to normalization.
+  cast(tree.root.children)[0].viewModel.remove();
   for (const root of roots) {
     const node = tree.add<MarkdownNode>(root);
     node.viewModel.insertBefore(tree.root);

@@ -52,7 +52,10 @@ export function isAncestorOf(
   return false;
 }
 
-export function* ancestors(node: ViewModelNode, root: ViewModelNode) {
+export function* ancestors(
+  node: ViewModelNode,
+  root: ViewModelNode = node.viewModel.tree.root,
+) {
   while (node.viewModel.parent) {
     yield node.viewModel.parent;
     node = node.viewModel.parent;
@@ -243,4 +246,34 @@ export function cloneNode(
   };
   delete (result as MaybeViewModelNode).viewModel;
   return result;
+}
+
+export function compareDocumentOrder(
+  node1: ViewModelNode,
+  node2: ViewModelNode,
+) {
+  if (node1 === node2) return 0;
+  const node1Chain = [node1, ...ancestors(node1)];
+  const node2Chain = [node2, ...ancestors(node2)];
+  assert(
+    node1Chain[node1Chain.length - 1] === node2Chain[node2Chain.length - 1],
+  );
+  while (
+    node1Chain[node1Chain.length - 1] === node2Chain[node2Chain.length - 1]
+  ) {
+    node1Chain.pop();
+    node2Chain.pop();
+  }
+  const node1Ancestor = node1Chain[node1Chain.length - 1];
+  const node2Ancestor = node2Chain[node2Chain.length - 1];
+  for (
+    let node: ViewModelNode | undefined = node1Ancestor;
+    node;
+    node = node.viewModel.nextSibling
+  ) {
+    if (node2Ancestor === node) {
+      return -1;
+    }
+  }
+  return 1;
 }
