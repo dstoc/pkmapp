@@ -77,7 +77,6 @@ export const styles = [
       display: grid;
       grid-template-columns: auto 1fr;
       align-items: baseline;
-      background: var(--md-selection-override-bgcolor);
     }
     md-block[type='list-item']::before {
       width: 15px;
@@ -153,9 +152,9 @@ export const styles = [
       caret-color: transparent;
     }
     md-block[selected]:not(:has(md-block)),
-    md-block:has(md-block[selected]):not(
-        :has(md-block:not([selected]) > md-inline)
-      ) {
+    :is(md-block:not([type='section']), md-block[type='section'][selected]):has(
+        md-block[selected]
+      ):not(:has(md-block:not([selected]) > md-inline)) {
       --md-accent-color: currentcolor;
       --md-block-quote-bgcolor: var(--md-block-selection-bgcolor);
       --md-code-block-bgcolor: var(--md-block-selection-bgcolor);
@@ -164,6 +163,9 @@ export const styles = [
       --md-selection-override-bgcolor: var(--md-block-selection-bgcolor);
       --root-background-color: var(--md-block-selection-bgcolor);
       caret-color: transparent;
+    }
+    md-block {
+      background-color: var(--md-selection-override-bgcolor) !important;
     }
   `,
   // Overridable styles.
