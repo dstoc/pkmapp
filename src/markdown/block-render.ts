@@ -24,7 +24,6 @@ import {styles} from './style.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement {
-  @property({type: Boolean, reflect: true}) selected?: boolean;
   @property({type: String, reflect: true}) checked?: 'true' | 'false';
   @property({type: Boolean, reflect: true}) root?: boolean;
   @property({type: String, reflect: true}) type = '';
@@ -55,7 +54,6 @@ export class MarkdownBlock extends LitElement {
     }
   }
   override render() {
-    this.selected = this.hostContext?.selection.has(this.node!) ?? false;
     const node = this.node;
     if (!node) return;
     this.type = node.type;
@@ -81,7 +79,12 @@ export class MarkdownBlock extends LitElement {
     }
     // TODO: maybe this is were extensions get injected?
     if (node.type === 'code-block' && node.info === 'tc') {
-      return html`<md-transclusion .node=${node}></md-transclusion>`;
+      // TODO: wrap with a md-extension type that can handle selection instead.
+      const selected = this.hostContext?.selection.has(node) ?? false;
+      return html`<md-transclusion
+        .node=${node}
+        ?selected=${selected}
+      ></md-transclusion>`;
     }
     return html`${isInlineNode(node)
       ? html`<md-inline .node=${node}></md-inline>`

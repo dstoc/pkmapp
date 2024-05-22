@@ -90,11 +90,13 @@ export class MarkdownInline extends LitElement {
   @property({type: Object, reflect: false}) node?: InlineViewModelNode;
   @property({type: Boolean, reflect: true}) contenteditable = true;
   @property({type: Boolean, reflect: true}) active = false;
+  @property({type: Boolean, reflect: true}) selected?: boolean;
   @query('md-span') span!: MarkdownSpan;
   hasFocus = false;
 
   override render() {
     if (!this.node) return;
+    this.selected = this.hostContext?.selection.has(this.node) ?? false;
     return html`<md-span
       .node=${this.node.viewModel.inlineTree.rootNode}
       .active=${this.active}

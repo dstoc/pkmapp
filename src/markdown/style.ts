@@ -147,14 +147,13 @@ export const styles = [
     md-block > md-block:last-child {
       margin-block-end: 0;
     }
-    md-block[selected] > md-inline {
+    md-inline[selected] {
       background: var(--md-block-selection-bgcolor);
       caret-color: transparent;
     }
-    md-block[selected]:not(:has(md-block)),
-    :is(md-block:not([type='section']), md-block[type='section'][selected]):has(
-        md-block[selected]
-      ):not(:has(md-block:not([selected]) > md-inline)) {
+    md-block:not(
+        :has(md-inline:not([selected]), md-transclusion:not([selected]))
+      ) {
       --md-accent-color: currentcolor;
       --md-block-quote-bgcolor: var(--md-block-selection-bgcolor);
       --md-code-block-bgcolor: var(--md-block-selection-bgcolor);
