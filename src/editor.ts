@@ -565,6 +565,8 @@ export class Editor extends LitElement {
       activeNode?.viewModel.tree === (this.root?.viewModel.tree ?? false);
     const transclusion =
       activeInline && getContainingTransclusion(activeInline);
+    const {hostContext: selectionHostContext} =
+      (activeInline && getBlockSelectionTarget(activeInline)) ?? {};
     return new SimpleCommandBundle('Choose command...', [
       {
         description: 'Find, Open, Create...',
@@ -587,12 +589,27 @@ export class Editor extends LitElement {
         execute: async () => void this.document?.save(),
       },
       {
-        description: 'Copy all as markdown',
+        description: 'Copy all',
         execute: async () => {
           const markdown = serializeToString(this.document!.tree.root);
           await copyMarkdownToClipboard(markdown);
         },
+        preview: () => html`<pre>${serializeToString(this.root!)}</pre>`,
       },
+      ...(selectionHostContext?.hasSelection
+        ? [
+            {
+              description: 'Copy selection',
+              execute: async () => {
+                await copyMarkdownToClipboard(
+                  serializeSelection(selectionHostContext),
+                );
+              },
+              preview: () =>
+                html`<pre>${serializeSelection(selectionHostContext)}</pre>`,
+            },
+          ]
+        : []),
       ...(this.document && this.root === this.document.tree.root
         ? [
             {
@@ -611,6 +628,7 @@ export class Editor extends LitElement {
             },
           ]
         : []),
+      // TODO: Should this use selectionHostContext?
       ...(activeInline?.hostContext?.hasSelection
         ? [
             {
