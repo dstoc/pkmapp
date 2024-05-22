@@ -155,6 +155,7 @@ export const styles = [
         :has(md-inline:not([selected]), md-transclusion:not([selected]))
       ) {
       --md-accent-color: currentcolor;
+      --md-active-block-color: var(--md-block-selection-bgcolor);
       --md-block-quote-bgcolor: var(--md-block-selection-bgcolor);
       --md-code-block-bgcolor: var(--md-block-selection-bgcolor);
       --md-code-span-bgcolor: var(--md-block-selection-bgcolor);
@@ -164,7 +165,7 @@ export const styles = [
       caret-color: transparent;
     }
     md-block {
-      background-color: var(--md-selection-override-bgcolor) !important;
+      background-color: var(--md-selection-override-bgcolor);
     }
   `,
   // Overridable styles.
