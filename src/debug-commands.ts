@@ -13,6 +13,38 @@ async function getAllDocuments(library: Library) {
   return [...documents];
 }
 
+async function runExport(
+  library: Library,
+  directory: FileSystemDirectoryHandle,
+) {
+  for (const document of await getAllDocuments(library)) {
+    const handle = await directory.getFileHandle(
+      document.metadata.key + '.md',
+      {create: true},
+    );
+    const stream = await handle.createWritable();
+    await stream.write(serializeToString(document.tree.root));
+    await stream.close();
+  }
+}
+
+async function runImport(
+  library: Library,
+  directory: FileSystemDirectoryHandle,
+) {
+  for await (const entry of directory.values()) {
+    if (entry.kind === 'file' && entry.name.endsWith('.md')) {
+      const file = await entry.getFile();
+      const decoder = new TextDecoder();
+      const text = decoder.decode(await file.arrayBuffer());
+      await library.import(
+        parseBlocks(text).node,
+        entry.name.replace(/\.md$/, ''),
+      );
+    }
+  }
+}
+
 export function debugCommands(library: Library): Command[] {
   if (!new URL(location.toString()).searchParams.has('debug')) return [];
   return [
@@ -22,42 +54,30 @@ export function debugCommands(library: Library): Command[] {
         for (const document of await getAllDocuments(library)) {
           await document.delete();
         }
-
-        return undefined;
       },
     },
     {
       description: '[DEBUG] Import from OPFS',
       execute: async () => {
         const directory = await navigator.storage.getDirectory();
-        for await (const entry of directory.values()) {
-          if (entry.kind === 'file' && entry.name.endsWith('.md')) {
-            const file = await entry.getFile();
-            const decoder = new TextDecoder();
-            const text = decoder.decode(await file.arrayBuffer());
-            await library.import(
-              parseBlocks(text).node,
-              entry.name.replace(/\.md$/, ''),
-            );
-          }
-        }
-        return undefined;
+        await runImport(library, directory);
       },
     },
     {
       description: '[DEBUG] Export to OPFS',
       execute: async () => {
         const directory = await navigator.storage.getDirectory();
-        for (const document of await getAllDocuments(library)) {
-          const handle = await directory.getFileHandle(
-            document.metadata.filename + '.md',
-            {create: true},
-          );
-          const stream = await handle.createWritable();
-          await stream.write(serializeToString(document.tree.root));
-          await stream.close();
-        }
-        return undefined;
+        await runExport(library, directory);
+      },
+    },
+    {
+      description: '[DEBUG] Import from directory',
+      execute: async () => {
+        const directory = await showDirectoryPicker({
+          mode: 'read',
+          id: 'debug-import',
+        });
+        await runImport(library, directory);
       },
     },
     {
@@ -65,18 +85,9 @@ export function debugCommands(library: Library): Command[] {
       execute: async () => {
         const directory = await showDirectoryPicker({
           mode: 'readwrite',
-          id: 'export',
+          id: 'debug-export',
         });
-        for (const document of await getAllDocuments(library)) {
-          const handle = await directory.getFileHandle(
-            document.metadata.filename + '.md',
-            {create: true},
-          );
-          const stream = await handle.createWritable();
-          await stream.write(serializeToString(document.tree.root));
-          await stream.close();
-        }
-        return undefined;
+        await runExport(library, directory);
       },
     },
   ];

@@ -33,7 +33,7 @@ export interface DocumentMetadata {
   creationTime: number;
   modificationTime: number;
   state: 'active' | 'deleted';
-  filename: string;
+  key: string;
   component: Record<string, ComponentMetadata | undefined>;
 }
 
@@ -73,6 +73,10 @@ export interface Library {
 
 function normalizeName(name: string) {
   return name.toLowerCase();
+}
+
+function normalizeKey(name: string) {
+  return name.toLowerCase().replaceAll(/[\\/:*?"<>|]/g, '');
 }
 
 interface StoredDocument {
@@ -121,11 +125,8 @@ export class IdbLibrary implements Library {
     }
     for (const document of this.cache.values()) {
       // TODO: check that the document doesn't have an explicit name?
-      if (
-        normalizeName(document.name) ===
-        normalizeName(document.metadata.filename)
-      ) {
-        result.add(normalizeName(document.metadata.filename));
+      if (normalizeName(document.name) === document.metadata.key) {
+        result.add(document.metadata.key);
       }
     }
     return [...result];
@@ -157,8 +158,8 @@ export class IdbLibrary implements Library {
     if (this.cache.has(name)) {
       const document = cast(this.cache.get(name));
       if (
-        document.name === document.metadata.filename ||
-        document.metadata.filename === 'index'
+        document.name === document.metadata.key ||
+        document.metadata.key === 'index'
       ) {
         result.add(document.tree.root);
       }
@@ -209,14 +210,15 @@ export class IdbLibrary implements Library {
         state: 'active',
         creationTime: now,
         modificationTime: now,
-        filename: name,
+        key: normalizeKey(name),
         component: {},
       },
     };
     name = normalizeName(name);
     let n = 0;
     while (true) {
-      const key = `${name}${n > 0 ? '-' + String(n) : ''}`;
+      const key = `${normalizeKey(name)}${n > 0 ? '-' + String(n) : ''}`;
+      content.metadata.key = key;
       try {
         await wrap(
           this.database
@@ -291,12 +293,12 @@ class IdbDocument implements Document {
   get name() {
     return (
       this.library.metadata.getPreferredName(this.tree.root) ??
-      this.metadata.filename
+      this.metadata.key
     );
   }
   get allNames() {
     const names = [...this.library.metadata.getNames(this.tree.root)];
-    return names.length ? names : [this.metadata.filename];
+    return names.length ? names : [this.metadata.key];
   }
   postEditUpdate(
     node: ViewModelNode,
@@ -337,7 +339,7 @@ class IdbDocument implements Document {
       this.library.database
         .transaction('documents', 'readwrite')
         .objectStore('documents')
-        .put(content, this.metadata.filename),
+        .put(content, this.metadata.key),
     );
   }
   async delete() {
@@ -350,13 +352,13 @@ class IdbDocument implements Document {
         type: 'document',
       }),
     );
-    this.library.cache.delete(normalizeName(this.metadata.filename));
+    this.library.cache.delete(this.metadata.key);
     // TODO: tombstone
     await wrap(
       this.library.database
         .transaction('documents', 'readwrite')
         .objectStore('documents')
-        .delete(this.metadata.filename),
+        .delete(this.metadata.key),
     );
   }
   private metadataChanged() {

@@ -99,7 +99,7 @@ export class Backup {
         await new Promise((resolve) => requestIdleCallback(resolve));
         const [document] = this.backlog;
         const file = await this.config.directory.getFileHandle(
-          `${document.metadata.filename}.md`,
+          `${document.metadata.key}.md`,
           {
             create: true,
           },
