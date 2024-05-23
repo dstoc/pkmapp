@@ -100,6 +100,7 @@ export class MarkdownBlock extends LitElement {
     if (node.type === 'list-item') {
       if (e.target !== this) return;
       e.preventDefault();
+      using _ = node.viewModel.tree.edit();
       let newValue;
       switch (node.checked) {
         case true:

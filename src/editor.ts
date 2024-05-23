@@ -377,6 +377,12 @@ export class Editor extends LitElement {
       const mode = keyboardEvent.shiftKey ? 'unindent' : 'indent';
       if (maybeEditBlockSelectionIndent(inline, mode)) return;
       editInlineIndent(inline, mode);
+    } else if (keyboardEvent.key === 'z' && keyboardEvent.ctrlKey) {
+      event.preventDefault();
+      this.document?.tree.undo();
+    } else if (keyboardEvent.key === 'y' && keyboardEvent.ctrlKey) {
+      event.preventDefault();
+      this.document?.tree.redo();
     } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
       this.autocomplete.abort();
       const {hostContext: selectedHostContext} =

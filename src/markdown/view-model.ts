@@ -53,8 +53,9 @@ export class ViewModel {
   nextSibling?: ViewModelNode;
   previousSibling?: ViewModelNode;
   readonly observe;
-  protected signalMutation(notify = true) {
+  protected signalMutation(op: UndoRedoOperation, notify = true) {
     this.version = this.tree.root.viewModel.version + 1;
+    this.tree.record(op);
     let parent = this.parent;
     while (parent) {
       parent.viewModel.version = this.version;
@@ -86,7 +87,14 @@ export class ViewModel {
     if (!this.nextSibling)
       this.parent.viewModel.lastChild = this.previousSibling;
     const parent = this.parent;
-    this.signalMutation(false);
+    const nextSibling = this.nextSibling;
+    this.signalMutation(
+      {
+        undo: () => this.insertBefore(parent, nextSibling),
+        redo: () => this.remove(),
+      },
+      false,
+    );
     this.parent = undefined;
     this.nextSibling = undefined;
     this.previousSibling = undefined;
@@ -105,6 +113,7 @@ export class ViewModel {
       assert(parent === this.parent);
       return;
     }
+    const hadParent = !!this.parent;
     if (this.parent) this.remove();
     const previousSibling = nextSibling
       ? nextSibling?.viewModel.previousSibling
@@ -136,30 +145,48 @@ export class ViewModel {
       index = 0;
     }
     parent.children.splice(index, 0, this.self);
-    this.signalMutation(false);
+    this.signalMutation(
+      {
+        undo: () => !hadParent && this.remove(),
+        redo: () => this.insertBefore(parent, nextSibling),
+      },
+      false,
+    );
     parent.viewModel.observe.notify();
   }
 
   updateMarker(marker: string) {
-    // TODO: assert tree editing
+    assert(this.tree.state === 'editing');
     switch (this.self.type) {
       case 'list-item':
-      case 'section':
-        if (this.self.marker === marker) return;
+      case 'section': {
+        const oldMarker = this.self.marker;
+        if (oldMarker === marker) return;
         (this.self as {marker: string}).marker = marker;
-        this.signalMutation();
+        this.signalMutation({
+          // TODO
+          undo: () => this.updateMarker(oldMarker),
+          redo: () => this.updateMarker(marker),
+        });
         break;
+      }
     }
   }
 
   updateChecked(checked: boolean | undefined) {
-    // TODO: assert tree editing
+    assert(this.tree.state === 'editing');
     switch (this.self.type) {
-      case 'list-item':
-        if (this.self.checked === checked) return;
+      case 'list-item': {
+        const oldChecked = this.self.checked;
+        if (oldChecked === checked) return;
         (this.self as {checked?: boolean}).checked = checked;
-        this.signalMutation();
+        this.signalMutation({
+          // TODO
+          undo: () => this.updateChecked(oldChecked),
+          redo: () => this.updateChecked(checked),
+        });
         break;
+      }
     }
   }
 }
@@ -202,7 +229,16 @@ export class InlineViewModel extends ViewModel {
     if (newNodes) return newNodes;
     this.inlineTree_ = this.inlineTree.edit(result);
     this.inlineTree_ = inlineParser.parse(this.self.content, this.inlineTree);
-    this.signalMutation();
+    this.signalMutation({
+      undo: () =>
+        this.edit({
+          startIndex,
+          newEndIndex: oldEndIndex,
+          oldEndIndex: newEndIndex,
+          newText: oldText,
+        }),
+      redo: () => this.edit({startIndex, newEndIndex, oldEndIndex, newText}),
+    });
     return null;
   }
   private maybeReplaceWithBlocks() {
@@ -239,6 +275,11 @@ export interface MarkdownTreeDelegate {
   ): void;
 }
 
+interface UndoRedoOperation {
+  undo: () => void;
+  redo: () => void;
+}
+
 export class MarkdownTree {
   constructor(
     root: DocumentNode,
@@ -252,9 +293,13 @@ export class MarkdownTree {
   private editCount = 0;
   private editStartVersion = 0;
   private editResumeObserve: () => void = () => void 0;
+  private editOperations: UndoRedoOperation[] = [];
   root: ViewModelNode & DocumentNode;
   readonly observe = new Observe(this);
   removed = new Set<ViewModelNode>();
+
+  private undoStack: UndoRedoOperation[][] = [];
+  private redoStack: UndoRedoOperation[][] = [];
 
   setRoot(node: DocumentNode & ViewModelNode) {
     assert(node.viewModel.tree === this);
@@ -273,6 +318,30 @@ export class MarkdownTree {
     return this.addDom(node);
   }
 
+  undo() {
+    assert(this.editOperations.length === 0);
+    if (!this.undoStack.length) return;
+    const ops = this.undoStack.pop()!;
+    using _ = this.edit();
+    for (const op of ops.toReversed()) {
+      op.undo();
+    }
+    this.editOperations.length = 0;
+    this.redoStack.push(ops);
+  }
+
+  redo() {
+    assert(this.editOperations.length === 0);
+    if (!this.redoStack.length) return;
+    const ops = this.redoStack.pop()!;
+    using _ = this.edit();
+    for (const op of ops) {
+      op.redo();
+    }
+    this.editOperations.length = 0;
+    this.undoStack.push(ops);
+  }
+
   edit() {
     if (this.state === 'idle') {
       this.editStartVersion = this.root.viewModel.version;
@@ -285,6 +354,12 @@ export class MarkdownTree {
       [Symbol.dispose]: () => this.finishEdit(editCount),
     };
   }
+
+  record(op: UndoRedoOperation) {
+    assert(this.state === 'editing');
+    this.editOperations.push(op);
+  }
+
   private finishEdit(editCount: number) {
     assert(this.editCount === editCount);
     assert(this.state === 'editing');
@@ -312,6 +387,13 @@ export class MarkdownTree {
         this.delegate?.postEditUpdate(node, 'changed');
       }
     }
+
+    if (this.editOperations.length) {
+      this.undoStack.push([...this.editOperations]);
+      this.editOperations.length = 0;
+      this.redoStack.length = 0;
+    }
+
     this.state = 'idle';
     if (this.root.viewModel.version > this.editStartVersion) {
       // TODO: Probably need to track/notify whether it's a
