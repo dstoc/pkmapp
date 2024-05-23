@@ -65,9 +65,16 @@ describe('Editor', () => {
         }
       },
       async press(key: string, repeat = 1) {
+        const shiftKey = key.includes('Shift+');
+        const altKey = key.includes('Alt+');
+        const ctrlKey = key.includes('Control+');
+        key = key.match(/(?:(?:Ctrl|Alt|Shift)\+)*(.*)/)![1];
         for (let i = 0; i < repeat; i++) {
           getFocusedInline().onKeyDown(
             new KeyboardEvent('keydown', {
+              ctrlKey,
+              altKey,
+              shiftKey,
               key,
             }),
           );
