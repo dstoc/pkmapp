@@ -244,10 +244,12 @@ test.describe('editing', () => {
     test('can unindent a list-item in a list-item', async ({
       page: {keyboard},
     }) => {
-      await keyboard.type(`* * a`);
+      await keyboard.type(`* a\nb`);
       await keyboard.press('Shift+Tab');
       expect(await exportMarkdown()).toMatchPretty(`
         * a
+
+        b
 
       `);
     });

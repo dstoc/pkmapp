@@ -122,6 +122,39 @@ function normalizeSections(tree: MarkdownTree) {
 }
 
 export function normalizeTree(tree: MarkdownTree) {
+  normalizeSections(tree);
+
+  for (const node of dfs(tree.root)) {
+    // Merge adjacent lists.
+    if (node.type === 'list') {
+      while (node.viewModel.nextSibling?.type === 'list') {
+        const next = node.viewModel.nextSibling;
+        while (next.viewModel.firstChild) {
+          next.viewModel.firstChild.viewModel.insertBefore(node);
+        }
+        next.viewModel.remove();
+      }
+    }
+    // Collapse directly nested lists.
+    if (node.type === 'list-item') {
+      if (
+        node.viewModel.firstChild?.type === 'list' &&
+        node.children?.length === 1
+      ) {
+        const list = node.viewModel.firstChild;
+        while (list.viewModel.firstChild) {
+          list.viewModel.firstChild.viewModel.insertBefore(
+            cast(node.viewModel.parent),
+            node,
+          );
+        }
+        // Note. `node` still contains the empty `list`. They will
+        // be removed in the next normalization step below.
+      }
+    }
+  }
+
+  // Remove empty blocks.
   const emptyPredicate = (node?: ViewModelNode) =>
     node &&
     node.viewModel.parent &&
@@ -135,19 +168,7 @@ export function normalizeTree(tree: MarkdownTree) {
       node = emptyPredicate(parent) ? parent : undefined;
     }
   }
-  normalizeSections(tree);
 
-  for (const node of dfs(tree.root)) {
-    if (node.type === 'list') {
-      while (node.viewModel.nextSibling?.type === 'list') {
-        const next = node.viewModel.nextSibling;
-        while (next.viewModel.firstChild) {
-          next.viewModel.firstChild.viewModel.insertBefore(node);
-        }
-        next.viewModel.remove();
-      }
-    }
-  }
   if (!tree.root.viewModel.firstChild) {
     const child = tree.add({
       type: 'paragraph',
