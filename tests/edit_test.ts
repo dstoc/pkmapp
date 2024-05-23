@@ -308,5 +308,21 @@ test.describe('editing', () => {
 
       `);
     });
+    test('expands outwards on each ctrl-a invocation', async ({
+      page: {keyboard},
+    }) => {
+      await keyboard.type('* 1\n');
+      await keyboard.type('2');
+      await keyboard.press('Tab');
+      await keyboard.type('\n3');
+      await keyboard.press('Control+a');
+      await keyboard.press('Control+a');
+      await keyboard.press('Control+a');
+      await keyboard.press('Backspace');
+      expect(await exportMarkdown()).toMatchPretty(`
+        * 1
+
+      `);
+    });
   });
 });

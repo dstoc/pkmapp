@@ -15,6 +15,7 @@
 import {createContext} from '../deps/lit-context.js';
 
 import type {ViewModelNode} from './view-model-node.js';
+import {compareDocumentOrder} from './view-model-util.js';
 
 export class HostContext {
   focusNode?: ViewModelNode;
@@ -39,6 +40,9 @@ export class HostContext {
     }
   }
 
+  // TODO: set and extend should consider the nodes between the arguments
+  // at some point. This will be necessary to extend the selection by
+  // pointer.
   setSelection(anchor: ViewModelNode, focus: ViewModelNode) {
     this.selectionAnchor = anchor;
     this.selectionFocus = focus;
@@ -59,6 +63,25 @@ export class HostContext {
     this.selection.add(to);
     this.selectionFocus = to;
     to.viewModel.observe.notify();
+  }
+
+  expandSelection(nodes: Iterable<ViewModelNode>) {
+    const oldAnchor = this.selectionAnchor;
+    const oldFocus = this.selectionFocus;
+    for (const node of nodes) {
+      this.selection.add(node);
+    }
+    for (const node of nodes) {
+      node.viewModel.observe.notify();
+    }
+    // TODO: Consider whether there's a smarter way to set the
+    // selectionAnchor/focus after this operation.
+    const sorted = [...this.selection].sort(compareDocumentOrder);
+    this.selectionAnchor = sorted[0];
+    this.selectionFocus = sorted[sorted.length - 1];
+    oldAnchor?.viewModel.observe.notify();
+    oldFocus?.viewModel.observe.notify();
+    focusNode(this, this.selectionFocus);
   }
 }
 export const hostContext = createContext<HostContext | undefined>(

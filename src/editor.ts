@@ -76,6 +76,7 @@ import {
   editInlineIndent,
 } from './indent-util.js';
 import {
+  expandSelection,
   getBlockSelectionTarget,
   maybeRemoveSelectedNodes,
   maybeRemoveSelectedNodesIn,
@@ -382,8 +383,7 @@ export class Editor extends LitElement {
           getBlockSelectionTarget(inline) ?? {};
         if (selectedHostContext?.hasSelection) {
           keyboardEvent.preventDefault();
-          // TODO: Grow selection outwards, select all children of
-          // selection roots' parents.
+          expandSelection(selectedHostContext);
         } else {
           const selection = inline.getSelection();
           if (

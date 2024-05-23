@@ -20,9 +20,11 @@ import {focusNode} from './markdown/host-context.js';
 import {
   findPreviousEditable,
   findNextEditable,
+  dfs,
 } from './markdown/view-model-util.js';
 import {MarkdownInline} from './markdown/inline-render.js';
 import {children} from './markdown/view-model-util.js';
+import {isInlineNode} from './markdown/node.js';
 
 export function getBlockSelectionTarget(
   element: Element & {hostContext?: HostContext; node?: ViewModelNode},
@@ -88,4 +90,45 @@ export function maybeRemoveSelectedNodesIn(hostContext: HostContext) {
   }
   hostContext.clearSelection();
   return true;
+}
+
+// take all the nodes in the selection (inline nodes)
+// try to add all their siblings (or children for sections)
+// if nothing was added, find their parents, then add all children
+// repeat until something was added or we reached the top.
+export function expandSelection(hostContext: HostContext) {
+  const visited = new Set<ViewModelNode>();
+  const seeds = new Set<ViewModelNode>(hostContext.selection);
+  for (const node of hostContext.selection) {
+    if (node.type === 'section' && node.viewModel.firstChild) {
+      seeds.add(node.viewModel.firstChild);
+    }
+  }
+  const newNodes = new Set<ViewModelNode>();
+  while (!newNodes.size && seeds.size) {
+    const iteration = [...seeds];
+    seeds.clear();
+    for (const node of iteration) {
+      const next = node.viewModel.parent;
+      if (!next || next === hostContext.root) {
+        continue;
+      }
+      if (!visited.has(next)) {
+        for (const candidate of dfs(next, next, (node) => !visited.has(node))) {
+          if (
+            isInlineNode(candidate) &&
+            !hostContext.selection.has(candidate) &&
+            !newNodes.has(candidate)
+          ) {
+            newNodes.add(candidate);
+          }
+        }
+        seeds.add(next);
+        visited.add(next);
+      }
+    }
+  }
+  if (newNodes.size) {
+    hostContext.expandSelection(newNodes);
+  }
 }

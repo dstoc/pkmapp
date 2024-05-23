@@ -82,16 +82,24 @@ export function* reverseDfs(node: ViewModelNode, limit?: ViewModelNode) {
   } while (true);
 }
 
+/**
+ * Performs an in order traversal starting at `node` and ending at `root`,
+ * or the root of the tree if `root` is not encountered. Optionally `predicate`
+ * may be specified to exclude specific subtrees by returning `false`.
+ */
 export function* dfs(
   node: ViewModelNode,
   root: ViewModelNode = node.viewModel.tree.root,
+  predicate?: (node: ViewModelNode) => boolean,
 ) {
   function next(next?: ViewModelNode) {
     return next && next !== root.viewModel.parent && (node = next);
   }
   do {
-    yield node;
-    if (next(node.viewModel.firstChild)) continue;
+    if (!predicate || predicate(node)) {
+      yield node;
+      if (next(node.viewModel.firstChild)) continue;
+    }
     if (next(node.viewModel.nextSibling)) continue;
     do {
       if (!next(node.viewModel.parent)) return;
@@ -208,10 +216,10 @@ export function* children(node: ViewModelNode) {
  * Returns the values of `nodes` with any nodes that are descendants of
  * others removed.
  */
-export function removeDescendantNodes(nodes: ViewModelNode[]) {
+export function removeDescendantNodes(nodes: Iterable<ViewModelNode>) {
   const roots = new Set<ViewModelNode>(nodes);
   for (const node of nodes) {
-    for (const ancestor of ancestors(node, node.viewModel.tree.root)) {
+    for (const ancestor of ancestors(node)) {
       if (roots.has(ancestor)) {
         roots.delete(node);
         break;
