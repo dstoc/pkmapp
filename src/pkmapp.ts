@@ -38,7 +38,6 @@ import {noAwait} from './async.js';
 import './backup-sidebar.js';
 
 document.adoptedStyleSheets = [...styles];
-// TODO: Use import attributes to add these above, once it's supported in vite.
 noAwait(loadFonts());
 
 const allowedScripts = ['./serviceworker.js'];

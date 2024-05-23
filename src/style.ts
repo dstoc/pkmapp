@@ -56,10 +56,7 @@ export const styles = [
 ];
 
 export async function loadFonts() {
-  // TODO: this is fragile, returns a CSSStyleSheet in vite dev,
-  // but a string in vite build. Only injects into head in vite
-  // build.
-  const [{default: fira}, {default: noto}] = await Promise.all([
+  await Promise.all([
     import('./deps/firacode/fira_code.css', {
       with: {type: 'css'},
     }),
@@ -67,11 +64,4 @@ export async function loadFonts() {
       with: {type: 'css'},
     }),
   ]);
-  if (!import.meta.env?.PROD) {
-    document.adoptedStyleSheets = [
-      ...document.adoptedStyleSheets,
-      fira as unknown as CSSStyleSheet,
-      noto as unknown as CSSStyleSheet,
-    ];
-  }
 }

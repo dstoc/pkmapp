@@ -27,20 +27,16 @@ export function maybeEditBlockSelectionIndent(
     getBlockSelectionTarget(inline) ?? {};
   if (!selectionHostContext) return false;
   const root = cast(selectionHostContext.root);
-  const finish = root.viewModel.tree.edit();
-  try {
-    for (const node of selectionHostContext.selection) {
-      if (mode === 'unindent') {
-        unindent(node, root);
-      } else {
-        indent(node, root);
-      }
+  using _ = root.viewModel.tree.edit();
+  for (const node of selectionHostContext.selection) {
+    if (mode === 'unindent') {
+      unindent(node, root);
+    } else {
+      indent(node, root);
     }
-    focusNode(selectionHostContext, selectionHostContext.selectionFocus!, 0);
-    return true;
-  } finally {
-    finish();
   }
+  focusNode(selectionHostContext, selectionHostContext.selectionFocus!, 0);
+  return true;
 }
 
 export function editInlineIndent(
@@ -51,18 +47,14 @@ export function editInlineIndent(
   const node = cast(inline.node);
   const hostContext = cast(inline.hostContext);
   const root = cast(hostContext.root);
-  const finish = root.viewModel.tree.edit();
-  try {
-    if (selection) {
-      focusNode(hostContext, node, selection.start.index);
-    }
-    if (mode === 'unindent') {
-      unindent(node, root);
-    } else {
-      indent(node, root);
-    }
-  } finally {
-    finish();
+  using _ = root.viewModel.tree.edit();
+  if (selection) {
+    focusNode(hostContext, node, selection.start.index);
+  }
+  if (mode === 'unindent') {
+    unindent(node, root);
+  } else {
+    indent(node, root);
   }
 }
 

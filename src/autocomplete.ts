@@ -123,19 +123,15 @@ export class Autocomplete extends LitElement {
   private getLinkInsertionCommand(inline: MarkdownInline): Command {
     const node = inline.node!;
     const action = async ({name: arg}: {name: string}) => {
-      const finish = node.viewModel.tree.edit();
-      try {
-        const newEndIndex = this.startIndex + arg.length;
-        node.viewModel.edit({
-          startIndex: this.startIndex,
-          newEndIndex,
-          oldEndIndex: this.endIndex,
-          newText: arg,
-        });
-        focusNode(inline.hostContext!, inline.node!, newEndIndex + 1);
-      } finally {
-        finish();
-      }
+      using _ = node.viewModel.tree.edit();
+      const newEndIndex = this.startIndex + arg.length;
+      node.viewModel.edit({
+        startIndex: this.startIndex,
+        newEndIndex,
+        oldEndIndex: this.endIndex,
+        newText: arg,
+      });
+      focusNode(inline.hostContext!, inline.node!, newEndIndex + 1);
       return undefined;
     };
     return {
@@ -196,17 +192,13 @@ export class Autocomplete extends LitElement {
         this.activate(inline, cursorIndex);
       }
     } else if (newText === ']') {
-      const finish = node.viewModel.tree.edit();
-      try {
-        node.viewModel.edit({
-          startIndex: cursorIndex - 1,
-          newEndIndex: cursorIndex - 1,
-          oldEndIndex: cursorIndex,
-          newText: '',
-        });
-      } finally {
-        finish();
-      }
+      using _ = node.viewModel.tree.edit();
+      node.viewModel.edit({
+        startIndex: cursorIndex - 1,
+        newEndIndex: cursorIndex - 1,
+        oldEndIndex: cursorIndex,
+        newText: '',
+      });
       this.abort();
     } else {
       this.endIndex = cursorIndex;

@@ -296,128 +296,125 @@ export class Editor extends LitElement {
       detail: {inline, node, keyboardEvent},
     } = event;
     const hostContext = cast(inline.hostContext);
-    const finishEditing = node.viewModel.tree.edit();
-    try {
-      assert(inline.node);
-      if (this.autocomplete.onInlineKeyDown(event)) {
-        return;
-      } else if (
-        ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(
-          keyboardEvent.key,
-        )
-      ) {
-        keyboardEvent.preventDefault();
-        const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key)
-          ? 'backward'
-          : 'forward';
-        const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
-        const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key)
-          ? 'line'
-          : keyboardEvent.ctrlKey
-            ? 'word'
-            : 'character';
-        const result = hostContext.hasSelection
-          ? 0
-          : inline.moveCaret(alter, direction, granularity);
-        if (result === true) {
-          hostContext.clearSelection();
-        } else {
-          function updateFocus(
-            element: Element & {hostContext?: HostContext},
-            node: ViewModelNode,
-            offset: number,
-          ) {
-            // Retarget if there's any containing transclusion that has a selection.
-            const target = getBlockSelectionTarget(element);
-            if (target) {
-              node = cast(target.node);
-              element = target;
-            }
-            if (alter !== 'extend') {
-              cast(element.hostContext).clearSelection();
-            }
-            while (true) {
-              const root = cast(cast(element.hostContext).root);
-              const next =
-                direction === 'backward'
-                  ? findPreviousEditable(node, root)
-                  : findNextEditable(node, root);
-              if (next) {
-                focusNode(
-                  cast(element.hostContext),
-                  next,
-                  direction === 'backward' ? -offset : offset,
-                );
-                return {node, element, next};
-              } else {
-                const transclusion = getContainingTransclusion(element);
-                if (!transclusion || alter === 'extend') return {};
-                element = transclusion;
-                node = cast(transclusion.node);
-              }
-            }
-          }
-          const {
-            node: updatedNode,
-            element,
-            next,
-          } = updateFocus(inline, node, result);
-          if (next && alter === 'extend') {
-            const hostContext = cast(element.hostContext);
-            if (hostContext.selectionAnchor) {
-              hostContext.extendSelection(updatedNode, next);
-            } else {
-              this.autocomplete.abort();
-              hostContext.setSelection(updatedNode, next);
-            }
-          }
-        }
-      } else if (keyboardEvent.key === 'Tab') {
-        keyboardEvent.preventDefault();
-        const mode = keyboardEvent.shiftKey ? 'unindent' : 'indent';
-        if (maybeEditBlockSelectionIndent(inline, mode)) return;
-        editInlineIndent(inline, mode);
-      } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
-        this.autocomplete.abort();
-        const {hostContext: selectedHostContext} =
-          getBlockSelectionTarget(inline) ?? {};
-        if (selectedHostContext?.hasSelection) {
-          keyboardEvent.preventDefault();
-          expandSelection(selectedHostContext);
-        } else {
-          const selection = inline.getSelection();
-          if (
-            selection &&
-            selection.start.index === 0 &&
-            selection.end.index === inline.node.content.length
-          ) {
-            keyboardEvent.preventDefault();
-            focusNode(hostContext, inline.node);
-            hostContext.setSelection(node, node);
-          }
-        }
-      } else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey) {
-        const {hostContext} = getBlockSelectionTarget(inline) ?? {};
-        if (!hostContext) return;
-        keyboardEvent.preventDefault();
-        noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
-      } else if (keyboardEvent.key === 'x' && keyboardEvent.ctrlKey) {
-        const {hostContext} = getBlockSelectionTarget(inline) ?? {};
-        if (!hostContext) return;
-        keyboardEvent.preventDefault();
-        noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
-        maybeRemoveSelectedNodesIn(hostContext);
+    using _ = node.viewModel.tree.edit();
+
+    assert(inline.node);
+    if (this.autocomplete.onInlineKeyDown(event)) {
+      return;
+    } else if (
+      ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(
+        keyboardEvent.key,
+      )
+    ) {
+      keyboardEvent.preventDefault();
+      const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key)
+        ? 'backward'
+        : 'forward';
+      const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
+      const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key)
+        ? 'line'
+        : keyboardEvent.ctrlKey
+          ? 'word'
+          : 'character';
+      const result = hostContext.hasSelection
+        ? 0
+        : inline.moveCaret(alter, direction, granularity);
+      if (result === true) {
         hostContext.clearSelection();
-      } else if (keyboardEvent.key === 'Escape') {
-        hostContext.clearSelection();
-      } else if (keyboardEvent.key === 'Backspace') {
-        if (!maybeRemoveSelectedNodes(inline)) return;
-        keyboardEvent.preventDefault();
       } else {
-        return;
+        function updateFocus(
+          element: Element & {hostContext?: HostContext},
+          node: ViewModelNode,
+          offset: number,
+        ) {
+          // Retarget if there's any containing transclusion that has a selection.
+          const target = getBlockSelectionTarget(element);
+          if (target) {
+            node = cast(target.node);
+            element = target;
+          }
+          if (alter !== 'extend') {
+            cast(element.hostContext).clearSelection();
+          }
+          while (true) {
+            const root = cast(cast(element.hostContext).root);
+            const next =
+              direction === 'backward'
+                ? findPreviousEditable(node, root)
+                : findNextEditable(node, root);
+            if (next) {
+              focusNode(
+                cast(element.hostContext),
+                next,
+                direction === 'backward' ? -offset : offset,
+              );
+              return {node, element, next};
+            } else {
+              const transclusion = getContainingTransclusion(element);
+              if (!transclusion || alter === 'extend') return {};
+              element = transclusion;
+              node = cast(transclusion.node);
+            }
+          }
+        }
+        const {
+          node: updatedNode,
+          element,
+          next,
+        } = updateFocus(inline, node, result);
+        if (next && alter === 'extend') {
+          const hostContext = cast(element.hostContext);
+          if (hostContext.selectionAnchor) {
+            hostContext.extendSelection(updatedNode, next);
+          } else {
+            this.autocomplete.abort();
+            hostContext.setSelection(updatedNode, next);
+          }
+        }
       }
-    } finally {
-      finishEditing();
+    } else if (keyboardEvent.key === 'Tab') {
+      keyboardEvent.preventDefault();
+      const mode = keyboardEvent.shiftKey ? 'unindent' : 'indent';
+      if (maybeEditBlockSelectionIndent(inline, mode)) return;
+      editInlineIndent(inline, mode);
+    } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
+      this.autocomplete.abort();
+      const {hostContext: selectedHostContext} =
+        getBlockSelectionTarget(inline) ?? {};
+      if (selectedHostContext?.hasSelection) {
+        keyboardEvent.preventDefault();
+        expandSelection(selectedHostContext);
+      } else {
+        const selection = inline.getSelection();
+        if (
+          selection &&
+          selection.start.index === 0 &&
+          selection.end.index === inline.node.content.length
+        ) {
+          keyboardEvent.preventDefault();
+          focusNode(hostContext, inline.node);
+          hostContext.setSelection(node, node);
+        }
+      }
+    } else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey) {
+      const {hostContext} = getBlockSelectionTarget(inline) ?? {};
+      if (!hostContext) return;
+      keyboardEvent.preventDefault();
+      noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
+    } else if (keyboardEvent.key === 'x' && keyboardEvent.ctrlKey) {
+      const {hostContext} = getBlockSelectionTarget(inline) ?? {};
+      if (!hostContext) return;
+      keyboardEvent.preventDefault();
+      noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
+      maybeRemoveSelectedNodesIn(hostContext);
+      hostContext.clearSelection();
+    } else if (keyboardEvent.key === 'Escape') {
+      hostContext.clearSelection();
+    } else if (keyboardEvent.key === 'Backspace') {
+      if (!maybeRemoveSelectedNodes(inline)) return;
+      keyboardEvent.preventDefault();
+    } else {
+      return;
     }
   }
   async triggerPaste(
@@ -448,20 +445,16 @@ export class Editor extends LitElement {
       let text = await navigator.clipboard.readText();
       // TODO: Escape block creation.
       text = text.replace(/\n/g, ' ');
-      const finishEditing = node.viewModel.tree.edit();
-      try {
-        this.editInlineNode(
-          node,
-          {
-            ...edit,
-            newText: text,
-            newEndIndex: edit.oldEndIndex + text.length,
-          },
-          cast(inline.hostContext),
-        ); // TODO: wrong context
-      } finally {
-        finishEditing();
-      }
+      using _ = node.viewModel.tree.edit();
+      this.editInlineNode(
+        node,
+        {
+          ...edit,
+          newText: text,
+          newEndIndex: edit.oldEndIndex + text.length,
+        },
+        cast(inline.hostContext),
+      ); // TODO: wrong context
     }
   }
   onInlineInput(event: CustomEvent<InlineInput>) {
@@ -475,64 +468,60 @@ export class Editor extends LitElement {
     const {hostContext: selectionHostContext} =
       getBlockSelectionTarget(inline) ?? {};
     selectionHostContext?.clearSelection();
-    const finishEditing = inline.node.viewModel.tree.edit();
-    try {
-      if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
-        this.autocomplete.abort();
-        return;
-      }
-      // TODO: Perhaps the remainder should be handled by an inline editor?
-      let newText;
-      let startIndex;
-      let oldEndIndex;
-      let newEndIndex: number;
-      if (
-        inputEvent.inputType === 'insertText' ||
-        inputEvent.inputType === 'insertReplacementText' ||
-        inputEvent.inputType === 'insertFromPaste' ||
-        inputEvent.inputType === 'deleteByCut' ||
-        inputEvent.inputType === 'deleteContentBackward'
-      ) {
-        startIndex = inputStart.index;
-        oldEndIndex = inputEnd.index;
-        if (
-          inputEvent.inputType === 'insertReplacementText' ||
-          inputEvent.inputType === 'insertFromPaste'
-        ) {
-          this.autocomplete.abort();
-          noAwait(
-            this.triggerPaste(inline, inline.node, {startIndex, oldEndIndex}),
-          );
-          return;
-        } else if (inputEvent.inputType === 'deleteByCut') {
-          newText = '';
-        } else if (inputEvent.inputType === 'deleteContentBackward') {
-          newText = '';
-          if (startIndex === oldEndIndex) {
-            startIndex--;
-          }
-          startIndex = Math.max(0, startIndex);
-        } else {
-          newText = inputEvent.data ?? '';
-        }
-        newEndIndex = startIndex + newText.length;
-      } else {
-        console.log('unsupported inputType:', inputEvent.inputType);
-        return;
-      }
-
-      const edit = {
-        newText,
-        startIndex,
-        oldEndIndex,
-        newEndIndex,
-      };
-
-      this.editInlineNode(inline.node, edit, cast(inline.hostContext));
-      noAwait(this.autocomplete.onInlineEdit(inline, newText, newEndIndex));
-    } finally {
-      finishEditing();
+    using _ = inline.node.viewModel.tree.edit();
+    if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
+      this.autocomplete.abort();
+      return;
     }
+    // TODO: Perhaps the remainder should be handled by an inline editor?
+    let newText;
+    let startIndex;
+    let oldEndIndex;
+    let newEndIndex: number;
+    if (
+      inputEvent.inputType === 'insertText' ||
+      inputEvent.inputType === 'insertReplacementText' ||
+      inputEvent.inputType === 'insertFromPaste' ||
+      inputEvent.inputType === 'deleteByCut' ||
+      inputEvent.inputType === 'deleteContentBackward'
+    ) {
+      startIndex = inputStart.index;
+      oldEndIndex = inputEnd.index;
+      if (
+        inputEvent.inputType === 'insertReplacementText' ||
+        inputEvent.inputType === 'insertFromPaste'
+      ) {
+        this.autocomplete.abort();
+        noAwait(
+          this.triggerPaste(inline, inline.node, {startIndex, oldEndIndex}),
+        );
+        return;
+      } else if (inputEvent.inputType === 'deleteByCut') {
+        newText = '';
+      } else if (inputEvent.inputType === 'deleteContentBackward') {
+        newText = '';
+        if (startIndex === oldEndIndex) {
+          startIndex--;
+        }
+        startIndex = Math.max(0, startIndex);
+      } else {
+        newText = inputEvent.data ?? '';
+      }
+      newEndIndex = startIndex + newText.length;
+    } else {
+      console.log('unsupported inputType:', inputEvent.inputType);
+      return;
+    }
+
+    const edit = {
+      newText,
+      startIndex,
+      oldEndIndex,
+      newEndIndex,
+    };
+
+    this.editInlineNode(inline.node, edit, cast(inline.hostContext));
+    noAwait(this.autocomplete.onInlineEdit(inline, newText, newEndIndex));
   }
   private editInlineNode(
     node: InlineViewModelNode,
@@ -802,9 +791,8 @@ export class Editor extends LitElement {
             {
               description: 'Delete transclusion',
               execute: async () => {
-                const finished = transclusion.node!.viewModel.tree.edit();
+                using _ = transclusion.node!.viewModel.tree.edit();
                 transclusion.node!.viewModel.remove();
-                finished();
                 // TODO: focus
               },
             },
@@ -816,7 +804,7 @@ export class Editor extends LitElement {
               description: 'Insert transclusion...',
               execute: async () => {
                 const action = async ({name}: {name: string}) => {
-                  const finished = activeNode.viewModel.tree.edit();
+                  using _ = activeNode.viewModel.tree.edit();
                   const newParagraph = activeNode.viewModel.tree.add({
                     type: 'code-block',
                     info: 'tc',
@@ -826,7 +814,6 @@ export class Editor extends LitElement {
                     cast(activeNode.viewModel.parent),
                     activeNode.viewModel.nextSibling,
                   );
-                  finished();
                   focusNode(activeInline.hostContext!, newParagraph);
                   return undefined;
                 };
@@ -846,7 +833,7 @@ export class Editor extends LitElement {
               description: 'Insert before transclusion',
               execute: async () => {
                 const node = transclusion.node!;
-                const finished = node.viewModel.tree.edit();
+                using _ = node.viewModel.tree.edit();
                 const newParagraph = node.viewModel.tree.add({
                   type: 'paragraph',
                   content: '',
@@ -855,7 +842,6 @@ export class Editor extends LitElement {
                   cast(node.viewModel.parent),
                   node,
                 );
-                finished();
                 focusNode(cast(transclusion.hostContext), newParagraph, 0);
               },
             },
@@ -867,7 +853,7 @@ export class Editor extends LitElement {
               description: 'Insert after transclusion',
               execute: async () => {
                 const node = transclusion.node!;
-                const finished = node.viewModel.tree.edit();
+                using _ = node.viewModel.tree.edit();
                 const newParagraph = node.viewModel.tree.add({
                   type: 'paragraph',
                   content: '',
@@ -876,7 +862,6 @@ export class Editor extends LitElement {
                   cast(node.viewModel.parent),
                   node.viewModel.nextSibling,
                 );
-                finished();
                 focusNode(cast(transclusion.hostContext), newParagraph, 0);
               },
             },
@@ -1313,30 +1298,22 @@ async function sendTo(
       });
       break;
   }
-  const finish = focus.viewModel.tree.edit();
-  try {
-    replacement?.viewModel.insertBefore(cast(focus.viewModel.parent), focus);
-    maybeRemoveSelectedNodesIn(hostContext);
-  } finally {
-    finish();
-  }
+  using _ = focus.viewModel.tree.edit();
+  replacement?.viewModel.insertBefore(cast(focus.viewModel.parent), focus);
+  maybeRemoveSelectedNodesIn(hostContext);
 }
 
 function insertMarkdown(markdown: string, node: ViewModelNode) {
   const {node: root} = parseBlocks(markdown + '\n');
   if (!root) return;
   assert(root.type === 'document' && root.children);
-  const finishEditing = node.viewModel.tree.edit();
-  try {
-    const newNodes = root.children.map((newNode) =>
-      node.viewModel.tree.add<MarkdownNode>(newNode),
-    );
-    const newFocus = findFinalEditable(newNodes[0]);
-    performLogicalInsertion(node, newNodes);
-    return newFocus;
-  } finally {
-    finishEditing();
-  }
+  using _ = node.viewModel.tree.edit();
+  const newNodes = root.children.map((newNode) =>
+    node.viewModel.tree.add<MarkdownNode>(newNode),
+  );
+  const newFocus = findFinalEditable(newNodes[0]);
+  performLogicalInsertion(node, newNodes);
+  return newFocus;
 }
 
 async function copyMarkdownToClipboard(markdown: string) {
@@ -1398,14 +1375,13 @@ function serializeSelection(hostContext: HostContext) {
   const tree = new MarkdownTree({
     type: 'document',
   });
-  const finishEditing = tree.edit();
+  using _ = tree.edit();
   // The document will have an empty paragraph due to normalization.
   cast(tree.root.children)[0].viewModel.remove();
   for (const root of roots) {
     const node = tree.add<MarkdownNode>(root);
     node.viewModel.insertBefore(tree.root);
   }
-  finishEditing();
   return serializeToString(tree.root);
 }
 

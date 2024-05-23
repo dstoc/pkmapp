@@ -53,40 +53,36 @@ export function maybeRemoveSelectedNodesIn(hostContext: HostContext) {
   const nodes = hostContext.selection;
   const context = [];
   const root = cast(hostContext.root);
-  const finish = root.viewModel.tree.edit();
-  try {
-    for (const node of nodes) {
-      node.viewModel.previousSibling &&
-        context.push(node.viewModel.previousSibling);
-      node.viewModel.parent && context.push(node.viewModel.parent);
-      if (node.type === 'section' && node.viewModel.parent) {
-        for (const child of children(node)) {
-          child.viewModel.insertBefore(cast(node.viewModel.parent), node);
-        }
-      }
-      node.viewModel.remove();
-    }
-    let didFocus = false;
-    for (const node of context) {
-      // TODO: this isn't a perfect test that the node is still connected
-      if (node.viewModel.parent) {
-        const prev = findPreviousEditable(node, root, true);
-        if (prev) {
-          focusNode(hostContext, prev, -Infinity);
-          didFocus = true;
-          break;
-        }
+  using _ = root.viewModel.tree.edit();
+  for (const node of nodes) {
+    node.viewModel.previousSibling &&
+      context.push(node.viewModel.previousSibling);
+    node.viewModel.parent && context.push(node.viewModel.parent);
+    if (node.type === 'section' && node.viewModel.parent) {
+      for (const child of children(node)) {
+        child.viewModel.insertBefore(cast(node.viewModel.parent), node);
       }
     }
-    if (!didFocus) {
-      const next = findNextEditable(root, root, true);
-      if (next) {
-        focusNode(hostContext, next, 0);
+    node.viewModel.remove();
+  }
+  let didFocus = false;
+  for (const node of context) {
+    // TODO: this isn't a perfect test that the node is still connected
+    if (node.viewModel.parent) {
+      const prev = findPreviousEditable(node, root, true);
+      if (prev) {
+        focusNode(hostContext, prev, -Infinity);
         didFocus = true;
+        break;
       }
     }
-  } finally {
-    finish();
+  }
+  if (!didFocus) {
+    const next = findNextEditable(root, root, true);
+    if (next) {
+      focusNode(hostContext, next, 0);
+      didFocus = true;
+    }
   }
   hostContext.clearSelection();
   return true;

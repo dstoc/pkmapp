@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "vite dev",
     "preview": "pnpm vitebuild && vite preview",
-    "vitebuild": "vite build --target esnext",
+    "vitebuild": "vite build --target es2022",
     "lint": "tsc --noEmit -p tsconfig.json && eslint src/",
     "update-deps": "./build-wasm.sh && ./build-fonts.sh",
     "build": "pnpm update-deps && pnpm vitebuild",

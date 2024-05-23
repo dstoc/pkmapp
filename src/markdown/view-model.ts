@@ -259,12 +259,11 @@ export class MarkdownTree {
   setRoot(node: DocumentNode & ViewModelNode) {
     assert(node.viewModel.tree === this);
     assert(!node.viewModel.parent);
-    const finish = this.edit();
+    using _ = this.edit();
     if (node !== this.root) {
       this.removed.add(this.root);
       this.root = node;
     }
-    finish();
   }
 
   add<T extends MarkdownNode>(node: T) {
@@ -281,10 +280,13 @@ export class MarkdownTree {
       this.state = 'editing';
       this.removed.clear();
     }
-    this.editCount++;
-    return () => this.finishEdit();
+    const editCount = ++this.editCount;
+    return {
+      [Symbol.dispose]: () => this.finishEdit(editCount),
+    };
   }
-  private finishEdit() {
+  private finishEdit(editCount: number) {
+    assert(this.editCount === editCount);
     assert(this.state === 'editing');
     this.editCount--;
     if (this.editCount > 0) return;
