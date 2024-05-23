@@ -493,11 +493,12 @@ export class Editor extends LitElement {
     ) {
       startIndex = inputStart.index;
       oldEndIndex = inputEnd.index;
-      if (
-        inputEvent.inputType === 'insertReplacementText' ||
-        inputEvent.inputType === 'insertFromPaste'
-      ) {
+      if (inputEvent.inputType === 'insertReplacementText') {
+        newText = inputEvent.dataTransfer?.getData('text/plain') ?? '';
+      } else if (inputEvent.inputType === 'insertFromPaste') {
         this.autocomplete.abort();
+        // Note: We can't use dataTransfer here because not all types are
+        // exposed. 'web text/markdown' for example.
         noAwait(
           this.triggerPaste(inline, inline.node, {startIndex, oldEndIndex}),
         );
