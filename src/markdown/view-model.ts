@@ -307,7 +307,12 @@ export class MarkdownTree {
     assert(node.viewModel.tree === this);
     assert(!node.viewModel.parent);
     using _ = this.edit();
+    // Ensures that the whole tree is considered new and marked
+    // as connected in post-edit.
+    this.editStartVersion = -1;
+    // TODO: Clear undo/redo
     if (node !== this.root) {
+      // Disconnect the existing tree.
       this.removed.add(this.root);
       this.root = node;
     }
@@ -401,11 +406,16 @@ export class MarkdownTree {
         this.delegate?.postEditUpdate(node, 'disconnected');
       }
     }
-    for (const node of dfs(this.root)) {
+    for (const node of dfs(
+      this.root,
+      this.root,
+      (node) => node.viewModel.version > this.editStartVersion,
+    )) {
       if (!node.viewModel.connected) {
         node.viewModel.connected = true;
         this.delegate?.postEditUpdate(node, 'connected');
-      } else if (node.viewModel.version > this.editStartVersion) {
+      } else {
+        assert(node.viewModel.version > this.editStartVersion);
         this.delegate?.postEditUpdate(node, 'changed');
       }
     }
