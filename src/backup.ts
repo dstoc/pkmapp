@@ -72,7 +72,7 @@ export class Backup {
     }
     if (this.state === 'waiting-for-permission') {
       let permission = 'prompt';
-      permission = await this.config.directory.queryPermission({
+      permission = await this.config.directory.requestPermission({
         mode: 'readwrite',
       });
       if (permission !== 'granted') {
