@@ -16,14 +16,7 @@ import {HostContext} from './markdown/host-context.js';
 import type {ViewModelNode} from './markdown/view-model-node.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {assert, cast} from './asserts.js';
-import {focusNode} from './markdown/host-context.js';
-import {
-  findPreviousEditable,
-  findNextEditable,
-  dfs,
-} from './markdown/view-model-util.js';
-import {MarkdownInline} from './markdown/inline-render.js';
-import {children} from './markdown/view-model-util.js';
+import {dfs} from './markdown/view-model-util.js';
 import {isInlineNode} from './markdown/node.js';
 
 export function getBlockSelectionTarget(
@@ -40,52 +33,6 @@ export function getBlockSelectionTarget(
     return transclusion;
   }
   return;
-}
-
-export function maybeRemoveSelectedNodes(inline: MarkdownInline) {
-  const {hostContext} = getBlockSelectionTarget(inline) ?? {};
-  if (!hostContext) return false;
-  return maybeRemoveSelectedNodesIn(hostContext);
-}
-
-export function maybeRemoveSelectedNodesIn(hostContext: HostContext) {
-  if (!hostContext.hasSelection) return false;
-  const nodes = hostContext.selection;
-  const context = [];
-  const root = cast(hostContext.root);
-  using _ = root.viewModel.tree.edit();
-  for (const node of nodes) {
-    node.viewModel.previousSibling &&
-      context.push(node.viewModel.previousSibling);
-    node.viewModel.parent && context.push(node.viewModel.parent);
-    if (node.type === 'section' && node.viewModel.parent) {
-      for (const child of children(node)) {
-        child.viewModel.insertBefore(cast(node.viewModel.parent), node);
-      }
-    }
-    node.viewModel.remove();
-  }
-  let didFocus = false;
-  for (const node of context) {
-    // TODO: this isn't a perfect test that the node is still connected
-    if (node.viewModel.parent) {
-      const prev = findPreviousEditable(node, root, true);
-      if (prev) {
-        focusNode(hostContext, prev, -Infinity);
-        didFocus = true;
-        break;
-      }
-    }
-  }
-  if (!didFocus) {
-    const next = findNextEditable(root, root, true);
-    if (next) {
-      focusNode(hostContext, next, 0);
-      didFocus = true;
-    }
-  }
-  hostContext.clearSelection();
-  return true;
 }
 
 // take all the nodes in the selection (inline nodes)

@@ -45,7 +45,6 @@ import {
   InlineLinkClick,
 } from './markdown/inline-render.js';
 import {InlineNode, MarkdownNode, ParagraphNode} from './markdown/node.js';
-import {normalizeTree} from './markdown/normalize.js';
 import {
   ancestors,
   children,
@@ -70,16 +69,10 @@ import {
 } from './markdown/view-model.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
-import {
-  maybeEditBlockSelectionIndent,
-  unindent,
-  editInlineIndent,
-} from './indent-util.js';
+import {unindent} from './indent-util.js';
 import {
   expandSelection,
   getBlockSelectionTarget,
-  maybeRemoveSelectedNodes,
-  maybeRemoveSelectedNodesIn,
 } from './block-selection-util.js';
 import {
   isLogicalContainingBlock,
@@ -95,11 +88,29 @@ import {debugCommands} from './debug-commands.js';
 import {noAwait} from './async.js';
 import {backupCommands} from './backup-commands.js';
 import {yesNoBundle} from './yes-no-bundle.js';
+import {editBlockSelectionIndent} from './edits/indent-block-selection.js';
+import {editInlineIndent} from './edits/indent-inline.js';
+import {removeSelectedNodes} from './edits/remove-selected-nodes.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
   document: Document;
   root: ViewModelNode;
+}
+
+// eslint-disable-next-line
+type ExcludeFirst<T extends Parameters<any>> = T extends [any, ...infer Rest]
+  ? Rest
+  : never;
+
+export interface EditContext {
+  startEditing(): void;
+  keepFocus(): void;
+  focus(node: ViewModelNode, offset: number): void;
+  clearSelection(): void;
+  readonly selection: Iterable<ViewModelNode>;
+  readonly node: ViewModelNode;
+  readonly root: ViewModelNode;
 }
 
 @customElement('pkm-editor')
@@ -279,6 +290,66 @@ export class Editor extends LitElement {
         }),
       );
   }
+  runEditAction<
+    T extends (
+      state: EditContext,
+      ...args: ExcludeFirst<Parameters<T>>
+    ) => ReturnType<T>,
+  >(
+    element: Element & {hostContext?: HostContext; node?: ViewModelNode},
+    action: T,
+    ...args: ExcludeFirst<Parameters<T>>
+  ): ReturnType<T> {
+    const hostContext = cast(element.hostContext);
+    let edit: Disposable | undefined;
+    let endFocus: {node: ViewModelNode; offset: number} | undefined;
+    const context: EditContext = {
+      get root() {
+        return cast(hostContext.root);
+      },
+      get node() {
+        return cast(element.node);
+      },
+      focus(node: InlineViewModelNode, offset: number) {
+        endFocus = {node, offset};
+      },
+      startEditing() {
+        // TODO: Capture current focus.
+        edit ||= this.node.viewModel.tree.edit();
+      },
+      keepFocus() {
+        if (hostContext.selectionFocus) {
+          this.focus(hostContext.selectionFocus, 0);
+        } else if (element instanceof MarkdownInline) {
+          const selection = element.getSelection();
+          const offset = selection?.start.index ?? 0;
+          this.focus(this.node, offset);
+        } else {
+          // TODO: find focus?
+          throw new Error('TODO: keep focus called but no target');
+        }
+      },
+      clearSelection() {
+        hostContext.clearSelection();
+      },
+      get selection() {
+        return hostContext.selection;
+      },
+    };
+    try {
+      return action(context, ...args);
+    } finally {
+      edit?.[Symbol.dispose]();
+      if (!endFocus) {
+        // TODO: also check that the focus is still connected
+        console.warn(`Edit action: "${action.name}" did not set focus`);
+      } else {
+        hostContext.focusNode = endFocus.node;
+        hostContext.focusOffset = endFocus.offset;
+        endFocus.node.viewModel.observe.notify();
+      }
+    }
+  }
   onInlineLinkClick({detail: {destination}}: CustomEvent<InlineLinkClick>) {
     if (/^(\w)+:/i.test(destination)) {
       window.open(destination);
@@ -374,9 +445,12 @@ export class Editor extends LitElement {
     } else if (keyboardEvent.key === 'Tab') {
       keyboardEvent.preventDefault();
       const mode = keyboardEvent.shiftKey ? 'unindent' : 'indent';
-      using _ = node.viewModel.tree.edit();
-      if (maybeEditBlockSelectionIndent(inline, mode)) return;
-      editInlineIndent(inline, mode);
+      const blockTarget = getBlockSelectionTarget(inline);
+      if (blockTarget) {
+        this.runEditAction(blockTarget, editBlockSelectionIndent, mode);
+      } else {
+        this.runEditAction(inline, editInlineIndent, mode);
+      }
     } else if (keyboardEvent.key === 'z' && keyboardEvent.ctrlKey) {
       event.preventDefault();
       this.document?.tree.undo();
@@ -408,18 +482,22 @@ export class Editor extends LitElement {
       keyboardEvent.preventDefault();
       noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
     } else if (keyboardEvent.key === 'x' && keyboardEvent.ctrlKey) {
-      const {hostContext} = getBlockSelectionTarget(inline) ?? {};
-      if (!hostContext) return;
+      const selectionTarget = getBlockSelectionTarget(inline);
+      if (!selectionTarget?.hostContext) return;
       keyboardEvent.preventDefault();
-      noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
-      using _ = node.viewModel.tree.edit();
-      maybeRemoveSelectedNodesIn(hostContext);
-      hostContext.clearSelection();
+      noAwait(
+        copyMarkdownToClipboard(
+          serializeSelection(selectionTarget.hostContext),
+        ),
+      );
+      this.runEditAction(selectionTarget, removeSelectedNodes);
     } else if (keyboardEvent.key === 'Escape') {
       hostContext.clearSelection();
     } else if (keyboardEvent.key === 'Backspace') {
-      if (!maybeRemoveSelectedNodes(inline)) return;
+      const selectionTarget = getBlockSelectionTarget(inline);
+      if (!selectionTarget?.hostContext) return;
       keyboardEvent.preventDefault();
+      this.runEditAction(selectionTarget, removeSelectedNodes);
     } else {
       return;
     }
@@ -475,7 +553,6 @@ export class Editor extends LitElement {
     const {hostContext: selectionHostContext} =
       getBlockSelectionTarget(inline) ?? {};
     selectionHostContext?.clearSelection();
-    using _ = inline.node.viewModel.tree.edit();
     if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
       this.autocomplete.abort();
       return;
@@ -528,6 +605,7 @@ export class Editor extends LitElement {
       newEndIndex,
     };
 
+    using _ = inline.node.viewModel.tree.edit();
     this.editInlineNode(inline.node, edit, cast(inline.hostContext));
     noAwait(this.autocomplete.onInlineEdit(inline, newText, newEndIndex));
   }
@@ -538,14 +616,16 @@ export class Editor extends LitElement {
   ) {
     const newNodes = node.viewModel.edit(edit);
     if (newNodes) {
-      // TODO: is this needed?
-      normalizeTree(node.viewModel.tree);
+      // Although normalization has not happened, it will never remove an editable.
       const next = findNextEditable(newNodes[0], cast(hostContext.root), true);
       // TODO: is the focus offset always 0? No, the input text might have been
       // "* abc", in which case it should be 3.
       // if (next) focusNode(hostContext, next, 0);
       // But maybe seeking to the end is OK?
-      if (next) focusNode(hostContext, next, next.content.length);
+      // TODO: No, it's not. The input might have added a prefix to existing content.
+      if (next) {
+        focusNode(hostContext, next, next.content.length);
+      }
     } else {
       // TODO: generalize this (inline block mutation)
       const parent = node.viewModel.parent;
@@ -649,19 +729,9 @@ export class Editor extends LitElement {
                   'Send to',
                   this.library,
                   async (result) =>
-                    void sendTo(
-                      result,
-                      this.library,
-                      activeInline.hostContext!,
-                      'remove',
-                    ),
+                    void sendTo(result, this, activeInline, 'remove'),
                   async (result) =>
-                    void sendTo(
-                      result,
-                      this.library,
-                      activeInline.hostContext!,
-                      'remove',
-                    ),
+                    void sendTo(result, this, activeInline, 'remove'),
                 );
               },
             },
@@ -672,19 +742,9 @@ export class Editor extends LitElement {
                   'Send to and transclude',
                   this.library,
                   async (result) =>
-                    void sendTo(
-                      result,
-                      this.library,
-                      activeInline.hostContext!,
-                      'transclude',
-                    ),
+                    void sendTo(result, this, activeInline, 'transclude'),
                   async (result) =>
-                    void sendTo(
-                      result,
-                      this.library,
-                      activeInline.hostContext!,
-                      'transclude',
-                    ),
+                    void sendTo(result, this, activeInline, 'transclude'),
                 );
               },
             },
@@ -695,19 +755,9 @@ export class Editor extends LitElement {
                   'Send to and link',
                   this.library,
                   async (result) =>
-                    void sendTo(
-                      result,
-                      this.library,
-                      activeInline.hostContext!,
-                      'link',
-                    ),
+                    void sendTo(result, this, activeInline, 'link'),
                   async (result) =>
-                    void sendTo(
-                      result,
-                      this.library,
-                      activeInline.hostContext!,
-                      'link',
-                    ),
+                    void sendTo(result, this, activeInline, 'link'),
                 );
               },
             },
@@ -1198,6 +1248,7 @@ function handleInlineInputAsBlockEdit(
   const root = cast(context.root);
   if (inputEvent.inputType === 'deleteContentBackward') {
     if (inputStart.index !== 0 || inputEnd.index !== 0) return false;
+    using _ = inline.node.viewModel.tree.edit();
     const node = inline.node;
     // Turn sections and code-blocks into paragraphs.
     if (node.type === 'section') {
@@ -1252,6 +1303,7 @@ function handleInlineInputAsBlockEdit(
       if (maybeMergeContentInto(node, prev, context)) return true;
     }
   } else if (inputEvent.inputType === 'insertParagraph') {
+    using _ = inline.node.viewModel.tree.edit();
     // TODO: refactor to `insertParagraph()`
     return (
       unindentIfEmptyListItem(inline.node, root, context) ||
@@ -1265,6 +1317,7 @@ function handleInlineInputAsBlockEdit(
       insertSiblingParagraph(inline.node, root, inputStart.index, context)
     );
   } else if (inputEvent.inputType === 'insertLineBreak') {
+    using _ = inline.node.viewModel.tree.edit();
     return insertSiblingParagraph(inline.node, root, inputStart.index, context);
   }
   return false;
@@ -1272,23 +1325,21 @@ function handleInlineInputAsBlockEdit(
 
 async function sendTo(
   {root, name}: {root?: ViewModelNode; name: string},
-  library: Library,
-  hostContext: HostContext,
+  editor: Editor,
+  element: Element & {hostContext?: HostContext; node?: ViewModelNode},
   mode: 'remove' | 'transclude' | 'link',
 ) {
   if (!root) {
-    // TODO: We shouldn't need to make the call here, but TS can't
-    // figure out `root` that root is defined if we reassign it...
-    const root = (await library.newDocument(name)).tree.root;
-    await sendTo({root, name}, library, hostContext, mode);
-    return;
+    root = (await editor.library.newDocument(name)).tree.root;
   }
-  const markdown = serializeSelection(hostContext);
+  assert(root);
+  assert(element.hostContext);
+  const markdown = serializeSelection(element.hostContext);
   insertMarkdown(markdown, root.viewModel.lastChild ?? root);
-  const focus = cast(hostContext.selectionFocus);
+  const focus = cast(element.hostContext.selectionFocus);
   // TODO: if the selection is a section, use that section's name
   const targetName = name;
-  let replacement;
+  let replacement: ViewModelNode | undefined;
   switch (mode) {
     case 'remove':
       break;
@@ -1306,9 +1357,12 @@ async function sendTo(
       });
       break;
   }
-  using _ = focus.viewModel.tree.edit();
-  replacement?.viewModel.insertBefore(cast(focus.viewModel.parent), focus);
-  maybeRemoveSelectedNodesIn(hostContext);
+  // TODO: multiple actions?
+  editor.runEditAction(element, (context: EditContext) => {
+    context.startEditing();
+    replacement?.viewModel.insertBefore(cast(focus.viewModel.parent), focus);
+    removeSelectedNodes(context);
+  });
 }
 
 function insertMarkdown(markdown: string, node: ViewModelNode) {
@@ -1383,12 +1437,14 @@ function serializeSelection(hostContext: HostContext) {
   const tree = new MarkdownTree({
     type: 'document',
   });
-  using _ = tree.edit();
-  // The document will have an empty paragraph due to normalization.
-  cast(tree.root.children)[0].viewModel.remove();
-  for (const root of roots) {
-    const node = tree.add<MarkdownNode>(root);
-    node.viewModel.insertBefore(tree.root);
+  {
+    using _ = tree.edit();
+    // The document will have an empty paragraph due to normalization.
+    cast(tree.root.children)[0].viewModel.remove();
+    for (const root of roots) {
+      const node = tree.add<MarkdownNode>(root);
+      node.viewModel.insertBefore(tree.root);
+    }
   }
   return serializeToString(tree.root);
 }
