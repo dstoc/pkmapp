@@ -106,7 +106,7 @@ export function expandSelection(hostContext: HostContext) {
     seeds.clear();
     for (const node of iteration) {
       const next = node.viewModel.parent;
-      if (!next || next === hostContext.root) {
+      if (!next || next === hostContext.root?.viewModel.parent) {
         continue;
       }
       if (!visited.has(next)) {
