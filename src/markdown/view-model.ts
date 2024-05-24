@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type {MarkdownNode, DocumentNode, InlineNode} from './node.js';
-import type {ViewModelNode, MaybeViewModelNode} from './view-model-node.js';
+import {type MarkdownNode, type DocumentNode, isInlineNode} from './node.js';
+import type {
+  ViewModelNode,
+  MaybeViewModelNode,
+  InlineViewModelNode,
+} from './view-model-node.js';
 
 import {parser as inlineParser} from './inline-parser.js';
 import {parseBlocks} from './block-parser.js';
@@ -22,6 +26,7 @@ import {assert, cast} from '../asserts.js';
 import {Observe} from '../observe.js';
 import {normalizeTree} from './normalize.js';
 import {dfs} from './view-model-util.js';
+import {Op, OpBatch, doOp, undoOp} from './view-model-ops.js';
 
 export class ViewModel {
   constructor(
@@ -53,7 +58,7 @@ export class ViewModel {
   nextSibling?: ViewModelNode;
   previousSibling?: ViewModelNode;
   readonly observe;
-  protected signalMutation(op: UndoRedoOperation, notify = true) {
+  protected signalMutation(op: Op, notify = true) {
     this.version = this.tree.root.viewModel.version + 1;
     this.tree.record(op);
     let parent = this.parent;
@@ -90,8 +95,10 @@ export class ViewModel {
     const nextSibling = this.nextSibling;
     this.signalMutation(
       {
-        undo: () => this.insertBefore(parent, nextSibling),
-        redo: () => this.remove(),
+        type: 'remove',
+        node: this.self,
+        parent,
+        nextSibling,
       },
       false,
     );
@@ -147,8 +154,11 @@ export class ViewModel {
     parent.children.splice(index, 0, this.self);
     this.signalMutation(
       {
-        undo: () => !hadParent && this.remove(),
-        redo: () => this.insertBefore(parent, nextSibling),
+        type: 'insert',
+        node: this.self,
+        hadParent,
+        parent,
+        nextSibling,
       },
       false,
     );
@@ -164,9 +174,10 @@ export class ViewModel {
         if (oldMarker === marker) return;
         (this.self as {marker: string}).marker = marker;
         this.signalMutation({
-          // TODO
-          undo: () => this.updateMarker(oldMarker),
-          redo: () => this.updateMarker(marker),
+          type: 'marker',
+          node: this.self,
+          marker,
+          oldMarker,
         });
         break;
       }
@@ -181,9 +192,10 @@ export class ViewModel {
         if (oldChecked === checked) return;
         (this.self as {checked?: boolean}).checked = checked;
         this.signalMutation({
-          // TODO
-          undo: () => this.updateChecked(oldChecked),
-          redo: () => this.updateChecked(checked),
+          type: 'check',
+          node: this.self,
+          checked,
+          oldChecked,
         });
         break;
       }
@@ -193,7 +205,7 @@ export class ViewModel {
 
 export class InlineViewModel extends ViewModel {
   constructor(
-    self: InlineNode & ViewModelNode,
+    override readonly self: InlineViewModelNode,
     tree: MarkdownTree,
     parent?: ViewModelNode,
     childIndex?: number,
@@ -208,7 +220,6 @@ export class InlineViewModel extends ViewModel {
     }
     return this.inlineTree_;
   }
-  override self: InlineNode & ViewModelNode;
   edit({startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit) {
     const oldText = this.self.content.substring(startIndex, oldEndIndex);
     const result = {
@@ -230,14 +241,10 @@ export class InlineViewModel extends ViewModel {
     this.inlineTree_ = this.inlineTree.edit(result);
     this.inlineTree_ = inlineParser.parse(this.self.content, this.inlineTree);
     this.signalMutation({
-      undo: () =>
-        this.edit({
-          startIndex,
-          newEndIndex: oldEndIndex,
-          oldEndIndex: newEndIndex,
-          newText: oldText,
-        }),
-      redo: () => this.edit({startIndex, newEndIndex, oldEndIndex, newText}),
+      type: 'edit',
+      node: this.self,
+      edit: {startIndex, newEndIndex, oldEndIndex, newText},
+      oldText,
     });
     return null;
   }
@@ -275,11 +282,6 @@ export interface MarkdownTreeDelegate {
   ): void;
 }
 
-interface UndoRedoOperation {
-  undo: () => void;
-  redo: () => void;
-}
-
 export class MarkdownTree {
   constructor(
     root: DocumentNode,
@@ -293,13 +295,13 @@ export class MarkdownTree {
   private editCount = 0;
   private editStartVersion = 0;
   private editResumeObserve: () => void = () => void 0;
-  private editOperations: UndoRedoOperation[] = [];
+  private editOperations: Op[] = [];
   root: ViewModelNode & DocumentNode;
   readonly observe = new Observe(this);
   removed = new Set<ViewModelNode>();
 
-  private undoStack: UndoRedoOperation[][] = [];
-  private redoStack: UndoRedoOperation[][] = [];
+  private undoStack: OpBatch[] = [];
+  private redoStack: OpBatch[] = [];
 
   setRoot(node: DocumentNode & ViewModelNode) {
     assert(node.viewModel.tree === this);
@@ -319,29 +321,38 @@ export class MarkdownTree {
   }
 
   undo() {
-    assert(this.editOperations.length === 0);
+    assert(this.state === 'idle');
     if (!this.undoStack.length) return;
-    const ops = this.undoStack.pop()!;
-    using _ = this.edit();
-    for (const op of ops.toReversed()) {
-      op.undo();
+    const batch = this.undoStack.pop()!;
+    {
+      using edit = this.edit();
+      for (const op of batch.ops.toReversed()) {
+        undoOp(op);
+      }
+      this.editOperations.length = 0;
+      this.redoStack.push(batch);
+      const newOps = edit.commit();
+      assert(newOps.length === 0);
     }
-    this.editOperations.length = 0;
-    this.redoStack.push(ops);
   }
 
   redo() {
-    assert(this.editOperations.length === 0);
+    assert(this.state === 'idle');
     if (!this.redoStack.length) return;
-    const ops = this.redoStack.pop()!;
-    using _ = this.edit();
-    for (const op of ops) {
-      op.redo();
+    const batch = this.redoStack.pop()!;
+    {
+      using edit = this.edit();
+      for (const op of batch.ops) {
+        doOp(op);
+      }
+      this.editOperations.length = 0;
+      this.undoStack.push(batch);
+      const newOps = edit.commit();
+      assert(newOps.length === 0);
     }
-    this.editOperations.length = 0;
-    this.undoStack.push(ops);
   }
 
+  // TODO: Remove recursive edit.
   edit() {
     if (this.state === 'idle') {
       this.editStartVersion = this.root.viewModel.version;
@@ -350,12 +361,23 @@ export class MarkdownTree {
       this.removed.clear();
     }
     const editCount = ++this.editCount;
+    const finish = () => this.finishEdit(editCount);
+    let finished = false;
     return {
-      [Symbol.dispose]: () => this.finishEdit(editCount),
+      commit: () => {
+        assert(!finished);
+        assert(this.editCount === 1);
+        finished = true;
+        return finish();
+      },
+      [Symbol.dispose]() {
+        if (finished) return;
+        finish();
+      },
     };
   }
 
-  record(op: UndoRedoOperation) {
+  record(op: Op) {
     assert(this.state === 'editing');
     this.editOperations.push(op);
   }
@@ -364,7 +386,7 @@ export class MarkdownTree {
     assert(this.editCount === editCount);
     assert(this.state === 'editing');
     this.editCount--;
-    if (this.editCount > 0) return;
+    if (this.editCount > 0) return [];
     normalizeTree(this);
     const removedRoots = new Set<ViewModelNode>();
     for (const node of this.removed.values()) {
@@ -388,8 +410,13 @@ export class MarkdownTree {
       }
     }
 
+    let result: Op[] = [];
     if (this.editOperations.length) {
-      this.undoStack.push([...this.editOperations]);
+      result = [...this.editOperations];
+      this.undoStack.push({
+        ops: [...this.editOperations],
+        timestamp: Date.now(),
+      });
       this.editOperations.length = 0;
       this.redoStack.length = 0;
     }
@@ -401,6 +428,7 @@ export class MarkdownTree {
       this.observe.notify();
     }
     this.editResumeObserve();
+    return result;
   }
 
   private addDom<T extends MarkdownNode>(
@@ -409,13 +437,14 @@ export class MarkdownTree {
     childIndex?: number,
   ) {
     const result = node as T & ViewModelNode;
-    if (
-      result.type === 'paragraph' ||
-      result.type === 'section' ||
-      result.type === 'code-block'
-    ) {
+    if (isInlineNode(result)) {
       assert(!result.viewModel);
-      result.viewModel = new InlineViewModel(result, this, parent, childIndex);
+      result.viewModel = new InlineViewModel(
+        result as InlineViewModelNode,
+        this,
+        parent,
+        childIndex,
+      );
     } else {
       assert(!result.viewModel);
       result.viewModel = new ViewModel(result, this, parent, childIndex);

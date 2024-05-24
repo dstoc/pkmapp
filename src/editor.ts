@@ -296,7 +296,6 @@ export class Editor extends LitElement {
       detail: {inline, node, keyboardEvent},
     } = event;
     const hostContext = cast(inline.hostContext);
-    using _ = node.viewModel.tree.edit();
 
     assert(inline.node);
     if (this.autocomplete.onInlineKeyDown(event)) {
@@ -375,6 +374,7 @@ export class Editor extends LitElement {
     } else if (keyboardEvent.key === 'Tab') {
       keyboardEvent.preventDefault();
       const mode = keyboardEvent.shiftKey ? 'unindent' : 'indent';
+      using _ = node.viewModel.tree.edit();
       if (maybeEditBlockSelectionIndent(inline, mode)) return;
       editInlineIndent(inline, mode);
     } else if (keyboardEvent.key === 'z' && keyboardEvent.ctrlKey) {
@@ -412,6 +412,7 @@ export class Editor extends LitElement {
       if (!hostContext) return;
       keyboardEvent.preventDefault();
       noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
+      using _ = node.viewModel.tree.edit();
       maybeRemoveSelectedNodesIn(hostContext);
       hostContext.clearSelection();
     } else if (keyboardEvent.key === 'Escape') {
