@@ -12,51 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {getBlockSelectionTarget} from './block-selection-util.js';
-import {MarkdownInline} from './markdown/inline-render.js';
 import type {ViewModelNode} from './markdown/view-model-node.js';
 import {cast} from './asserts.js';
-import {focusNode} from './markdown/host-context.js';
 import {findAncestor, ancestors} from './markdown/view-model-util.js';
-
-export function maybeEditBlockSelectionIndent(
-  inline: MarkdownInline,
-  mode: 'indent' | 'unindent',
-) {
-  const {hostContext: selectionHostContext} =
-    getBlockSelectionTarget(inline) ?? {};
-  if (!selectionHostContext) return false;
-  const root = cast(selectionHostContext.root);
-  using _ = root.viewModel.tree.edit();
-  for (const node of selectionHostContext.selection) {
-    if (mode === 'unindent') {
-      unindent(node, root);
-    } else {
-      indent(node, root);
-    }
-  }
-  focusNode(selectionHostContext, selectionHostContext.selectionFocus!, 0);
-  return true;
-}
-
-export function editInlineIndent(
-  inline: MarkdownInline,
-  mode: 'indent' | 'unindent',
-) {
-  const selection = inline.getSelection();
-  const node = cast(inline.node);
-  const hostContext = cast(inline.hostContext);
-  const root = cast(hostContext.root);
-  using _ = root.viewModel.tree.edit();
-  if (selection) {
-    focusNode(hostContext, node, selection.start.index);
-  }
-  if (mode === 'unindent') {
-    unindent(node, root);
-  } else {
-    indent(node, root);
-  }
-}
 
 export function unindent(node: ViewModelNode, root: ViewModelNode) {
   const {ancestor: listItem, path} = findAncestor(node, root, 'list-item');
@@ -108,7 +66,7 @@ export function unindent(node: ViewModelNode, root: ViewModelNode) {
   }
 }
 
-function indent(node: ViewModelNode, root: ViewModelNode) {
+export function indent(node: ViewModelNode, root: ViewModelNode) {
   let target = node;
   for (const ancestor of ancestors(node, root)) {
     if (ancestor.type === 'list-item') {
