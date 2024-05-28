@@ -436,12 +436,20 @@ export class MarkdownTree {
     let result: Op[] = [];
     if (this.editOperations.length) {
       result = [...this.editOperations];
-      this.undoStack.push({
-        ops: [...this.editOperations],
-        timestamp: Date.now(),
-        startFocus,
-        endFocus,
-      });
+      const now = Date.now();
+      const last = this.undoStack.at(-1);
+      if (last && now - last.timestamp < 1000) {
+        last.ops = [...last.ops, ...this.editOperations];
+        last.timestamp = now;
+        last.endFocus = endFocus;
+      } else {
+        this.undoStack.push({
+          ops: [...this.editOperations],
+          timestamp: Date.now(),
+          startFocus,
+          endFocus,
+        });
+      }
       this.editOperations.length = 0;
       this.redoStack.length = 0;
     }
