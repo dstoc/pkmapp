@@ -508,7 +508,7 @@ export class Editor extends LitElement {
     const mdItem = content.find((item) =>
       item.types.includes('web text/markdown'),
     );
-    let mdText;
+    let mdText: string | undefined;
     if (mdItem) {
       const blob = await mdItem.getType('web text/markdown');
       mdText = await blob.text();
@@ -520,8 +520,13 @@ export class Editor extends LitElement {
       mdText = await navigator.clipboard.readText();
     }
     if (mdText) {
-      const newFocus = insertMarkdown(mdText, node);
-      if (newFocus) focusNode(cast(inline.hostContext), newFocus, Infinity);
+      this.runEditAction(inline, (context: EditContext) => {
+        context.startEditing();
+        const newFocus = insertMarkdown(mdText, node);
+        if (newFocus) {
+          context.focus(newFocus, Infinity);
+        }
+      });
     } else {
       let text = await navigator.clipboard.readText();
       // TODO: Escape block creation.
@@ -980,7 +985,6 @@ async function sendTo(
   assert(root);
   assert(element.hostContext);
   const markdown = serializeSelection(element.hostContext);
-  insertMarkdown(markdown, root.viewModel.lastChild ?? root);
   const focus = cast(element.hostContext.selectionFocus);
   // TODO: if the selection is a section, use that section's name
   const targetName = name;
@@ -1002,9 +1006,13 @@ async function sendTo(
       });
       break;
   }
-  // TODO: multiple actions?
   editor.runEditAction(element, (context: EditContext) => {
     context.startEditing();
+    // Note. This insert may or may not be into the same document.
+    // If not, it's harmless to do this here. But if it is part of
+    // the same document this will batch it together with the other
+    // parts of the action.
+    insertMarkdown(markdown, root.viewModel.lastChild ?? root);
     replacement?.viewModel.insertBefore(cast(focus.viewModel.parent), focus);
     removeSelectedNodes(context);
   });
@@ -1014,7 +1022,6 @@ function insertMarkdown(markdown: string, node: ViewModelNode) {
   const {node: root} = parseBlocks(markdown + '\n');
   if (!root) return;
   assert(root.type === 'document' && root.children);
-  using _ = node.viewModel.tree.edit();
   const newNodes = root.children.map((newNode) =>
     node.viewModel.tree.add<MarkdownNode>(newNode),
   );
