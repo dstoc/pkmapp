@@ -44,7 +44,7 @@ import {
   InlineKeyDown,
   InlineLinkClick,
 } from './markdown/inline-render.js';
-import {InlineNode, MarkdownNode, ParagraphNode} from './markdown/node.js';
+import {InlineNode, MarkdownNode} from './markdown/node.js';
 import {
   ancestors,
   children,
@@ -53,8 +53,6 @@ import {
   findNextEditable,
   findPreviousEditable,
   reverseDfs,
-  shallowTraverse,
-  swapNodes,
   removeDescendantNodes,
   cloneNode,
 } from './markdown/view-model-util.js';
@@ -62,14 +60,9 @@ import {
   ViewModelNode,
   InlineViewModelNode,
 } from './markdown/view-model-node.js';
-import {
-  InlineEdit,
-  InlineViewModel,
-  MarkdownTree,
-} from './markdown/view-model.js';
+import {InlineViewModel, MarkdownTree} from './markdown/view-model.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
-import {unindent} from './indent-util.js';
 import {
   expandSelection,
   getBlockSelectionTarget,
@@ -91,6 +84,8 @@ import {yesNoBundle} from './yes-no-bundle.js';
 import {editBlockSelectionIndent} from './edits/indent-block-selection.js';
 import {editInlineIndent} from './edits/indent-inline.js';
 import {removeSelectedNodes} from './edits/remove-selected-nodes.js';
+import {editInlineNode} from './edits/edit-inline-node.js';
+import {insertLineBreak, insertParagraph} from './edits/insert-paragraph.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -104,6 +99,8 @@ type ExcludeFirst<T extends Parameters<any>> = T extends [any, ...infer Rest]
   : never;
 
 export interface EditContext {
+  // TODO: maybe change the API so that the other functions are
+  // available as a result of calling startEditing...
   startEditing(): void;
   keepFocus(): void;
   focus(node: ViewModelNode, offset: number): void;
@@ -340,10 +337,10 @@ export class Editor extends LitElement {
       return action(context, ...args);
     } finally {
       edit?.[Symbol.dispose]();
-      if (!endFocus) {
+      if (edit && !endFocus) {
         // TODO: also check that the focus is still connected
         console.warn(`Edit action: "${action.name}" did not set focus`);
-      } else {
+      } else if (endFocus) {
         hostContext.focusNode = endFocus.node;
         hostContext.focusOffset = endFocus.offset;
         endFocus.node.viewModel.observe.notify();
@@ -530,16 +527,11 @@ export class Editor extends LitElement {
       let text = await navigator.clipboard.readText();
       // TODO: Escape block creation.
       text = text.replace(/\n/g, ' ');
-      using _ = node.viewModel.tree.edit();
-      this.editInlineNode(
-        node,
-        {
-          ...edit,
-          newText: text,
-          newEndIndex: edit.oldEndIndex + text.length,
-        },
-        cast(inline.hostContext),
-      ); // TODO: wrong context
+      this.runEditAction(inline, editInlineNode, {
+        ...edit,
+        newText: text,
+        newEndIndex: edit.oldEndIndex + text.length,
+      }); // TODO: wrong context
     }
   }
   onInlineInput(event: CustomEvent<InlineInput>) {
@@ -553,7 +545,7 @@ export class Editor extends LitElement {
     const {hostContext: selectionHostContext} =
       getBlockSelectionTarget(inline) ?? {};
     selectionHostContext?.clearSelection();
-    if (handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
+    if (this.handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
       this.autocomplete.abort();
       return;
     }
@@ -605,45 +597,88 @@ export class Editor extends LitElement {
       newEndIndex,
     };
 
-    using _ = inline.node.viewModel.tree.edit();
-    this.editInlineNode(inline.node, edit, cast(inline.hostContext));
-    noAwait(this.autocomplete.onInlineEdit(inline, newText, newEndIndex));
+    this.runEditAction(inline, (context: EditContext) => {
+      editInlineNode(context, edit);
+      noAwait(
+        this.autocomplete.onInlineEdit(context, inline, newText, newEndIndex),
+      );
+    });
   }
-  private editInlineNode(
-    node: InlineViewModelNode,
-    edit: InlineEdit,
-    hostContext: HostContext,
-  ) {
-    const newNodes = node.viewModel.edit(edit);
-    if (newNodes) {
-      // Although normalization has not happened, it will never remove an editable.
-      const next = findNextEditable(newNodes[0], cast(hostContext.root), true);
-      // TODO: is the focus offset always 0? No, the input text might have been
-      // "* abc", in which case it should be 3.
-      // if (next) focusNode(hostContext, next, 0);
-      // But maybe seeking to the end is OK?
-      // TODO: No, it's not. The input might have added a prefix to existing content.
-      if (next) {
-        focusNode(hostContext, next, next.content.length);
-      }
-    } else {
-      // TODO: generalize this (inline block mutation)
-      const parent = node.viewModel.parent;
-      if (
-        parent?.type === 'list-item' &&
-        parent.checked === undefined &&
-        /^\[( |x)] /.test(node.content)
-      ) {
-        parent.viewModel.updateChecked(node.content[1] === 'x');
-        node.viewModel.edit({
-          newText: '',
-          startIndex: 0,
-          newEndIndex: 0,
-          oldEndIndex: 4,
+  handleInlineInputAsBlockEdit(
+    {
+      detail: {inline, inputEvent, inputStart, inputEnd},
+    }: CustomEvent<InlineInput>,
+    context: HostContext,
+  ): boolean {
+    if (!inline.node) return false;
+    const root = cast(context.root);
+    if (inputEvent.inputType === 'deleteContentBackward') {
+      if (inputStart.index !== 0 || inputEnd.index !== 0) return false;
+      using _ = inline.node.viewModel.tree.edit();
+      const node = inline.node;
+      // Turn sections and code-blocks into paragraphs.
+      if (node.type === 'section') {
+        node.viewModel.updateMarker(
+          node.marker.substring(0, node.marker.length - 1),
+        );
+        if (node.marker === '') {
+          const paragraph = node.viewModel.tree.add({
+            type: 'paragraph',
+            content: node.content,
+          });
+          paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
+          // Move all section content out.
+          for (const child of children(node)) {
+            child.viewModel.insertBefore(cast(node.viewModel.parent), node);
+          }
+          node.viewModel.remove();
+          focusNode(context, paragraph, 0);
+        } else {
+          focusNode(context, node, 0);
+        }
+        return true;
+      } else if (node.type === 'code-block') {
+        const paragraph = node.viewModel.tree.add({
+          type: 'paragraph',
+          content: node.content, // TODO: detect new blocks
         });
+        paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
+        node.viewModel.remove();
+        focusNode(context, paragraph, 0);
+        return true;
       }
-      focusNode(hostContext, node, edit.newEndIndex);
+
+      // Remove a surrounding block-quote.
+      const {ancestor} = findAncestor(node, root, 'block-quote');
+      if (ancestor) {
+        // Unless there's an earlier opportunity to merge into a previous
+        // content node.
+        for (const prev of reverseDfs(node, ancestor)) {
+          if (maybeMergeContentInto(node, prev, context)) return true;
+        }
+        for (const child of [...children(ancestor)]) {
+          child.viewModel.insertBefore(
+            cast(ancestor.viewModel.parent),
+            ancestor,
+          );
+        }
+        ancestor.viewModel.remove();
+        focusNode(context, node);
+        return true;
+      }
+
+      // Merge into a previous content node.
+      for (const prev of reverseDfs(node)) {
+        if (maybeMergeContentInto(node, prev, context)) return true;
+      }
+    } else if (inputEvent.inputType === 'insertParagraph') {
+      this.runEditAction(inline, insertParagraph, inputStart.index);
+      return true;
+    } else if (inputEvent.inputType === 'insertLineBreak') {
+      this.runEditAction(inline, insertLineBreak, inputStart.index);
+      return true;
     }
+    return false;
   }
   getCommands(): CommandBundle {
     const {
@@ -1013,312 +1048,6 @@ function maybeMergeContentInto(
     });
     node.viewModel.remove();
     return true;
-  }
-  return false;
-}
-
-/**
- * Unindents the immediately containing list-item if `node` is an
- * empty paragraph and the only child of the list-item.
- */
-function unindentIfEmptyListItem(
-  node: InlineNode & ViewModelNode,
-  root: ViewModelNode,
-  context: HostContext,
-): boolean {
-  if (node.type !== 'paragraph') return false;
-  if (node.content.length > 0) return false;
-  const parent = node.viewModel.parent;
-  if (!parent || parent.type !== 'list-item' || parent === root) return false;
-  if (parent.children!.length > 1) return false;
-  unindent(node, root);
-  focusNode(context, node);
-  return true;
-}
-
-/**
- * Splits the first containing block-quote or list-item if `node` is an
- * empty paragraph. The empty paragraph is moved into a sibling, another
- * subequent sibling is created to hold the tail of items following the
- * empty paragraph but within the container.
- */
-function splitBlockQuoteOrListItemOnEmptyParagraph(
-  node: InlineNode & ViewModelNode,
-  root: ViewModelNode,
-  startIndex: number,
-  context: HostContext,
-): boolean {
-  if (node.type !== 'paragraph') return false;
-  if (node.content.length > 0) return false;
-  if (!node.viewModel.parent) return false;
-  const {ancestor} = findAncestor(node, root, 'list-item', 'block-quote');
-  if (!ancestor) return false;
-  if (ancestor === root) return false;
-  const [_self, ...tail] = shallowTraverse(node, ancestor);
-  let target: ViewModelNode;
-  if (ancestor.type === 'list-item') {
-    // Insert a new list-item to hold the empty paragraph.
-    target = node.viewModel.tree.add({
-      type: 'list-item',
-      marker: ancestor.marker,
-    });
-    target.viewModel.insertBefore(
-      cast(ancestor.viewModel.parent),
-      ancestor.viewModel.nextSibling,
-    );
-    node.viewModel.insertBefore(target);
-  } else {
-    // Insert the empty paragraph after the block quote.
-    assert(ancestor.type === 'block-quote');
-    node.viewModel.insertBefore(
-      cast(ancestor.viewModel.parent),
-      ancestor.viewModel.nextSibling,
-    );
-    target = node;
-  }
-  if (tail.length) {
-    // Construct a new block-quote or list-item to hold the tail
-    // of nodes following the empty paragraph.
-    const tailTarget = node.viewModel.tree.add(
-      cloneNode(ancestor, () => false),
-    );
-    tailTarget.viewModel.insertBefore(
-      cast(ancestor.viewModel.parent),
-      target.viewModel.nextSibling,
-    );
-    for (const node of tail) {
-      node.viewModel.insertBefore(tailTarget);
-    }
-  }
-  focusNode(context, node, 0);
-  return true;
-}
-
-function insertSiblingParagraph(
-  node: InlineNode & ViewModelNode,
-  root: ViewModelNode,
-  startIndex: number,
-  context: HostContext,
-): boolean {
-  const newParagraph = node.viewModel.tree.add({
-    type: 'paragraph',
-    content: '',
-  });
-  // Sections are a bit special. The section header is kind of a
-  // sibling of the section content.
-  if (node.type === 'section') {
-    if (startIndex === 0) {
-      // Inserting before the section is also special. Handle it directly rather than
-      // in finishInsertParagraph.
-      newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
-      focusNode(context, newParagraph, 0);
-      return true;
-    }
-    newParagraph.viewModel.insertBefore(node, node.viewModel.firstChild);
-  } else {
-    newParagraph.viewModel.insertBefore(
-      cast(node.viewModel.parent),
-      node.viewModel.nextSibling,
-    );
-  }
-  finishInsertParagraph(node, newParagraph, root, startIndex, context);
-  return true;
-}
-
-/**
- * Inserts a paragraph in a simple-list scenario. That is, when `node`
- * is the first-child of list-item and its next sibling, if any, is
- * a list.
- */
-function insertParagraphInList(
-  node: InlineNode & ViewModelNode,
-  root: ViewModelNode,
-  startIndex: number,
-  context: HostContext,
-): boolean {
-  const {ancestor, path} = findAncestor(node, root, 'list');
-  if (
-    !(
-      ancestor &&
-      node.content.length > 0 &&
-      path &&
-      path.length === 2 &&
-      path[0].type === 'list-item' &&
-      path[1].type === 'paragraph' &&
-      (path[0].children?.length === 1 ||
-        path[1].viewModel.nextSibling?.type === 'list')
-    )
-  ) {
-    // Abort if we're dealing with something other than ithe simple list
-    // scenario.
-    return false;
-  }
-  let targetList;
-  let targetListItemNextSibling;
-  if (node.viewModel.nextSibling) {
-    if (node.viewModel.nextSibling.type === 'list') {
-      targetList = node.viewModel.nextSibling;
-      targetListItemNextSibling = targetList.viewModel.firstChild;
-    } else {
-      targetList = node.viewModel.tree.add({
-        type: 'list',
-      });
-      targetList.viewModel.insertBefore(
-        cast(node.viewModel.parent),
-        node.viewModel.nextSibling,
-      );
-      targetListItemNextSibling = undefined;
-    }
-  } else {
-    targetList = ancestor;
-    targetListItemNextSibling = path[0].viewModel.nextSibling;
-  }
-
-  const firstListItem = targetList.viewModel.firstChild;
-  if (firstListItem && firstListItem.type !== 'list-item') return false;
-  const newListItem = node.viewModel.tree.add({
-    type: 'list-item',
-    marker: firstListItem?.marker ?? '* ',
-  });
-  newListItem.viewModel.insertBefore(targetList, targetListItemNextSibling);
-  if (
-    newListItem.viewModel.previousSibling?.type === 'list-item' &&
-    newListItem.viewModel.previousSibling.checked !== undefined
-  ) {
-    newListItem.viewModel.updateChecked(false);
-  }
-  const newParagraph = node.viewModel.tree.add({
-    type: 'paragraph',
-    content: '',
-  });
-  newParagraph.viewModel.insertBefore(newListItem);
-  finishInsertParagraph(node, newParagraph, root, startIndex, context);
-  return true;
-}
-
-function areAncestorAndDescendant(
-  node: ViewModelNode,
-  node2: ViewModelNode,
-  root: ViewModelNode,
-) {
-  return (
-    [...ancestors(node, root)].includes(node2) ||
-    [...ancestors(node2, root)].includes(node)
-  );
-}
-
-function finishInsertParagraph(
-  node: InlineNode & ViewModelNode,
-  newParagraph: ParagraphNode & ViewModelNode,
-  root: ViewModelNode,
-  startIndex: number,
-  context: HostContext,
-) {
-  const shouldSwap =
-    startIndex === 0 &&
-    node.content.length > 0 &&
-    !areAncestorAndDescendant(node, newParagraph, root);
-  if (shouldSwap) {
-    swapNodes(node, newParagraph);
-  } else {
-    (newParagraph.viewModel as InlineViewModel).edit({
-      startIndex: 0,
-      newEndIndex: 0,
-      oldEndIndex: 0,
-      newText: node.content.substring(startIndex),
-    });
-
-    (node.viewModel as InlineViewModel).edit({
-      startIndex,
-      oldEndIndex: node.content.length,
-      newEndIndex: startIndex,
-      newText: '',
-    });
-  }
-  focusNode(context, newParagraph);
-}
-
-function handleInlineInputAsBlockEdit(
-  {
-    detail: {inline, inputEvent, inputStart, inputEnd},
-  }: CustomEvent<InlineInput>,
-  context: HostContext,
-): boolean {
-  if (!inline.node) return false;
-  const root = cast(context.root);
-  if (inputEvent.inputType === 'deleteContentBackward') {
-    if (inputStart.index !== 0 || inputEnd.index !== 0) return false;
-    using _ = inline.node.viewModel.tree.edit();
-    const node = inline.node;
-    // Turn sections and code-blocks into paragraphs.
-    if (node.type === 'section') {
-      node.viewModel.updateMarker(
-        node.marker.substring(0, node.marker.length - 1),
-      );
-      if (node.marker === '') {
-        const paragraph = node.viewModel.tree.add({
-          type: 'paragraph',
-          content: node.content,
-        });
-        paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
-        // Move all section content out.
-        for (const child of children(node)) {
-          child.viewModel.insertBefore(cast(node.viewModel.parent), node);
-        }
-        node.viewModel.remove();
-        focusNode(context, paragraph, 0);
-      } else {
-        focusNode(context, node, 0);
-      }
-      return true;
-    } else if (node.type === 'code-block') {
-      const paragraph = node.viewModel.tree.add({
-        type: 'paragraph',
-        content: node.content, // TODO: detect new blocks
-      });
-      paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
-      node.viewModel.remove();
-      focusNode(context, paragraph, 0);
-      return true;
-    }
-
-    // Remove a surrounding block-quote.
-    const {ancestor} = findAncestor(node, root, 'block-quote');
-    if (ancestor) {
-      // Unless there's an earlier opportunity to merge into a previous
-      // content node.
-      for (const prev of reverseDfs(node, ancestor)) {
-        if (maybeMergeContentInto(node, prev, context)) return true;
-      }
-      for (const child of [...children(ancestor)]) {
-        child.viewModel.insertBefore(cast(ancestor.viewModel.parent), ancestor);
-      }
-      ancestor.viewModel.remove();
-      focusNode(context, node);
-      return true;
-    }
-
-    // Merge into a previous content node.
-    for (const prev of reverseDfs(node)) {
-      if (maybeMergeContentInto(node, prev, context)) return true;
-    }
-  } else if (inputEvent.inputType === 'insertParagraph') {
-    using _ = inline.node.viewModel.tree.edit();
-    // TODO: refactor to `insertParagraph()`
-    return (
-      unindentIfEmptyListItem(inline.node, root, context) ||
-      splitBlockQuoteOrListItemOnEmptyParagraph(
-        inline.node,
-        root,
-        inputStart.index,
-        context,
-      ) ||
-      insertParagraphInList(inline.node, root, inputStart.index, context) ||
-      insertSiblingParagraph(inline.node, root, inputStart.index, context)
-    );
-  } else if (inputEvent.inputType === 'insertLineBreak') {
-    using _ = inline.node.viewModel.tree.edit();
-    return insertSiblingParagraph(inline.node, root, inputStart.index, context);
   }
   return false;
 }
