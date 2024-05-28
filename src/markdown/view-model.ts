@@ -421,7 +421,7 @@ export class MarkdownTree {
     }
     for (const node of dfs(
       this.root,
-      this.root,
+      undefined,
       (node) => node.viewModel.version > this.editStartVersion,
     )) {
       if (!node.viewModel.connected) {
