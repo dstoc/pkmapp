@@ -332,8 +332,10 @@ export class Editor extends LitElement {
           const offset = selection?.start.index ?? 0;
           this.focus(this.node, offset);
         } else {
-          // TODO: find focus?
-          throw new Error('TODO: keep focus called but no target');
+          const {inline, startIndex} = renderer.getInlineSelection();
+          if (inline?.node) {
+            this.focus(inline.node, startIndex!);
+          }
         }
       },
       clearSelection() {
@@ -346,10 +348,10 @@ export class Editor extends LitElement {
     try {
       return action(context, ...args);
     } finally {
-      edit?.commit(startFocus, endFocus);
-      if (edit && !endFocus) {
+      const ops = edit?.commit(startFocus, endFocus)?.length ?? 0;
+      if (ops > 0 && !endFocus) {
         // TODO: also check that the focus is still connected
-        console.warn(`Edit action: "${action.name}" did not set focus`);
+        console.warn(`Edit action: "${action.name}" did not set final focus`);
       } else if (endFocus) {
         hostContext.focusNode = endFocus.node;
         hostContext.focusOffset = endFocus.offset;
