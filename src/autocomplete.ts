@@ -38,6 +38,7 @@ import {focusNode} from './markdown/host-context.js';
 import {Library} from './library.js';
 import {BlockCommandBundle} from './block-command-bundle.js';
 import {noAwait} from './async.js';
+import {EditContext} from './editor.js';
 
 @customElement('pkm-autocomplete')
 export class Autocomplete extends LitElement {
@@ -161,6 +162,7 @@ export class Autocomplete extends LitElement {
   }
 
   async onInlineEdit(
+    context: EditContext,
     inline: MarkdownInline,
     newText: string,
     cursorIndex: number,
@@ -172,6 +174,7 @@ export class Autocomplete extends LitElement {
     }
     if (this.state === 'inactive') {
       if (newText === '[') {
+        context.startEditing();
         this.activate(inline, cursorIndex);
         node.viewModel.edit({
           startIndex: cursorIndex,
@@ -192,7 +195,7 @@ export class Autocomplete extends LitElement {
         this.activate(inline, cursorIndex);
       }
     } else if (newText === ']') {
-      using _ = node.viewModel.tree.edit();
+      context.startEditing();
       node.viewModel.edit({
         startIndex: cursorIndex - 1,
         newEndIndex: cursorIndex - 1,

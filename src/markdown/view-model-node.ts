@@ -1,4 +1,4 @@
-import type {MarkdownNode, InlineNode} from './node.js';
+import {type MarkdownNode, type InlineNode, isInlineNode} from './node.js';
 import type {ViewModel, InlineViewModel} from './view-model.js';
 
 interface MaybeViewModelNode {
@@ -21,3 +21,9 @@ interface InlineViewModelNode extends ViewModelNode {
 }
 type InlineViewModelNodeType = InlineNode & InlineViewModelNode;
 export {InlineViewModelNodeType as InlineViewModelNode};
+
+export function isInlineViewModelNode(
+  node: ViewModelNodeType,
+): node is InlineViewModelNodeType {
+  return isInlineNode(node);
+}
