@@ -44,15 +44,13 @@ import {
   InlineKeyDown,
   InlineLinkClick,
 } from './markdown/inline-render.js';
-import {InlineNode, MarkdownNode} from './markdown/node.js';
+import {MarkdownNode} from './markdown/node.js';
 import {
   ancestors,
   children,
-  findAncestor,
   findFinalEditable,
   findNextEditable,
   findPreviousEditable,
-  reverseDfs,
   removeDescendantNodes,
   cloneNode,
 } from './markdown/view-model-util.js';
@@ -60,7 +58,7 @@ import {
   ViewModelNode,
   InlineViewModelNode,
 } from './markdown/view-model-node.js';
-import {InlineViewModel, MarkdownTree} from './markdown/view-model.js';
+import {MarkdownTree} from './markdown/view-model.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
 import {
@@ -86,6 +84,7 @@ import {editInlineIndent} from './edits/indent-inline.js';
 import {removeSelectedNodes} from './edits/remove-selected-nodes.js';
 import {editInlineNode} from './edits/edit-inline-node.js';
 import {insertLineBreak, insertParagraph} from './edits/insert-paragraph.js';
+import {deleteContentBackwards} from './edits/delete-content-backwards.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -545,7 +544,7 @@ export class Editor extends LitElement {
     const {hostContext: selectionHostContext} =
       getBlockSelectionTarget(inline) ?? {};
     selectionHostContext?.clearSelection();
-    if (this.handleInlineInputAsBlockEdit(event, cast(inline.hostContext))) {
+    if (this.handleInlineInputAsBlockEdit(event)) {
       this.autocomplete.abort();
       return;
     }
@@ -604,73 +603,13 @@ export class Editor extends LitElement {
       );
     });
   }
-  handleInlineInputAsBlockEdit(
-    {
-      detail: {inline, inputEvent, inputStart, inputEnd},
-    }: CustomEvent<InlineInput>,
-    context: HostContext,
-  ): boolean {
+  handleInlineInputAsBlockEdit({
+    detail: {inline, inputEvent, inputStart, inputEnd},
+  }: CustomEvent<InlineInput>): boolean {
     if (!inline.node) return false;
-    const root = cast(context.root);
     if (inputEvent.inputType === 'deleteContentBackward') {
       if (inputStart.index !== 0 || inputEnd.index !== 0) return false;
-      using _ = inline.node.viewModel.tree.edit();
-      const node = inline.node;
-      // Turn sections and code-blocks into paragraphs.
-      if (node.type === 'section') {
-        node.viewModel.updateMarker(
-          node.marker.substring(0, node.marker.length - 1),
-        );
-        if (node.marker === '') {
-          const paragraph = node.viewModel.tree.add({
-            type: 'paragraph',
-            content: node.content,
-          });
-          paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
-          // Move all section content out.
-          for (const child of children(node)) {
-            child.viewModel.insertBefore(cast(node.viewModel.parent), node);
-          }
-          node.viewModel.remove();
-          focusNode(context, paragraph, 0);
-        } else {
-          focusNode(context, node, 0);
-        }
-        return true;
-      } else if (node.type === 'code-block') {
-        const paragraph = node.viewModel.tree.add({
-          type: 'paragraph',
-          content: node.content, // TODO: detect new blocks
-        });
-        paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
-        node.viewModel.remove();
-        focusNode(context, paragraph, 0);
-        return true;
-      }
-
-      // Remove a surrounding block-quote.
-      const {ancestor} = findAncestor(node, root, 'block-quote');
-      if (ancestor) {
-        // Unless there's an earlier opportunity to merge into a previous
-        // content node.
-        for (const prev of reverseDfs(node, ancestor)) {
-          if (maybeMergeContentInto(node, prev, context)) return true;
-        }
-        for (const child of [...children(ancestor)]) {
-          child.viewModel.insertBefore(
-            cast(ancestor.viewModel.parent),
-            ancestor,
-          );
-        }
-        ancestor.viewModel.remove();
-        focusNode(context, node);
-        return true;
-      }
-
-      // Merge into a previous content node.
-      for (const prev of reverseDfs(node)) {
-        if (maybeMergeContentInto(node, prev, context)) return true;
-      }
+      return this.runEditAction(inline, deleteContentBackwards);
     } else if (inputEvent.inputType === 'insertParagraph') {
       this.runEditAction(inline, insertParagraph, inputStart.index);
       return true;
@@ -1027,29 +966,6 @@ function nextLogicalInsertionPoint(node: ViewModelNode) {
     parent: cast(node.viewModel.parent),
     nextSibling: node.viewModel.nextSibling,
   };
-}
-
-function maybeMergeContentInto(
-  node: InlineNode & ViewModelNode,
-  target: ViewModelNode,
-  context: HostContext,
-): boolean {
-  if (
-    target.type === 'code-block' ||
-    target.type === 'paragraph' ||
-    target.type === 'section'
-  ) {
-    focusNode(context, target, target.content.length);
-    (target.viewModel as InlineViewModel).edit({
-      startIndex: target.content.length,
-      oldEndIndex: target.content.length,
-      newEndIndex: target.content.length + node.content.length,
-      newText: node.content,
-    });
-    node.viewModel.remove();
-    return true;
-  }
-  return false;
 }
 
 async function sendTo(
