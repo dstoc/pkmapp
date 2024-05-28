@@ -41,10 +41,12 @@ export function getBlockSelectionTarget(
 // repeat until something was added or we reached the top.
 export function expandSelection(hostContext: HostContext) {
   const visited = new Set<ViewModelNode>();
-  const seeds = new Set<ViewModelNode>(hostContext.selection);
+  const seeds = new Set<ViewModelNode>();
   for (const node of hostContext.selection) {
     if (node.type === 'section' && node.viewModel.firstChild) {
       seeds.add(node.viewModel.firstChild);
+    } else {
+      seeds.add(node);
     }
   }
   const newNodes = new Set<ViewModelNode>();
@@ -60,8 +62,7 @@ export function expandSelection(hostContext: HostContext) {
         for (const candidate of dfs(next, next, (node) => !visited.has(node))) {
           if (
             isInlineNode(candidate) &&
-            !hostContext.selection.has(candidate) &&
-            !newNodes.has(candidate)
+            !hostContext.selection.has(candidate)
           ) {
             newNodes.add(candidate);
           }

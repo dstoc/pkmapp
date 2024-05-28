@@ -83,17 +83,17 @@ export function* reverseDfs(node: ViewModelNode, limit?: ViewModelNode) {
 }
 
 /**
- * Performs an in order traversal starting at `node` and ending at `root`,
- * or the root of the tree if `root` is not encountered. Optionally `predicate`
+ * Performs an in order traversal starting at `node` and ending before `end`,
+ * or the root of the tree if `end` is not encountered. Optionally `predicate`
  * may be specified to exclude specific subtrees by returning `false`.
  */
 export function* dfs(
   node: ViewModelNode,
-  root: ViewModelNode = node.viewModel.tree.root,
+  end?: ViewModelNode,
   predicate?: (node: ViewModelNode) => boolean,
 ) {
   function next(next?: ViewModelNode) {
-    return next && next !== root.viewModel.parent && (node = next);
+    return next && next !== end && (node = next);
   }
   do {
     if (!predicate || predicate(node)) {
@@ -185,7 +185,7 @@ export function findNextDfs<T extends ViewModelNode>(
   root: ViewModelNode,
   predicate: (node: ViewModelNode) => node is T,
 ) {
-  for (const next of dfs(node, root)) {
+  for (const next of dfs(node, root.viewModel.parent)) {
     if (next !== node && predicate(next)) return next;
   }
   return null;
