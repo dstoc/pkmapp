@@ -3,9 +3,16 @@ import {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
 
 export type Op = RemoveOp | InsertOp | EditOp | UpdateMarkerOp | UpdateCheckOp;
 
+export interface Focus {
+  node: InlineViewModelNode;
+  offset: number;
+}
+
 export interface OpBatch {
   ops: Op[];
   timestamp: number;
+  startFocus?: Focus;
+  endFocus?: Focus;
 }
 
 interface RemoveOp {

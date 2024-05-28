@@ -82,6 +82,7 @@ import {
   insertMarkdown,
   serializeSelection,
 } from './copy-paste-util.js';
+import {MarkdownTreeEdit} from './markdown/view-model.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -294,8 +295,10 @@ export class Editor extends LitElement {
     ...args: ExcludeFirst<Parameters<T>>
   ): ReturnType<T> {
     const hostContext = cast(element.hostContext);
-    let edit: Disposable | undefined;
-    let endFocus: {node: ViewModelNode; offset: number} | undefined;
+    const renderer = this.markdownRenderer;
+    let edit: MarkdownTreeEdit | undefined;
+    let endFocus: {node: InlineViewModelNode; offset: number} | undefined;
+    let startFocus: {node: InlineViewModelNode; offset: number} | undefined;
     const context: EditContext = {
       get root() {
         return cast(hostContext.root);
@@ -307,7 +310,18 @@ export class Editor extends LitElement {
         endFocus = {node, offset};
       },
       startEditing() {
-        // TODO: Capture current focus.
+        if (element instanceof MarkdownInline) {
+          const selection = element.getSelection();
+          if (selection) {
+            startFocus = {node: element.node!, offset: selection.start.index};
+          }
+        }
+        if (!startFocus) {
+          const {inline, startIndex} = renderer.getInlineSelection();
+          if (inline?.node) {
+            startFocus = {node: inline.node, offset: startIndex!};
+          }
+        }
         edit ||= this.node.viewModel.tree.edit();
       },
       keepFocus() {
@@ -332,7 +346,7 @@ export class Editor extends LitElement {
     try {
       return action(context, ...args);
     } finally {
-      edit?.[Symbol.dispose]();
+      edit?.commit(startFocus, endFocus);
       if (edit && !endFocus) {
         // TODO: also check that the focus is still connected
         console.warn(`Edit action: "${action.name}" did not set focus`);
@@ -446,10 +460,22 @@ export class Editor extends LitElement {
       }
     } else if (keyboardEvent.key === 'z' && keyboardEvent.ctrlKey) {
       event.preventDefault();
-      this.document?.tree.undo();
+      const focus = this.document?.tree.undo();
+      if (focus) {
+        hostContext.clearSelection();
+        hostContext.focusNode = focus.node;
+        hostContext.focusOffset = focus.offset;
+        focus.node.viewModel.observe.notify();
+      }
     } else if (keyboardEvent.key === 'y' && keyboardEvent.ctrlKey) {
       event.preventDefault();
-      this.document?.tree.redo();
+      const focus = this.document?.tree.redo();
+      if (focus) {
+        hostContext.clearSelection();
+        hostContext.focusNode = focus.node;
+        hostContext.focusOffset = focus.offset;
+        focus.node.viewModel.observe.notify();
+      }
     } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
       this.autocomplete.abort();
       const {hostContext: selectedHostContext} =
