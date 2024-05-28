@@ -285,3 +285,64 @@ export function compareDocumentOrder(
   }
   return 1;
 }
+
+export function nextLogicalInsertionPoint(node: ViewModelNode) {
+  if (
+    !node.viewModel.nextSibling &&
+    node.viewModel.parent?.type === 'list-item'
+  ) {
+    const listItem = node.viewModel.parent;
+    return {
+      parent: cast(listItem.viewModel.parent),
+      nextSibling: listItem.viewModel.nextSibling,
+    };
+  }
+  return {
+    parent: cast(node.viewModel.parent),
+    nextSibling: node.viewModel.nextSibling,
+  };
+}
+
+export function performLogicalInsertion(
+  context: ViewModelNode,
+  nodes: ViewModelNode[],
+) {
+  let {parent, nextSibling} = nextLogicalInsertionPoint(context);
+  if (context.type === 'section') {
+    // Insertion into a section is append-only. Mainly so that send-to section
+    // is sensible.
+    parent = context;
+    nextSibling = undefined;
+    for (const node of nodes) {
+      if (node.type === 'section') {
+        const list = parent.viewModel.tree.add({type: 'list'});
+        const listItem = parent.viewModel.tree.add({
+          type: 'list-item',
+          marker: '* ',
+        });
+        list.viewModel.insertBefore(parent, nextSibling);
+        listItem.viewModel.insertBefore(list);
+        parent = listItem;
+        nextSibling = undefined;
+        break;
+      }
+    }
+  } else if (parent.type == 'list') {
+    if (nodes.length === 1 && nodes[0].type === 'list') {
+      const [node] = nodes;
+      nodes = [...children(node)];
+    } else {
+      const listItem = parent.viewModel.tree.add({
+        type: 'list-item',
+        // TODO: infer from list
+        marker: '* ',
+      });
+      listItem.viewModel.insertBefore(parent, nextSibling);
+      parent = listItem;
+      nextSibling = undefined;
+    }
+  }
+  for (const node of nodes) {
+    node.viewModel.insertBefore(parent, nextSibling);
+  }
+}
