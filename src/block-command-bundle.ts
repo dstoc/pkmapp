@@ -19,10 +19,10 @@ export class BlockCommandBundle implements CommandBundle {
   constructor(
     readonly description: string,
     private library: Library,
-    private action: (result: Result) => Promise<CommandBundle | undefined>,
+    private action: (result: Result) => Promise<CommandBundle | void>,
     private readonly freeformAction?: (result: {
       name: string;
-    }) => Promise<CommandBundle | undefined>,
+    }) => Promise<CommandBundle | void>,
   ) {}
   async getCommands(input: string) {
     const names = await this.library.getAllNames();
