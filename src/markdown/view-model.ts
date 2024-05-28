@@ -26,7 +26,7 @@ import {assert, cast} from '../asserts.js';
 import {Observe} from '../observe.js';
 import {normalizeTree} from './normalize.js';
 import {dfs} from './view-model-util.js';
-import {Op, OpBatch, doOp, undoOp} from './view-model-ops.js';
+import {Focus, Op, OpBatch, doOp, undoOp} from './view-model-ops.js';
 
 export class ViewModel {
   constructor(
@@ -282,6 +282,11 @@ export interface MarkdownTreeDelegate {
   ): void;
 }
 
+export interface MarkdownTreeEdit {
+  commit: (startFocus?: Focus, endFocus?: Focus) => Op[];
+  [Symbol.dispose]: () => void;
+}
+
 export class MarkdownTree {
   constructor(
     root: DocumentNode,
@@ -339,6 +344,7 @@ export class MarkdownTree {
       const newOps = edit.commit();
       assert(newOps.length === 0);
     }
+    return batch.startFocus;
   }
 
   redo() {
@@ -355,10 +361,11 @@ export class MarkdownTree {
       const newOps = edit.commit();
       assert(newOps.length === 0);
     }
+    return batch.endFocus;
   }
 
   // TODO: Remove recursive edit.
-  edit() {
+  edit(): MarkdownTreeEdit {
     if (this.state === 'idle') {
       this.editStartVersion = this.root.viewModel.version;
       this.editResumeObserve = this.observe.suspend();
@@ -366,14 +373,15 @@ export class MarkdownTree {
       this.removed.clear();
     }
     const editCount = ++this.editCount;
-    const finish = () => this.finishEdit(editCount);
+    const finish = (startFocus?: Focus, endFocus?: Focus) =>
+      this.finishEdit(editCount, startFocus, endFocus);
     let finished = false;
     return {
-      commit: () => {
+      commit: (startFocus?: Focus, endFocus?: Focus) => {
         assert(!finished);
         assert(this.editCount === 1);
         finished = true;
-        return finish();
+        return finish(startFocus, endFocus);
       },
       [Symbol.dispose]() {
         if (finished) return;
@@ -387,7 +395,11 @@ export class MarkdownTree {
     this.editOperations.push(op);
   }
 
-  private finishEdit(editCount: number) {
+  private finishEdit(
+    editCount: number,
+    startFocus: Focus | undefined,
+    endFocus: Focus | undefined,
+  ) {
     assert(this.editCount === editCount);
     assert(this.state === 'editing');
     this.editCount--;
@@ -426,6 +438,8 @@ export class MarkdownTree {
       this.undoStack.push({
         ops: [...this.editOperations],
         timestamp: Date.now(),
+        startFocus,
+        endFocus,
       });
       this.editOperations.length = 0;
       this.redoStack.length = 0;
