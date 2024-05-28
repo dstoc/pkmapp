@@ -160,7 +160,7 @@ export class Editor extends LitElement {
           @inline-keydown=${this.onInlineKeyDown}
         ></md-block-render>
       </div>
-      <pkm-autocomplete></pkm-autocomplete>`;
+      <pkm-autocomplete .editor=${this}></pkm-autocomplete>`;
   }
   override updated() {
     if (this.name === undefined || this.name === this.document?.name) return;

@@ -221,6 +221,7 @@ export class InlineViewModel extends ViewModel {
     return this.inlineTree_;
   }
   edit({startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit) {
+    assert(this.tree.state === 'editing');
     const oldText = this.self.content.substring(startIndex, oldEndIndex);
     const result = {
       oldText,

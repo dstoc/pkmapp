@@ -34,11 +34,10 @@ import {
   Command,
   CommandPalette,
 } from './command-palette.js';
-import {focusNode} from './markdown/host-context.js';
 import {Library} from './library.js';
 import {BlockCommandBundle} from './block-command-bundle.js';
 import {noAwait} from './async.js';
-import {EditContext} from './editor.js';
+import {EditContext, Editor} from './editor.js';
 
 @customElement('pkm-autocomplete')
 export class Autocomplete extends LitElement {
@@ -73,6 +72,8 @@ export class Autocomplete extends LitElement {
   @consume({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
+  @property({reflect: false})
+  editor!: Editor;
   override render() {
     return html`
       <pkm-command-palette
@@ -124,16 +125,17 @@ export class Autocomplete extends LitElement {
   private getLinkInsertionCommand(inline: MarkdownInline): Command {
     const node = inline.node!;
     const action = async ({name: arg}: {name: string}) => {
-      using _ = node.viewModel.tree.edit();
-      const newEndIndex = this.startIndex + arg.length;
-      node.viewModel.edit({
-        startIndex: this.startIndex,
-        newEndIndex,
-        oldEndIndex: this.endIndex,
-        newText: arg,
+      this.editor.runEditAction(inline, (context: EditContext) => {
+        context.startEditing();
+        const newEndIndex = this.startIndex + arg.length;
+        node.viewModel.edit({
+          startIndex: this.startIndex,
+          newEndIndex,
+          oldEndIndex: this.endIndex,
+          newText: arg,
+        });
+        context.focus(inline.node!, newEndIndex + 1);
       });
-      focusNode(inline.hostContext!, inline.node!, newEndIndex + 1);
-      return undefined;
     };
     return {
       description: 'Link...',
@@ -146,15 +148,18 @@ export class Autocomplete extends LitElement {
     const node = inline.node!;
     return {
       execute: async (_command, updatePreview) => {
-        node.viewModel.edit({
-          // TODO: numbers are too contextual
-          startIndex: this.startIndex - 1,
-          newEndIndex: this.startIndex + 2,
-          oldEndIndex: this.endIndex,
-          newText: '[]',
+        this.editor.runEditAction(inline, (context: EditContext) => {
+          context.startEditing();
+          node.viewModel.edit({
+            // TODO: numbers are too contextual
+            startIndex: this.startIndex - 1,
+            newEndIndex: this.startIndex + 2,
+            oldEndIndex: this.endIndex,
+            newText: '[]',
+          });
+          this.endIndex = this.startIndex;
+          context.focus(node, this.startIndex);
         });
-        this.endIndex = this.startIndex;
-        focusNode(inline.hostContext!, node, this.startIndex);
         return command.execute(command, updatePreview);
       },
       description: command.description,
