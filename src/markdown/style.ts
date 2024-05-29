@@ -6,6 +6,7 @@ export const styles = [
     md-inline {
       display: block;
       outline: none;
+      min-height: 1rlh;
     }
     md-inline[active] {
       white-space: pre;
