@@ -517,7 +517,7 @@ export class Editor extends LitElement {
           selection.end.index === inline.node.content.length
         ) {
           keyboardEvent.preventDefault();
-          focusNode(hostContext, inline.node);
+          focusNode(hostContext, inline.node, 0);
           hostContext.setSelection(node, node);
         }
       }

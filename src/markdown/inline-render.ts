@@ -112,43 +112,82 @@ export class MarkdownInline extends LitElement {
   override updated() {
     noAwait(this.maybeSetFocus());
   }
+  private setFocus(focusOffset: number) {
+    const walker = document.createTreeWalker(
+      this,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+    );
+    let next;
+    let offset = 0;
+    const selection = (this.getRootNode() as Document).getSelection()!;
+    let final: MarkdownSpan | Text | undefined;
+    while ((next = walker.nextNode()) && next !== this) {
+      if (next instanceof MarkdownSpan) {
+        offset = next.node!.startIndex;
+        final = next;
+      } else if (next.nodeType === Node.TEXT_NODE) {
+        const length = (next as Text).length;
+        final = next as Text;
+        if (offset + length >= focusOffset) {
+          const index = focusOffset - offset;
+          const range = document.createRange();
+          range.setStart(next, index);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          break;
+        }
+        offset += length;
+      }
+      // Special case when there were no text nodes,
+      // or when the offset was beyond the final text node.
+      if (final) {
+        const range = document.createRange();
+        range.setStart(
+          final,
+          final.nodeType === Node.TEXT_NODE ? (final as Text).length : 0,
+        );
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+  }
   async maybeSetFocus() {
+    if (!this.node) return;
     if (this.hostContext?.focusNode !== this.node) return;
     // Wait for the nested md-span (and all of the decendant md-spans to
     // update).
     await this.span.updateComplete;
     if (this.hostContext?.focusNode !== this.node) return;
     if (!this.isConnected) return;
-    const selection = (this.getRootNode() as Document).getSelection()!;
-    const range = document.createRange();
-    range.setStart(this, 0);
-    selection.removeAllRanges();
-    selection.addRange(range);
     this.active = true;
-    let focusOffset = this.hostContext?.focusOffset;
+    const focusOffset = this.hostContext?.focusOffset;
     if (focusOffset !== undefined) {
-      if (focusOffset < 0 || Object.is(focusOffset, -0)) {
-        let index = NaN;
-        let last = NaN;
-        do {
-          last = index;
-          selection.modify('move', 'forward', 'line');
-          ({
-            start: {index},
-          } = MarkdownInline.getSelectionRange(selection));
-        } while (index !== last);
-        selection.modify('move', 'backward', 'lineboundary');
-        focusOffset = -focusOffset;
-      }
       if (focusOffset === Infinity) {
-        selection.modify('move', 'forward', 'lineboundary');
-      } else {
-        // TODO: Check for overrun first line, but note that this conflicts
-        // with the edit/setFocus case.
-        for (let i = 0; i < focusOffset; i++) {
-          selection.modify('move', 'forward', 'character');
+        // TODO: Double check when we use +Infinity.
+        this.setFocus(this.node.content.length);
+      } else if (focusOffset === -Infinity) {
+        this.setFocus(this.node.content.length);
+      } else if (focusOffset < 0 || Object.is(focusOffset, -0)) {
+        // Move to the end.
+        this.setFocus(this.node.content.length);
+        const selection = (this.getRootNode() as Document).getSelection()!;
+        // Now to the start of the last line.
+        selection.modify('move', 'backward', 'lineboundary');
+        if (focusOffset < 0) {
+          const point = MarkdownInline.nodeOffsetToInputPoint(
+            selection.focusNode!,
+            selection.focusOffset,
+          );
+          if (point.span) {
+            this.setFocus(
+              point.span.node!.startIndex + point.index + -focusOffset,
+            );
+          }
         }
+      } else {
+        this.setFocus(focusOffset);
       }
+
       this.scrollIntoView({
         block: 'nearest',
         inline: 'nearest',
@@ -351,8 +390,8 @@ export class MarkdownSpan extends LitElement {
   @property({type: String, reflect: true}) type = '';
 
   @property({attribute: false}) node?: Parser.SyntaxNode;
-  @queryAll('md-span') spans!: NodeListOf<MarkdownSpan>;
-  nodeIds = new NodeIds();
+  @queryAll(':scope > md-span') spans!: NodeListOf<MarkdownSpan>;
+  text?: string;
 
   constructor() {
     super();
@@ -382,7 +421,6 @@ export class MarkdownSpan extends LitElement {
         (!oldSyntaxNode || oldSyntaxNode.id !== newSyntaxNode.id)
       ) {
         result = true;
-        this.nodeIds?.migrate(oldSyntaxNode, newSyntaxNode);
       }
     }
     if (changed.has('active')) {
@@ -454,6 +492,7 @@ export class MarkdownSpan extends LitElement {
       this.type = '';
       return html`${node}`;
     }
+    this.text = node.text;
     this.type = node.type;
     this.formatting = isFormatting(node);
     let index = node.startIndex;
@@ -490,12 +529,7 @@ export class MarkdownSpan extends LitElement {
         index = node.endIndex;
       }
     }
-    let nextId = -Number.MAX_SAFE_INTEGER;
-    const key = (result: Result) => {
-      if (!result.node) return nextId++;
-      return this.nodeIds.get(result.node);
-    };
-    const content = repeat(results, key, (item) => {
+    const content = repeat(results, (item) => {
       return item.result;
     });
     return content;
@@ -517,41 +551,6 @@ export class MarkdownSpan extends LitElement {
         >`;
       }
     })}`;
-  }
-}
-
-class NodeIds {
-  private idMap = new Map<number, number>();
-  private nextId = 0;
-  get(node: Parser.SyntaxNode) {
-    return this.idMap.get(node.id)!;
-  }
-  migrate(oldNode: Parser.SyntaxNode | undefined, newNode: Parser.SyntaxNode) {
-    const posMap = new Map<number, number>();
-    function key(node: Parser.SyntaxNode) {
-      return node.startIndex;
-    }
-    for (const node of childNodes(oldNode)) {
-      posMap.set(key(node), this.idMap.get(node.id)!);
-    }
-    this.idMap = new Map();
-    for (const node of childNodes(newNode)) {
-      this.idMap.set(node.id, posMap.get(key(node)) ?? this.nextId++);
-    }
-    return this.idMap.size;
-  }
-}
-
-function* childNodes(node?: Parser.SyntaxNode) {
-  if (!node) return;
-  const next = (next: Parser.SyntaxNode | null) => {
-    if (next) node = next;
-    return !!next;
-  };
-  if (next(node.firstChild)) {
-    do {
-      yield node;
-    } while (next(node.nextSibling));
   }
 }
 
