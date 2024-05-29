@@ -103,6 +103,7 @@ export interface EditContext {
   keepFocus(): void;
   focus(node: ViewModelNode, offset: number): void;
   clearSelection(): void;
+  setSelection(nodes: Iterable<InlineViewModelNode>): void;
   readonly selection: Iterable<ViewModelNode>;
   readonly node: ViewModelNode;
   readonly root: ViewModelNode;
@@ -348,6 +349,10 @@ export class Editor extends LitElement {
           }
         }
       },
+      setSelection(nodes: Iterable<InlineViewModelNode>) {
+        hostContext.clearSelection();
+        hostContext.expandSelection(nodes);
+      },
       clearSelection() {
         hostContext.clearSelection();
       },
@@ -566,9 +571,12 @@ export class Editor extends LitElement {
     if (mdText) {
       this.runEditAction(inline, (context: EditContext) => {
         context.startEditing();
-        const newFocus = insertMarkdown(mdText, node);
+        const {newFocus, newInlineNodes} = insertMarkdown(mdText, node) ?? {};
         if (newFocus) {
           context.focus(newFocus, Infinity);
+        }
+        if (newInlineNodes?.length) {
+          context.setSelection(newInlineNodes);
         }
       });
     } else {

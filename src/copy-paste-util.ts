@@ -4,10 +4,14 @@ import {serializeToString} from './markdown/block-serializer.js';
 import {HostContext} from './markdown/host-context.js';
 import {MarkdownNode} from './markdown/node.js';
 import {MarkdownTree} from './markdown/view-model.js';
-import {ViewModelNode} from './markdown/view-model-node.js';
+import {
+  ViewModelNode,
+  isInlineViewModelNode,
+} from './markdown/view-model-node.js';
 import {
   ancestors,
   cloneNode,
+  dfs,
   findFinalEditable,
   performLogicalInsertion,
   removeDescendantNodes,
@@ -20,9 +24,13 @@ export function insertMarkdown(markdown: string, node: ViewModelNode) {
   const newNodes = root.children.map((newNode) =>
     node.viewModel.tree.add<MarkdownNode>(newNode),
   );
+
+  const newInlineNodes = newNodes
+    .flatMap((node) => [...dfs(node, node)])
+    .filter(isInlineViewModelNode);
   const newFocus = findFinalEditable(newNodes[0]);
   performLogicalInsertion(node, newNodes);
-  return newFocus;
+  return {newFocus, newInlineNodes};
 }
 
 export async function copyMarkdownToClipboard(markdown: string) {
