@@ -83,6 +83,7 @@ import {
   serializeSelection,
 } from './copy-paste-util.js';
 import {MarkdownTreeEdit} from './markdown/view-model.js';
+import {Focus} from './markdown/view-model-ops.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -297,8 +298,8 @@ export class Editor extends LitElement {
     const hostContext = cast(element.hostContext);
     const renderer = this.markdownRenderer;
     let edit: MarkdownTreeEdit | undefined;
-    let endFocus: {node: InlineViewModelNode; offset: number} | undefined;
-    let startFocus: {node: InlineViewModelNode; offset: number} | undefined;
+    let endFocus: Focus | undefined;
+    let startFocus: Focus | undefined;
     const context: EditContext = {
       get root() {
         return cast(hostContext.root);
@@ -321,6 +322,15 @@ export class Editor extends LitElement {
           if (inline?.node) {
             startFocus = {node: inline.node, offset: startIndex!};
           }
+        }
+        if (hostContext.hasSelection) {
+          if (!startFocus) {
+            startFocus = {
+              node: hostContext.selectionFocus!,
+              offset: 0,
+            };
+          }
+          startFocus.selection = [...hostContext.selection];
         }
         edit ||= this.node.viewModel.tree.edit();
       },
@@ -348,6 +358,9 @@ export class Editor extends LitElement {
     try {
       return action(context, ...args);
     } finally {
+      if (endFocus && hostContext.hasSelection) {
+        endFocus.selection = [...hostContext.selection];
+      }
       const ops = edit?.commit(startFocus, endFocus)?.length ?? 0;
       if (ops > 0 && !endFocus) {
         // TODO: also check that the focus is still connected
@@ -465,6 +478,9 @@ export class Editor extends LitElement {
       const focus = this.document?.tree.undo();
       if (focus) {
         hostContext.clearSelection();
+        if (focus.selection) {
+          hostContext.expandSelection(focus.selection);
+        }
         hostContext.focusNode = focus.node;
         hostContext.focusOffset = focus.offset;
         focus.node.viewModel.observe.notify();
@@ -474,6 +490,9 @@ export class Editor extends LitElement {
       const focus = this.document?.tree.redo();
       if (focus) {
         hostContext.clearSelection();
+        if (focus.selection) {
+          hostContext.expandSelection(focus.selection);
+        }
         hostContext.focusNode = focus.node;
         hostContext.focusOffset = focus.offset;
         focus.node.viewModel.observe.notify();

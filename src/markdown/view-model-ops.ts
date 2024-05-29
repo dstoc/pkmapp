@@ -6,6 +6,7 @@ export type Op = RemoveOp | InsertOp | EditOp | UpdateMarkerOp | UpdateCheckOp;
 export interface Focus {
   node: InlineViewModelNode;
   offset: number;
+  selection?: InlineViewModelNode[];
 }
 
 export interface OpBatch {
