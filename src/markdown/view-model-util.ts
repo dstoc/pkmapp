@@ -14,13 +14,13 @@
 
 import {assert, cast} from '../asserts.js';
 
-import type {MaybeViewModelNode, ViewModelNode} from './view-model-node.js';
 import {
-  CodeBlockNode,
-  MarkdownNode,
-  ParagraphNode,
-  SectionNode,
-} from './node.js';
+  isInlineViewModelNode,
+  type InlineViewModelNode,
+  type MaybeViewModelNode,
+  type ViewModelNode,
+} from './view-model-node.js';
+import {MarkdownNode} from './node.js';
 
 export function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
   if (node1.viewModel.nextSibling === node2) {
@@ -143,39 +143,33 @@ export function findAncestor(
   return {};
 }
 
-type Editable = ViewModelNode & (ParagraphNode | CodeBlockNode | SectionNode);
-
-function editable(node: ViewModelNode): node is Editable {
-  return ['paragraph', 'code-block', 'section'].includes(node.type);
-}
-
 export function findPreviousEditable(
   node: ViewModelNode,
   root: ViewModelNode,
   include = false,
-): Editable | null {
-  if (include && editable(node)) return node;
-  return findPreviousDfs(node, root, editable);
+): InlineViewModelNode | null {
+  if (include && isInlineViewModelNode(node)) return node;
+  return findPreviousDfs(node, root, isInlineViewModelNode);
 }
 
 export function findNextEditable(
   node: ViewModelNode,
   root: ViewModelNode,
   include = false,
-): Editable | null {
-  if (include && editable(node)) return node;
-  return findNextDfs(node, root, editable);
+): InlineViewModelNode | null {
+  if (include && isInlineViewModelNode(node)) return node;
+  return findNextDfs(node, root, isInlineViewModelNode);
 }
 
 // TODO: why doesn't this return Editable?
 export function findFinalEditable(
   node: ViewModelNode,
   include = false,
-): ViewModelNode | null {
-  let result: Editable | null = null;
-  if (include && editable(node)) result = node;
+): InlineViewModelNode | null {
+  let result: InlineViewModelNode | null = null;
+  if (include && isInlineViewModelNode(node)) result = node;
   for (const next of dfs(node)) {
-    if (editable(next)) result = next;
+    if (isInlineViewModelNode(next)) result = next;
   }
   return result;
 }

@@ -14,16 +14,16 @@
 
 import {createContext} from '../deps/lit-context.js';
 
-import type {ViewModelNode} from './view-model-node.js';
+import type {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
 import {compareDocumentOrder} from './view-model-util.js';
 
 export class HostContext {
-  focusNode?: ViewModelNode;
+  focusNode?: InlineViewModelNode;
   focusOffset?: number;
   root?: ViewModelNode;
-  readonly selection = new Set<ViewModelNode>();
-  selectionAnchor?: ViewModelNode;
-  selectionFocus?: ViewModelNode;
+  readonly selection = new Set<InlineViewModelNode>();
+  selectionAnchor?: InlineViewModelNode;
+  selectionFocus?: InlineViewModelNode;
 
   get hasSelection() {
     return !!this.selection.size;
@@ -43,7 +43,7 @@ export class HostContext {
   // TODO: set and extend should consider the nodes between the arguments
   // at some point. This will be necessary to extend the selection by
   // pointer.
-  setSelection(anchor: ViewModelNode, focus: ViewModelNode) {
+  setSelection(anchor: InlineViewModelNode, focus: InlineViewModelNode) {
     this.selectionAnchor = anchor;
     this.selectionFocus = focus;
     this.selection.add(anchor);
@@ -52,7 +52,7 @@ export class HostContext {
     focus.viewModel.observe.notify();
   }
 
-  extendSelection(from: ViewModelNode, to: ViewModelNode) {
+  extendSelection(from: InlineViewModelNode, to: InlineViewModelNode) {
     if (this.selection.has(to)) {
       this.selection.delete(from);
       if (this.selectionAnchor === from) {
@@ -65,7 +65,7 @@ export class HostContext {
     to.viewModel.observe.notify();
   }
 
-  expandSelection(nodes: Iterable<ViewModelNode>) {
+  expandSelection(nodes: Iterable<InlineViewModelNode>) {
     const oldAnchor = this.selectionAnchor;
     const oldFocus = this.selectionFocus;
     for (const node of nodes) {
@@ -90,7 +90,7 @@ export const hostContext = createContext<HostContext | undefined>(
 
 export function focusNode(
   context: HostContext,
-  node: ViewModelNode,
+  node: InlineViewModelNode,
   offset?: number,
 ) {
   context.focusNode = node;
