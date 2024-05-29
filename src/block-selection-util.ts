@@ -13,14 +13,17 @@
 // limitations under the License.
 
 import {HostContext} from './markdown/host-context.js';
-import type {ViewModelNode} from './markdown/view-model-node.js';
+import type {
+  InlineViewModelNode,
+  ViewModelNode,
+} from './markdown/view-model-node.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {assert, cast} from './asserts.js';
 import {dfs} from './markdown/view-model-util.js';
 import {isInlineNode} from './markdown/node.js';
 
 export function getBlockSelectionTarget(
-  element: Element & {hostContext?: HostContext; node?: ViewModelNode},
+  element: Element & {hostContext?: HostContext; node?: InlineViewModelNode},
 ) {
   if (element.hostContext?.hasSelection) return element;
   // Retarget if there's any containing transclusion that has a selection.
@@ -49,7 +52,7 @@ export function expandSelection(hostContext: HostContext) {
       seeds.add(node);
     }
   }
-  const newNodes = new Set<ViewModelNode>();
+  const newNodes = new Set<InlineViewModelNode>();
   while (!newNodes.size && seeds.size) {
     const iteration = [...seeds];
     seeds.clear();

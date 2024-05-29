@@ -23,7 +23,7 @@ import {
 } from '../deps/lit.js';
 
 import {MarkdownRenderer} from './block-render.js';
-import type {ViewModelNode} from './view-model-node.js';
+import type {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
 import {CodeBlockNode} from './node.js';
 import {Library} from '../library.js';
 import {libraryContext} from '../app-context.js';
@@ -36,7 +36,7 @@ import {noAwait} from '../async.js';
 @customElement('md-transclusion')
 export class MarkdownTransclusion extends LitElement {
   @property({attribute: false}) node:
-    | (ViewModelNode & CodeBlockNode)
+    | (InlineViewModelNode & CodeBlockNode)
     | undefined;
   @consume({context: libraryContext, subscribe: true})
   @state()

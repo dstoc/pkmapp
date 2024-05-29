@@ -37,7 +37,7 @@ export interface InlineInputPoint {
 
 export interface InlineInput {
   inline: MarkdownInline;
-  node: ViewModelNode;
+  node: InlineViewModelNode;
   content: string;
   inputEvent: InputEvent;
   inputStart: InlineInputPoint;
@@ -46,7 +46,7 @@ export interface InlineInput {
 
 export interface InlineKeyDown {
   inline: MarkdownInline;
-  node: ViewModelNode;
+  node: InlineViewModelNode;
   keyboardEvent: KeyboardEvent;
   inputEvent: InputEvent;
 }

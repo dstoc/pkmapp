@@ -403,7 +403,7 @@ export class Editor extends LitElement {
       } else {
         function updateFocus(
           element: Element & {hostContext?: HostContext},
-          node: ViewModelNode,
+          node: InlineViewModelNode,
           offset: number,
         ) {
           // Retarget if there's any containing transclusion that has a selection.

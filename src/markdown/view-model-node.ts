@@ -1,29 +1,46 @@
-import {type MarkdownNode, type InlineNode, isInlineNode} from './node.js';
+import {
+  type MarkdownNode,
+  type InlineNode,
+  isInlineNode,
+  DocumentNode,
+  ListNode,
+  BlockQuoteNode,
+  ListItemNode,
+  UnsupportedNode,
+} from './node.js';
 import type {ViewModel, InlineViewModel} from './view-model.js';
 
-interface MaybeViewModelNode {
+interface MaybeViewModelNodeParts {
   viewModel?: ViewModel;
   children?: MarkdownNode[];
 }
-type MaybeViewModelNodeType = MarkdownNode & MaybeViewModelNode;
-export {MaybeViewModelNodeType as MaybeViewModelNode};
+export type MaybeViewModelNode = MarkdownNode & MaybeViewModelNodeParts;
 
-interface ViewModelNode {
+interface ViewModelNodeParts {
   viewModel: ViewModel;
   children?: (MarkdownNode & ViewModelNode)[];
 }
-type ViewModelNodeType = MarkdownNode & ViewModelNode;
-export {ViewModelNodeType as ViewModelNode};
 
-interface InlineViewModelNode extends ViewModelNode {
+interface InlineViewModelNodeParts extends ViewModelNodeParts {
   viewModel: InlineViewModel;
   children?: (MarkdownNode & ViewModelNode)[];
 }
-type InlineViewModelNodeType = InlineNode & InlineViewModelNode;
-export {InlineViewModelNodeType as InlineViewModelNode};
+
+export type ViewModelNode =
+  | ((
+      | DocumentNode
+      | ListNode
+      | BlockQuoteNode
+      | ListItemNode
+      | UnsupportedNode
+    ) &
+      ViewModelNodeParts)
+  | InlineViewModelNode;
+
+export type InlineViewModelNode = InlineNode & InlineViewModelNodeParts;
 
 export function isInlineViewModelNode(
-  node: ViewModelNodeType,
-): node is InlineViewModelNodeType {
+  node: ViewModelNode,
+): node is InlineViewModelNode {
   return isInlineNode(node);
 }
