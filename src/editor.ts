@@ -687,8 +687,9 @@ export class Editor extends LitElement {
       activeNode?.viewModel.tree === (this.root?.viewModel.tree ?? false);
     const transclusion =
       activeInline && getContainingTransclusion(activeInline);
-    const {hostContext: selectionHostContext} =
-      (activeInline && getBlockSelectionTarget(activeInline)) ?? {};
+    const selectionTarget =
+      activeInline && getBlockSelectionTarget(activeInline);
+    const selectionHostContext = selectionTarget?.hostContext;
     return new SimpleCommandBundle('Choose command...', [
       {
         description: 'Find, Open, Create...',
@@ -750,8 +751,7 @@ export class Editor extends LitElement {
             },
           ]
         : []),
-      // TODO: Should this use selectionHostContext?
-      ...(activeInline?.hostContext?.hasSelection
+      ...(selectionTarget && selectionHostContext?.hasSelection
         ? [
             {
               description: 'Send to...',
@@ -760,9 +760,9 @@ export class Editor extends LitElement {
                   'Send to',
                   this.library,
                   async (result) =>
-                    void sendTo(result, this, activeInline, 'remove'),
+                    void sendTo(result, this, selectionTarget, 'remove'),
                   async (result) =>
-                    void sendTo(result, this, activeInline, 'remove'),
+                    void sendTo(result, this, selectionTarget, 'remove'),
                 );
               },
             },
@@ -773,9 +773,9 @@ export class Editor extends LitElement {
                   'Send to and transclude',
                   this.library,
                   async (result) =>
-                    void sendTo(result, this, activeInline, 'transclude'),
+                    void sendTo(result, this, selectionTarget, 'transclude'),
                   async (result) =>
-                    void sendTo(result, this, activeInline, 'transclude'),
+                    void sendTo(result, this, selectionTarget, 'transclude'),
                 );
               },
             },
@@ -786,9 +786,9 @@ export class Editor extends LitElement {
                   'Send to and link',
                   this.library,
                   async (result) =>
-                    void sendTo(result, this, activeInline, 'link'),
+                    void sendTo(result, this, selectionTarget, 'link'),
                   async (result) =>
-                    void sendTo(result, this, activeInline, 'link'),
+                    void sendTo(result, this, selectionTarget, 'link'),
                 );
               },
             },
@@ -880,9 +880,11 @@ export class Editor extends LitElement {
             {
               description: 'Delete transclusion',
               execute: async () => {
-                using _ = transclusion.node!.viewModel.tree.edit();
-                transclusion.node!.viewModel.remove();
-                // TODO: focus
+                this.runEditAction(transclusion, (context: EditContext) => {
+                  context.startEditing();
+                  transclusion.node!.viewModel.remove();
+                  // TODO: focus
+                });
               },
             },
           ]
@@ -893,18 +895,19 @@ export class Editor extends LitElement {
               description: 'Insert transclusion...',
               execute: async () => {
                 const action = async ({name}: {name: string}) => {
-                  using _ = activeNode.viewModel.tree.edit();
-                  const newParagraph = activeNode.viewModel.tree.add({
-                    type: 'code-block',
-                    info: 'tc',
-                    content: name,
+                  this.runEditAction(activeInline, (context: EditContext) => {
+                    context.startEditing();
+                    context.keepFocus();
+                    const transclusion = activeNode.viewModel.tree.add({
+                      type: 'code-block',
+                      info: 'tc',
+                      content: name,
+                    });
+                    transclusion.viewModel.insertBefore(
+                      cast(activeNode.viewModel.parent),
+                      activeNode.viewModel.nextSibling,
+                    );
                   });
-                  newParagraph.viewModel.insertBefore(
-                    cast(activeNode.viewModel.parent),
-                    activeNode.viewModel.nextSibling,
-                  );
-                  focusNode(activeInline.hostContext!, newParagraph);
-                  return undefined;
                 };
                 return new BlockCommandBundle(
                   'Insert transclusion',
@@ -1004,6 +1007,10 @@ async function sendTo(
     // If not, it's harmless to do this here. But if it is part of
     // the same document this will batch it together with the other
     // parts of the action.
+    using _ =
+      root.viewModel.tree !== element.node?.viewModel.tree
+        ? root.viewModel.tree.edit()
+        : undefined;
     insertMarkdown(markdown, root.viewModel.lastChild ?? root);
     replacement?.viewModel.insertBefore(cast(focus.viewModel.parent), focus);
     removeSelectedNodes(context);
