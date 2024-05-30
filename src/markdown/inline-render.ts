@@ -374,7 +374,6 @@ export class MarkdownSpan extends LitElement {
 
   @property({attribute: false}) node?: Parser.SyntaxNode;
   @queryAll(':scope > md-span') spans!: NodeListOf<MarkdownSpan>;
-  text?: string;
 
   constructor() {
     super();
@@ -482,7 +481,6 @@ export class MarkdownSpan extends LitElement {
       this.type = '';
       return html`${node}`;
     }
-    this.text = node.text;
     this.type = node.type;
     this.formatting = isFormatting(node);
     let index = node.startIndex;
@@ -500,7 +498,7 @@ export class MarkdownSpan extends LitElement {
             index - node.startIndex,
             child.startIndex - node.startIndex,
           );
-          results.push({result: html`${text}`});
+          results.push({result: this.renderText(text)});
         }
         index = child.endIndex;
         results.push({
@@ -525,7 +523,7 @@ export class MarkdownSpan extends LitElement {
     // TODO: skip if the parent (ancestor?) is already a link
     // TODO: Prefixes should come from configuration.
     const parts = content.split(/(\b(?:https?:\/|go|b|cl)\/[^\s]*[\w/=?])/u);
-    if (parts.length === 0) {
+    if (parts.length === 1) {
       return html`${parts[0]}`;
     }
     return html`${parts.map((value, index) => {
