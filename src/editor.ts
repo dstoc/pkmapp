@@ -21,6 +21,7 @@ import {assert, cast} from './asserts.js';
 import {
   Command,
   CommandBundle,
+  InputWrapper,
   SimpleCommandBundle,
 } from './command-palette.js';
 import {consume} from './deps/lit-context.js';
@@ -84,6 +85,7 @@ import {
 } from './copy-paste-util.js';
 import {MarkdownTreeEdit} from './markdown/view-model.js';
 import {Focus} from './markdown/view-model-ops.js';
+import {findOpenCreateBundle} from './commands/find-open-create.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -235,20 +237,7 @@ export class Editor extends LitElement {
         Object.assign(this, old);
         this.dispatchEvent(
           new CustomEvent('editor-commands', {
-            detail: new SimpleCommandBundle(
-              `"${name}" does not exist, create it?`,
-              [
-                {
-                  description: 'Yes',
-                  execute: async () =>
-                    void this.createAndNavigateByName(name, fireEvent),
-                },
-                {
-                  description: 'No',
-                  execute: async () => void 0,
-                },
-              ],
-            ),
+            detail: new InputWrapper(name, findOpenCreateBundle(this)),
             bubbles: true,
             composed: true,
           }),
@@ -694,13 +683,7 @@ export class Editor extends LitElement {
       {
         description: 'Find, Open, Create...',
         execute: async () => {
-          return new BlockCommandBundle(
-            'Find, Open, Create',
-            this.library,
-            async ({document, root}) =>
-              void this.navigate(document, root, true),
-            async ({name}) => void this.createAndNavigateByName(name, true),
-          );
+          return findOpenCreateBundle(this);
         },
       },
       {

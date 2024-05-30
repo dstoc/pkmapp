@@ -28,6 +28,7 @@ import {noAwait} from './async.js';
 
 export interface CommandBundle {
   readonly description: string;
+  readonly input?: string;
   getCommands(input: string, limit: number): Promise<Command[]>;
 }
 
@@ -46,11 +47,25 @@ export interface FreeformCommandTemplate {
   execute: Execute;
 }
 
+export class InputWrapper implements CommandBundle {
+  constructor(
+    readonly input: string,
+    private bundle: CommandBundle,
+  ) {}
+  get description() {
+    return this.bundle.description;
+  }
+  getCommands(input: string, limit: number) {
+    return this.bundle.getCommands(input, limit);
+  }
+}
+
 export class SimpleCommandBundle {
   constructor(
     readonly description: string,
     private commands: Command[],
     private freeform?: FreeformCommandTemplate,
+    readonly input?: string,
   ) {}
   async execute() {
     return this;
@@ -289,7 +304,11 @@ export class CommandPalette extends LitElement {
   async trigger(bundle: CommandBundle) {
     await this.reset();
     this.bundle = bundle;
-    await this.onInput();
+    if (bundle.input !== undefined) {
+      await this.setInput(bundle.input);
+    } else {
+      await this.onInput();
+    }
   }
   async triggerCommand(command: Command) {
     const bundle = await command.execute(
