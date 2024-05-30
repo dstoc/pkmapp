@@ -8,11 +8,10 @@ export const styles = [
       outline: none;
       min-height: 1rlh;
     }
-    md-inline[active] {
+    md-inline:focus-within {
       white-space: pre;
-      --focus-invalid: --;
     }
-    md-inline[active] * {
+    md-inline:focus-within * {
       white-space: pre-wrap;
     }
     md-span a,
@@ -26,17 +25,23 @@ export const styles = [
     md-span[type='backslash_escape']::first-letter {
       font-size: 0;
     }
-    md-span[type='link_destination'],
-    md-span[type='link_title'],
-    md-span[type='code_span_delimiter'],
-    md-span[type='emphasis_delimiter'] {
-      display: var(--focus-invalid, none);
+    md-inline:not(:focus-within)
+      :is(
+        md-span[type='link_destination'],
+        md-span[type='link_title'],
+        md-span[type='code_span_delimiter'],
+        md-span[type='emphasis_delimiter']
+      ) {
+      display: none;
     }
-    md-span[type='inline_link'],
-    md-span[type='image'],
-    md-span[type='shortcut_link'] {
-      visibility: var(--focus-invalid, collapse);
-      font-size: var(--focus-invalid, 0);
+    md-inline:not(:focus-within)
+      :is(
+        md-span[type='inline_link'],
+        md-span[type='image'],
+        md-span[type='shortcut_link']
+      ) {
+      visibility: collapse;
+      font-size: 0;
     }
     a,
     md-span[type='shortcut_link'],
