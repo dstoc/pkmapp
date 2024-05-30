@@ -1,5 +1,6 @@
 import {InlineEdit} from './view-model';
 import {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
+import {isAncestorOf} from './view-model-util';
 
 export type Op = RemoveOp | InsertOp | EditOp | UpdateMarkerOp | UpdateCheckOp;
 
@@ -97,4 +98,36 @@ export function undoOp(op: Op) {
       op.node.viewModel.insertBefore(op.parent, op.nextSibling);
       break;
   }
+}
+
+type Classification = 'inside' | 'outside' | 'both';
+export function classify(root: ViewModelNode, batch: OpBatch): Classification {
+  let result: Classification | undefined;
+  function merge(node?: ViewModelNode) {
+    if (!node) return;
+    if (!node.viewModel.connected) return;
+    const value =
+      root === node || isAncestorOf(root, node) ? 'inside' : 'outside';
+    if (result === undefined) {
+      result = value;
+    } else if (result !== value) {
+      result = 'both';
+    }
+  }
+  for (const op of batch.ops) {
+    switch (op.type) {
+      case 'check':
+      case 'edit':
+      case 'marker':
+        merge(op.node);
+        break;
+      case 'insert':
+      case 'remove':
+        merge(op.node);
+        merge(op.parent);
+        merge(op.nextSibling);
+        break;
+    }
+  }
+  return result ?? 'inside';
 }

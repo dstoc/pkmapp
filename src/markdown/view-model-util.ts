@@ -37,17 +37,11 @@ export function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
   node2.viewModel.insertBefore(node1Parent, node1NextSibling);
 }
 
-export function isAncestorOf(
-  maybeAncestor: ViewModelNode,
-  descendant: ViewModelNode,
-) {
-  for (const ancestor of ancestors(
-    descendant,
-    descendant.viewModel.tree.root,
-  )) {
-    if (ancestor === maybeAncestor) {
-      return true;
-    }
+export function isAncestorOf(ancestor: ViewModelNode, node: ViewModelNode) {
+  let parent = node.viewModel.parent;
+  while (parent) {
+    if (parent === ancestor) return true;
+    parent = parent.viewModel.parent;
   }
   return false;
 }
@@ -257,12 +251,8 @@ export function compareDocumentOrder(
   if (node1 === node2) return 0;
   const node1Chain = [node1, ...ancestors(node1)];
   const node2Chain = [node2, ...ancestors(node2)];
-  assert(
-    node1Chain.at(-1) === node2Chain.at(-1),
-  );
-  while (
-    node1Chain.at(-1) === node2Chain.at(-1)
-  ) {
+  assert(node1Chain.at(-1) === node2Chain.at(-1));
+  while (node1Chain.at(-1) === node2Chain.at(-1)) {
     node1Chain.pop();
     node2Chain.pop();
   }

@@ -468,8 +468,9 @@ export class Editor extends LitElement {
         this.runEditAction(inline, editInlineIndent, mode);
       }
     } else if (keyboardEvent.key === 'z' && keyboardEvent.ctrlKey) {
+      if (!hostContext.root) return;
       event.preventDefault();
-      const focus = this.document?.tree.undo();
+      const focus = hostContext.root.viewModel.tree.undo(hostContext.root);
       if (focus) {
         hostContext.clearSelection();
         if (focus.selection) {
@@ -480,8 +481,9 @@ export class Editor extends LitElement {
         focus.node.viewModel.observe.notify();
       }
     } else if (keyboardEvent.key === 'y' && keyboardEvent.ctrlKey) {
+      if (!hostContext.root) return;
       event.preventDefault();
-      const focus = this.document?.tree.redo();
+      const focus = hostContext.root.viewModel.tree.redo(hostContext.root);
       if (focus) {
         hostContext.clearSelection();
         if (focus.selection) {

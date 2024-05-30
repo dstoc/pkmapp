@@ -26,7 +26,7 @@ import {assert, cast} from '../asserts.js';
 import {Observe} from '../observe.js';
 import {normalizeTree} from './normalize.js';
 import {dfs} from './view-model-util.js';
-import {Focus, Op, OpBatch, doOp, undoOp} from './view-model-ops.js';
+import {Focus, Op, OpBatch, classify, doOp, undoOp} from './view-model-ops.js';
 
 export class ViewModel {
   constructor(
@@ -331,10 +331,19 @@ export class MarkdownTree {
     return this.addDom(node);
   }
 
-  undo() {
+  undo(root: ViewModelNode) {
     assert(this.state === 'idle');
-    if (!this.undoStack.length) return;
-    const batch = this.undoStack.pop()!;
+    let batch: OpBatch | undefined = undefined;
+    for (let i = this.undoStack.length - 1; i >= 0; i--) {
+      const classification = classify(root, this.undoStack[i]);
+      if (classification === 'outside') continue;
+      if (classification === 'inside') {
+        [batch] = this.undoStack.splice(i, 1);
+        break;
+      }
+      if (classification === 'both') return;
+    }
+    if (!batch) return;
     {
       using edit = this.edit();
       for (const op of batch.ops.toReversed()) {
@@ -348,10 +357,19 @@ export class MarkdownTree {
     return batch.startFocus;
   }
 
-  redo() {
+  redo(root: ViewModelNode) {
     assert(this.state === 'idle');
-    if (!this.redoStack.length) return;
-    const batch = this.redoStack.pop()!;
+    let batch: OpBatch | undefined = undefined;
+    for (let i = this.redoStack.length - 1; i >= 0; i--) {
+      const classification = classify(root, this.redoStack[i]);
+      if (classification === 'outside') continue;
+      if (classification === 'inside') {
+        [batch] = this.redoStack.splice(i, 1);
+        break;
+      }
+      if (classification === 'both') return;
+    }
+    if (!batch) return;
     {
       using edit = this.edit();
       for (const op of batch.ops) {
