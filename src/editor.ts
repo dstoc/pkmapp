@@ -837,6 +837,14 @@ export class Editor extends LitElement {
                   startIndex,
                 );
               },
+              preview: () => {
+                const block = isLogicalContainingBlock(activeNode)
+                  ? activeNode
+                  : getLogicalContainingBlock(activeNode);
+                return block
+                  ? html`<md-block-render .block=${block}></md-block-render>`
+                  : html``;
+              },
             },
           ]
         : []),
@@ -856,6 +864,14 @@ export class Editor extends LitElement {
                     startIndex,
                   );
               },
+              preview: () => {
+                const block = getLogicalContainingBlock(
+                  this.root?.viewModel.parent,
+                );
+                return block
+                  ? html`<md-block-render .block=${block}></md-block-render>`
+                  : html``;
+              },
             },
           ]
         : []),
@@ -871,6 +887,12 @@ export class Editor extends LitElement {
                     activeNode,
                     startIndex,
                   );
+              },
+              preview: () => {
+                const block = this.document?.tree.root;
+                return block
+                  ? html`<md-block-render .block=${block}></md-block-render>`
+                  : html``;
               },
             },
           ]
