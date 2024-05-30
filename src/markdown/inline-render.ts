@@ -71,35 +71,20 @@ export class MarkdownInline extends LitElement {
     this.addEventListener('beforeinput', this.onBeforeInput, {capture: true});
     this.addEventListener('keydown', this.onKeyDown, {capture: true});
     this.addEventListener('pointerdown', this.onPointerDown);
-    this.addEventListener('pointerup', () => {
-      if (this.hasFocus) {
-        this.active = true;
-      }
-    });
-    this.addEventListener('focus', () => {
-      this.hasFocus = true;
-    });
-    this.addEventListener('blur', () => {
-      this.active = false;
-      this.hasFocus = false;
-    });
   }
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
   hostContext: HostContext | undefined;
   @property({type: Object, reflect: false}) node?: InlineViewModelNode;
   @property({type: Boolean, reflect: true}) contenteditable = true;
-  @property({type: Boolean, reflect: true}) active = false;
   @property({type: Boolean, reflect: true}) selected?: boolean;
   @query('md-span') span!: MarkdownSpan;
-  hasFocus = false;
 
   override render() {
     if (!this.node) return;
     this.selected = this.hostContext?.selection.has(this.node) ?? false;
     return html`<md-span
       .node=${this.node.viewModel.inlineTree.rootNode}
-      .active=${this.active}
     ></md-span>`;
   }
   override willUpdate(changedProperties: Map<string, unknown>) {
@@ -159,7 +144,6 @@ export class MarkdownInline extends LitElement {
     await this.span.updateComplete;
     if (this.hostContext?.focusNode !== this.node) return;
     if (!this.isConnected) return;
-    this.active = true;
     const focusOffset = this.hostContext?.focusOffset;
     if (focusOffset !== undefined) {
       if (focusOffset === Infinity) {
@@ -385,7 +369,6 @@ export class MarkdownInline extends LitElement {
 
 @customElement('md-span')
 export class MarkdownSpan extends LitElement {
-  @property({type: Boolean, reflect: true}) active = false;
   @property({type: Boolean, reflect: true}) formatting = false;
   @property({type: String, reflect: true}) type = '';
 
@@ -423,16 +406,23 @@ export class MarkdownSpan extends LitElement {
         result = true;
       }
     }
-    if (changed.has('active')) {
-      result = true;
-    }
     return result;
   }
   protected override createRenderRoot() {
     return this;
   }
+  get inlineHasFocus(): boolean {
+    let parent = this.parentElement;
+    while (parent) {
+      if (parent instanceof MarkdownInline) {
+        return parent.matches(':focus-within');
+      }
+      parent = parent.parentElement;
+    }
+    return false;
+  }
   private handlePointerDown(event: Event) {
-    if (this.active) return;
+    if (this.inlineHasFocus) return;
     const node = this.node;
     if (!node) return;
     if (
@@ -446,7 +436,7 @@ export class MarkdownSpan extends LitElement {
     }
   }
   private handleClick(event: Event) {
-    if (this.active) return;
+    if (this.inlineHasFocus) return;
     const node = this.node;
     if (!node) return;
     let inlineLinkClick: InlineLinkClick;
@@ -515,10 +505,7 @@ export class MarkdownSpan extends LitElement {
         index = child.endIndex;
         results.push({
           node: child,
-          result: html`<md-span
-            .node=${child}
-            .active=${this.active}
-          ></md-span>`,
+          result: html`<md-span .node=${child}></md-span>`,
         });
       } else {
         const text = node.text.substring(
