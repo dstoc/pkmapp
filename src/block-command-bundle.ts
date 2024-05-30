@@ -66,7 +66,8 @@ export class BlockCommandBundle implements CommandBundle {
       seen.add(item.root);
       return true;
     }
-    const commands: Command[] = constraints[constraints.length - 1]
+    const commands: Command[] = constraints
+      .at(-1)!
       .filter(once)
       .map((item) => ({
         description: item.description,

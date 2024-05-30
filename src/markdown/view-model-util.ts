@@ -258,16 +258,16 @@ export function compareDocumentOrder(
   const node1Chain = [node1, ...ancestors(node1)];
   const node2Chain = [node2, ...ancestors(node2)];
   assert(
-    node1Chain[node1Chain.length - 1] === node2Chain[node2Chain.length - 1],
+    node1Chain.at(-1) === node2Chain.at(-1),
   );
   while (
-    node1Chain[node1Chain.length - 1] === node2Chain[node2Chain.length - 1]
+    node1Chain.at(-1) === node2Chain.at(-1)
   ) {
     node1Chain.pop();
     node2Chain.pop();
   }
-  const node1Ancestor = node1Chain[node1Chain.length - 1];
-  const node2Ancestor = node2Chain[node2Chain.length - 1];
+  const node1Ancestor = node1Chain.at(-1);
+  const node2Ancestor = node2Chain.at(-1);
   for (
     let node: ViewModelNode | undefined = node1Ancestor;
     node;

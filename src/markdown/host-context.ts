@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import {cast} from '../asserts.js';
 import {createContext} from '../deps/lit-context.js';
 
 import type {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
@@ -78,7 +79,7 @@ export class HostContext {
     // selectionAnchor/focus after this operation.
     const sorted = [...this.selection].sort(compareDocumentOrder);
     this.selectionAnchor = sorted[0];
-    this.selectionFocus = sorted[sorted.length - 1];
+    this.selectionFocus = cast(sorted.at(-1));
     oldAnchor?.viewModel.observe.notify();
     oldFocus?.viewModel.observe.notify();
     focusNode(this, this.selectionFocus);

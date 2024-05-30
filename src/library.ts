@@ -196,7 +196,7 @@ export class IdbLibrary implements Library {
         });
       }
     }
-    return blocks[blocks.length - 1];
+    return cast(blocks.at(-1));
   }
   async newDocument(name: string): Promise<Document> {
     name = resolveDateAlias(name) ?? name;

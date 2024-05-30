@@ -40,7 +40,7 @@ function normalizeContiguousSections(
 ) {
   const activeSections: (SectionNode & ViewModelNode)[] = [];
   function activeSection() {
-    return activeSections[activeSections.length - 1];
+    return cast(activeSections.at(-1));
   }
   function contains(
     parent: SectionNode & ViewModelNode,
