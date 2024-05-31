@@ -169,12 +169,16 @@ function convertNode(node: Parser.SyntaxNode): MarkdownNode | undefined {
     case 'link_reference_definition':
     case 'pipe_table':
       return {
-        type: 'unsupported',
-        content: node.text,
-        parser_type: node.type,
+        type: 'code-block',
+        info: 'markdown',
+        content: node.text.trim(),
       };
     default:
       console.error(node.type);
-      return undefined;
+      return {
+        type: 'code-block',
+        info: 'markdown',
+        content: node.text.trim(),
+      };
   }
 }

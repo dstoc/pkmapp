@@ -6,7 +6,6 @@ import {
   ListNode,
   BlockQuoteNode,
   ListItemNode,
-  UnsupportedNode,
 } from './node.js';
 import type {ViewModel, InlineViewModel} from './view-model.js';
 
@@ -27,13 +26,7 @@ interface InlineViewModelNodeParts extends ViewModelNodeParts {
 }
 
 export type ViewModelNode =
-  | ((
-      | DocumentNode
-      | ListNode
-      | BlockQuoteNode
-      | ListItemNode
-      | UnsupportedNode
-    ) &
+  | ((DocumentNode | ListNode | BlockQuoteNode | ListItemNode) &
       ViewModelNodeParts)
   | InlineViewModelNode;
 

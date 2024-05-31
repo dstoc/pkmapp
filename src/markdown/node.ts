@@ -19,8 +19,7 @@ export type MarkdownNode =
   | DocumentNode
   | ListNode
   | BlockQuoteNode
-  | ListItemNode
-  | UnsupportedNode;
+  | ListItemNode;
 export type InlineNode = ParagraphNode | CodeBlockNode | SectionNode;
 export type ParentNode =
   | DocumentNode
@@ -50,8 +49,7 @@ interface Node {
     | 'paragraph'
     | 'block-quote'
     | 'list-item'
-    | 'code-block'
-    | 'unsupported';
+    | 'code-block';
 }
 
 export interface DocumentNode extends Node {
@@ -88,10 +86,4 @@ export interface CodeBlockNode extends Node {
   readonly type: 'code-block';
   readonly info: string | null;
   readonly content: string;
-}
-
-export interface UnsupportedNode extends Node {
-  readonly type: 'unsupported';
-  readonly content: string;
-  readonly parser_type: string;
 }

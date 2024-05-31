@@ -93,8 +93,6 @@ export function getPrefix(node: MarkdownNode): string {
       return node.marker + ' ';
     case 'code-block':
       return '```' + (node.info ?? '');
-    case 'unsupported':
-      return '';
     default:
       // TODO: assert unreachable
       assert(false);
@@ -162,15 +160,6 @@ function serialize(
         result.push('```');
       }
       result.push('\n');
-      break;
-    case 'unsupported':
-      for (const line of node.content.trimEnd().split('\n')) {
-        indent();
-        if (shouldSerializeNodeContent) {
-          result.push(line);
-        }
-        result.push('\n');
-      }
       break;
     default:
       // TODO: assert not reached?

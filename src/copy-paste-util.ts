@@ -80,8 +80,6 @@ export function serializeSelection(hostContext: HostContext) {
       case 'paragraph':
       case 'code-block':
         return hostContext.selection.has(node);
-      case 'unsupported':
-        return false;
       default:
         return true;
     }
