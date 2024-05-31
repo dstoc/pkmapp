@@ -59,7 +59,7 @@ export function doOp(op: Op) {
       op.node.viewModel.updateChecked(op.checked);
       break;
     case 'edit':
-      op.node.viewModel.edit(op.edit);
+      op.node.viewModel.edit(op.edit, false);
       break;
     case 'insert':
       op.node.viewModel.insertBefore(op.parent, op.nextSibling);

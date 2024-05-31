@@ -220,7 +220,10 @@ export class InlineViewModel extends ViewModel {
     }
     return this.inlineTree_;
   }
-  edit({startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit) {
+  edit(
+    {startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit,
+    replaceWithBlocks = true,
+  ) {
     assert(this.tree.state === 'editing');
     const oldText = this.self.content.substring(startIndex, oldEndIndex);
     const result = {
@@ -237,8 +240,7 @@ export class InlineViewModel extends ViewModel {
     const newContent = apply(this.self.content, result);
     if (this.self.content === newContent) return null;
     (this.self as {content: string}).content = newContent;
-    const newNodes = this.maybeReplaceWithBlocks();
-    if (newNodes) return newNodes;
+    const newNodes = replaceWithBlocks ? this.maybeReplaceWithBlocks() : false;
     this.inlineTree_ = this.inlineTree.edit(result);
     this.inlineTree_ = inlineParser.parse(this.self.content, this.inlineTree);
     this.signalMutation({
@@ -247,6 +249,7 @@ export class InlineViewModel extends ViewModel {
       edit: {startIndex, newEndIndex, oldEndIndex, newText},
       oldText,
     });
+    if (newNodes) return newNodes;
     return null;
   }
   private maybeReplaceWithBlocks() {
