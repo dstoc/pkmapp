@@ -119,21 +119,21 @@ export class MarkdownInline extends LitElement {
           range.setStart(next, index);
           selection.removeAllRanges();
           selection.addRange(range);
-          break;
+          return;
         }
         offset += length;
       }
-      // Special case when there were no text nodes,
-      // or when the offset was beyond the final text node.
-      if (final) {
-        const range = document.createRange();
-        range.setStart(
-          final,
-          final.nodeType === Node.TEXT_NODE ? (final as Text).length : 0,
-        );
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
+    }
+    // Special case when there were no text nodes,
+    // or when the offset was beyond the final text node.
+    if (final) {
+      const range = document.createRange();
+      range.setStart(
+        final,
+        final.nodeType === Node.TEXT_NODE ? (final as Text).length : 0,
+      );
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
   }
   async maybeSetFocus() {

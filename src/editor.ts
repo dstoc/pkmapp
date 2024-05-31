@@ -429,6 +429,8 @@ export class Editor extends LitElement {
                 ? findPreviousEditable(node, root)
                 : findNextEditable(node, root);
             if (next) {
+              // TODO: when moving forward by line, offset may be beyond the end
+              // of the new element's first line
               focusNode(
                 cast(element.hostContext),
                 next,
