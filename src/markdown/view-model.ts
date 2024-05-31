@@ -26,7 +26,15 @@ import {assert, cast} from '../asserts.js';
 import {Observe} from '../observe.js';
 import {normalizeTree} from './normalize.js';
 import {dfs} from './view-model-util.js';
-import {Focus, Op, OpBatch, classify, doOp, undoOp} from './view-model-ops.js';
+import {
+  Focus,
+  Op,
+  OpBatch,
+  canCoalesce,
+  classify,
+  doOp,
+  undoOp,
+} from './view-model-ops.js';
 
 export class ViewModel {
   constructor(
@@ -459,7 +467,11 @@ export class MarkdownTree {
       result = [...this.editOperations];
       const now = Date.now();
       const last = this.undoStack.at(-1);
-      if (last && now - last.timestamp < 1000) {
+      if (
+        last &&
+        now - last.timestamp < 1000 &&
+        canCoalesce(last, this.editOperations)
+      ) {
         last.ops = [...last.ops, ...this.editOperations];
         last.timestamp = now;
         last.endFocus = endFocus;

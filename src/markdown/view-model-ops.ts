@@ -100,6 +100,18 @@ export function undoOp(op: Op) {
   }
 }
 
+export function canCoalesce(batch: OpBatch, ops: Iterable<Op>) {
+  if (!batch.ops.length) return true;
+  const node = batch.ops[0].node;
+  for (const op of batch.ops) {
+    if (op.type !== 'edit' || op.node !== node) return false;
+  }
+  for (const op of ops) {
+    if (op.type !== 'edit' || op.node !== node) return false;
+  }
+  return true;
+}
+
 type Classification = 'inside' | 'outside' | 'both';
 export function classify(root: ViewModelNode, batch: OpBatch): Classification {
   let result: Classification | undefined;
