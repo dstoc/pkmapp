@@ -57,7 +57,10 @@ export function* ancestors(
   }
 }
 
+// TODO: Audit this, in particular the limit behavior.
+// TODO: rename limit to end, add docs.
 export function* reverseDfs(node: ViewModelNode, limit?: ViewModelNode) {
+  if (node === limit) return;
   function next(next?: ViewModelNode) {
     return next && (node = next);
   }
