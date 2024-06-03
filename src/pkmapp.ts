@@ -106,6 +106,14 @@ export class PkmApp extends LitElement {
           padding: 10px;
           cursor: pointer;
         }
+        #version {
+          position: sticky;
+          text-align: right;
+          bottom: 0px;
+          padding: 5px;
+          opacity: 0.5;
+          font-family: monospace;
+        }
       `,
     ];
   }
@@ -127,6 +135,7 @@ export class PkmApp extends LitElement {
         @backup-commands=${this.onCommands}
       ></pkm-backup-sidebar>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
+      <div id="version" inert>${import.meta.env.COMMIT}</div>
     `;
   }
   override async connectedCallback() {

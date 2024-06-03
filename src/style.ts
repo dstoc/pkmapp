@@ -24,6 +24,9 @@ export const styles = [
       --md-block-quote-border: solid var(--root-background-color) 1px;
       --md-code-block-border: solid var(--root-background-color) 1px;
     }
+    body {
+      margin: 0;
+    }
     :root {
       color-scheme: light;
       --md-code-font-family: 'Fira Code VF', 'noto sans mono', monospace;
