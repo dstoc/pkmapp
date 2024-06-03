@@ -36,6 +36,7 @@ export function parseBlocks(
   markdown: string,
   tree?: Parser.Tree,
   edit?: Parser.Edit,
+  keepTree?: boolean,
 ) {
   if (tree) {
     tree.edit(cast(edit));
@@ -43,7 +44,7 @@ export function parseBlocks(
   tree = parser.parse(markdown);
   const node = cast(convertNode(tree.rootNode));
   assert(node.type === 'document');
-  return {node, tree};
+  return {node, tree: keepTree ? tree : (tree.delete(), undefined)};
 }
 
 function* convertNodes(

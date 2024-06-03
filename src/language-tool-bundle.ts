@@ -4,7 +4,7 @@ import './markdown/block-render.js';
 import {parseBlocks, Tree} from './markdown/block-parser.js';
 import {DocumentNode} from './markdown/node.js';
 import {MarkdownTree} from './markdown/view-model.js';
-import {assert} from './asserts.js';
+import {assert, cast} from './asserts.js';
 
 export function getLanguageTools(getSelection: () => string): Command[] {
   return [
@@ -24,6 +24,7 @@ export function getLanguageTools(getSelection: () => string): Command[] {
             loader.append(chunk);
             updatePreview(preview());
           }
+          loader.close();
 
           return new SimpleCommandBundle('what?', [
             {
@@ -59,8 +60,13 @@ class StreamingLoader {
   readonly tree: MarkdownTree;
   private parserTree: Tree;
   constructor(private content: string) {
-    const {node, tree: parserTree} = parseBlocks(this.content);
-    this.parserTree = parserTree;
+    const {node, tree: parserTree} = parseBlocks(
+      this.content,
+      undefined,
+      undefined,
+      true,
+    );
+    this.parserTree = cast(parserTree);
     assert(node && node.type === 'document');
     this.tree = new MarkdownTree(node);
   }
@@ -81,10 +87,15 @@ class StreamingLoader {
       this.content,
       this.parserTree,
       edit,
+      true,
     );
-    this.parserTree = parserTree;
+    this.parserTree.delete();
+    this.parserTree = cast(parserTree);
     assert(node && node.type === 'document');
     this.tree.setRoot(this.tree.add<DocumentNode>(node));
+  }
+  close() {
+    this.parserTree.delete();
   }
 }
 
