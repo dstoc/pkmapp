@@ -83,6 +83,8 @@ export class MarkdownInline extends LitElement {
 
   override render() {
     if (!this.node) return;
+    // TODO: How can we avoid reaching this state?
+    if (!this.node.viewModel.connected) return;
     this.selected = this.hostContext?.selection.has(this.node) ?? false;
     return html`<md-span
       .node=${this.node.viewModel.inlineTree.rootNode}
@@ -96,6 +98,7 @@ export class MarkdownInline extends LitElement {
     }
   }
   override updated() {
+    if (!this.node) return;
     noAwait(this.maybeSetFocus());
   }
   private setFocus(focusOffset: number) {

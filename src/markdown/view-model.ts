@@ -74,6 +74,13 @@ export class ViewModel {
       parent.viewModel.version = this.version;
       parent = parent.viewModel.parent;
     }
+    for (const node of dfs(
+      this.self,
+      this.self,
+      (node) => !node.viewModel.connected,
+    )) {
+      node.viewModel.version = this.version;
+    }
     if (notify) {
       this.observe.notify();
     }
@@ -252,6 +259,7 @@ export class InlineViewModel extends ViewModel {
   private editedInlineTree?: Parser.Tree;
   private inlineTree_?: Parser.Tree;
   get inlineTree(): InlineTree {
+    assert(this.connected);
     if (!this.inlineTree_) {
       this.inlineTree_ = inlineParser.parse(
         this.self.content,
