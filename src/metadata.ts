@@ -17,12 +17,12 @@ import {
   InlineViewModelNode,
   ViewModelNode,
 } from './markdown/view-model-node.js';
-import {dfs} from './markdown/inline-parser.js';
 import {
   getLogicalContainingBlock,
   isLogicalContainingBlock,
 } from './block-util.js';
 import {assert} from './asserts.js';
+import {traverseInlineNodes} from './markdown/view-model.js';
 
 class SetBiMap<T> {
   private index = new Map<string, Set<T>>();
@@ -222,7 +222,9 @@ export class Metadata {
       // TODO: Cache the results in the view model to avoid the need
       // to generate the inlineTree. Modifying caches should mark
       // for saving. Edits should wipe out caches before postEditUpdate.
-      for (const next of dfs(node.viewModel.inlineTree.rootNode)) {
+      for (const next of traverseInlineNodes(
+        node.viewModel.inlineTree.rootNode,
+      )) {
         if (next.type !== 'tag') continue;
         // TODO: Make sure the tag is not contained within a link
         tags.add(next.text);

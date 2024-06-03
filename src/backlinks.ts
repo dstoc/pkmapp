@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {dfs} from './markdown/inline-parser.js';
 import {InlineViewModelNode} from './markdown/view-model-node.js';
 import {Library, Document} from './library.js';
+import {traverseInlineNodes} from './markdown/view-model.js';
 
 export class BackLinks {
   private links = new Map<InlineViewModelNode, Set<string>>();
@@ -53,7 +53,9 @@ export class BackLinks {
     } else {
       let links = this.links.get(node);
       const preLinks = new Set(links?.values() ?? []);
-      for (const next of dfs(node.viewModel.inlineTree.rootNode)) {
+      for (const next of traverseInlineNodes(
+        node.viewModel.inlineTree.rootNode,
+      )) {
         if (next.type === 'inline_link' || next.type === 'shortcut_link') {
           const text =
             next.namedChildren.find((node) => node.type === 'link_text')

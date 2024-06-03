@@ -211,6 +211,34 @@ export class ViewModel {
   }
 }
 
+export interface InlineTreeNode {
+  id: number;
+  startIndex: number;
+  endIndex: number;
+  text: string;
+  type: string;
+  namedChildren: InlineTreeNode[];
+}
+
+export interface InlineTree {
+  rootNode: InlineTreeNode;
+}
+
+export function* traverseInlineNodes(node: InlineTreeNode) {
+  const seen = new Set<InlineTreeNode>();
+  const queue = [node];
+  while (queue.length) {
+    const next = cast(queue.pop());
+    if (seen.has(next)) {
+      yield next;
+      if (next === node) return;
+    } else {
+      seen.add(next);
+      queue.push(next, ...(next?.namedChildren ?? []));
+    }
+  }
+}
+
 export class InlineViewModel extends ViewModel {
   constructor(
     override readonly self: InlineViewModelNode,
@@ -223,7 +251,7 @@ export class InlineViewModel extends ViewModel {
   }
   private editedInlineTree?: Parser.Tree;
   private inlineTree_?: Parser.Tree;
-  get inlineTree() {
+  get inlineTree(): InlineTree {
     if (!this.inlineTree_) {
       this.inlineTree_ = inlineParser.parse(
         this.self.content,

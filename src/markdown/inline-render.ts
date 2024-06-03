@@ -29,6 +29,7 @@ import {cast} from '../asserts.js';
 import {HostContext, hostContext} from './host-context.js';
 import {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
 import {noAwait} from '../async.js';
+import {InlineTreeNode} from './view-model.js';
 
 export interface InlineInputPoint {
   span?: MarkdownSpan;
@@ -372,7 +373,7 @@ export class MarkdownSpan extends LitElement {
   @property({type: Boolean, reflect: true}) formatting = false;
   @property({type: String, reflect: true}) type = '';
 
-  @property({attribute: false}) node?: Parser.SyntaxNode;
+  @property({attribute: false}) node?: InlineTreeNode;
   @queryAll(':scope > md-span') spans!: NodeListOf<MarkdownSpan>;
 
   constructor() {
@@ -485,7 +486,7 @@ export class MarkdownSpan extends LitElement {
     this.formatting = isFormatting(node);
     let index = node.startIndex;
     interface Result {
-      node?: Parser.SyntaxNode;
+      node?: InlineTreeNode;
       result: TemplateResult;
     }
     const results: Result[] = [];
@@ -539,7 +540,7 @@ export class MarkdownSpan extends LitElement {
   }
 }
 
-function isFormatting(node: Parser.SyntaxNode) {
+function isFormatting(node: InlineTreeNode) {
   return [
     'block_continuation',
     'list_marker_star',
