@@ -249,7 +249,7 @@ export class InlineViewModel extends ViewModel {
     if (this.self.content === newContent) return null;
     (this.self as {content: string}).content = newContent;
     const newNodes = replaceWithBlocks ? this.maybeReplaceWithBlocks() : false;
-    this.inlineTree_ = this.inlineTree.edit(result);
+    this.inlineTree.edit(result);
     this.inlineTree_ = inlineParser.parse(this.self.content, this.inlineTree);
     this.signalMutation({
       type: 'edit',
