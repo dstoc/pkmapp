@@ -64,11 +64,18 @@ describe('Editor', () => {
           await nextTask();
         }
       },
+      async selectAll() {
+        const selection = window.getSelection()!;
+        const range = document.createRange();
+        range.selectNodeContents(getFocusedInline());
+        selection.removeAllRanges();
+        selection.addRange(range);
+      },
       async press(key: string, repeat = 1) {
         const shiftKey = key.includes('Shift+');
         const altKey = key.includes('Alt+');
         const ctrlKey = key.includes('Control+');
-        key = key.match(/(?:(?:Ctrl|Alt|Shift)\+)*(.*)/)![1];
+        key = key.match(/(?:(?:Control|Alt|Shift)\+)*(.*)/)![1];
         for (let i = 0; i < repeat; i++) {
           getFocusedInline().onKeyDown(
             new KeyboardEvent('keydown', {
@@ -83,6 +90,22 @@ describe('Editor', () => {
       },
     };
     return {editor, library, input};
+  });
+
+  describe('undo', () => {
+    test('can undo block selection delete', async () => {
+      await state.input.insert('hello');
+      await state.input.insertParagraph();
+      await state.input.insert('* item');
+      await state.input.selectAll();
+      await state.input.press('Control+a');
+      await state.input.press('Backspace');
+      await state.input.press('Control+z');
+      expect(state.editor.serialize()).toMatchInlineSnapshot(`
+        hello
+        * item
+      `);
+    });
   });
 
   describe('sections', () => {

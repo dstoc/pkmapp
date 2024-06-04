@@ -92,7 +92,7 @@ export class ViewModel {
     this.connected_ = true;
   }
   disconnect() {
-    this.connected_ = true;
+    this.connected_ = false;
   }
   remove() {
     assert(this.tree.state === 'editing');
@@ -282,7 +282,9 @@ export class InlineViewModel extends ViewModel {
   override disconnect() {
     super.disconnect();
     this.inlineTree_?.delete();
+    this.inlineTree_ = undefined;
     this.editedInlineTree?.delete();
+    this.editedInlineTree = undefined;
   }
   edit(
     {startIndex, newEndIndex, oldEndIndex, newText}: InlineEdit,
@@ -503,7 +505,7 @@ export class MarkdownTree {
     this.state = 'post-edit';
     for (const root of removedRoots.values()) {
       for (const node of dfs(root)) {
-        node.viewModel.connect();
+        node.viewModel.disconnect();
         this.delegate?.postEditUpdate(node, 'disconnected');
       }
     }
@@ -513,7 +515,7 @@ export class MarkdownTree {
       (node) => node.viewModel.version > this.editStartVersion,
     )) {
       if (!node.viewModel.connected) {
-        node.viewModel.disconnect();
+        node.viewModel.connect();
         this.delegate?.postEditUpdate(node, 'connected');
       } else {
         assert(node.viewModel.version > this.editStartVersion);
