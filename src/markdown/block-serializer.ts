@@ -146,7 +146,12 @@ function serialize(
     case 'code-block':
       indent();
       if (shouldSerializeNodeContent) {
-        result.push('```');
+        const maxBackticks = Math.max(
+          2,
+          ...(node.content.match(/`+/g)?.map((result) => result.length) ?? [0]),
+        );
+        const marker = '`'.repeat(maxBackticks + 1);
+        result.push(marker);
         if (node.info !== null) {
           result.push(node.info);
         }
@@ -157,7 +162,7 @@ function serialize(
           result.push('\n');
         }
         indent();
-        result.push('```');
+        result.push(marker);
       }
       result.push('\n');
       break;
