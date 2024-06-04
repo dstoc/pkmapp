@@ -17,7 +17,7 @@ import './editor.js';
 import './sidebar.js';
 import './command-palette-dialog.js';
 
-import {libraryContext} from './app-context.js';
+import {focusContext, libraryContext} from './app-context.js';
 import {CommandPaletteDialog} from './command-palette-dialog.js';
 import {provide} from './deps/lit-context.js';
 import {
@@ -37,6 +37,7 @@ import {CommandBundle} from './command-palette.js';
 import {assert} from './asserts.js';
 import {noAwait} from './async.js';
 import './backup-sidebar.js';
+import {InlineViewModelNode} from './markdown/view-model-node.js';
 
 document.adoptedStyleSheets = [...styles];
 noAwait(loadFonts());
@@ -81,6 +82,7 @@ export class PkmApp extends LitElement {
   @query('pkm-editor') editor!: Editor;
   @query('pkm-command-palette-dialog') commandPalette!: CommandPaletteDialog;
   @provide({context: libraryContext}) @state() library!: Library;
+  @provide({context: focusContext}) @state() focusNode?: InlineViewModelNode;
   constructor() {
     super();
     document.addEventListener('keydown', (e) => {
@@ -140,6 +142,7 @@ export class PkmApp extends LitElement {
         <pkm-editor
           @editor-navigate=${this.onEditorNavigate}
           @editor-commands=${this.onCommands}
+          @md-block-focus=${this.onBlockFocus}
           .defaultName=${defaultName}
         ></pkm-editor>
       </div>
@@ -154,6 +157,9 @@ export class PkmApp extends LitElement {
   override async connectedCallback() {
     super.connectedCallback();
     noAwait(this.initComponents());
+  }
+  private onBlockFocus({detail: node}: CustomEvent<InlineViewModelNode>) {
+    this.focusNode = node;
   }
   private onCommands({detail: commands}: CustomEvent<CommandBundle>) {
     this.commandPalette.trigger(commands);

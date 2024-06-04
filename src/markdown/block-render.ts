@@ -16,7 +16,7 @@ import {state, customElement, html, LitElement, property} from '../deps/lit.js';
 
 import {MarkdownInline} from './inline-render.js';
 import {isInlineNode} from './node.js';
-import {type ViewModelNode} from './view-model-node.js';
+import {InlineViewModelNode, type ViewModelNode} from './view-model-node.js';
 import './transclusion.js';
 import {hostContext, HostContext} from './host-context.js';
 import {provide, consume} from '../deps/lit-context.js';
@@ -139,6 +139,12 @@ export class MarkdownRenderer extends LitElement {
   @state()
   readonly hostContext = new HostContext();
 
+  protected override createRenderRoot() {
+    const root = super.createRenderRoot();
+    root.addEventListener('focusin', this.onFocusIn);
+    return root;
+  }
+
   @property({attribute: false}) block!: ViewModelNode;
   override render() {
     this.hostContext.root = this.block;
@@ -164,11 +170,25 @@ export class MarkdownRenderer extends LitElement {
       }
     }
   }
+
+  private onFocusIn(e: Event) {
+    if (!(e.target instanceof MarkdownInline) || !e.target.node) return;
+    this.dispatchEvent(
+      new CustomEvent('md-block-focus', {
+        detail: e.target.node,
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
 }
 
 declare global {
   interface HTMLElementTagNameMap {
     'md-block': MarkdownBlock;
     'md-block-render': MarkdownRenderer;
+  }
+  interface HTMLElementEventMap {
+    'md-block-focus': CustomEvent<InlineViewModelNode>;
   }
 }
