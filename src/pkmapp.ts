@@ -123,7 +123,7 @@ export class PkmApp extends LitElement {
       ? undefined
       : decodeURIComponent(url.pathname.substring(1)) || 'index';
     if (!this.library) {
-      return html`pkmapp`;
+      return html``;
     }
     return html`
       <pkm-editor
