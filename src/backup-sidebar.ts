@@ -11,14 +11,15 @@ export class BackupSidebar extends LitElement {
   @state()
   library!: Library;
   override render() {
+    let icons = '💾⚠️';
     switch (this.library.backup.state) {
       case 'idle':
-        return;
+        icons = '';
+        break;
       case 'writing':
-        return html`💾`;
-      default:
-        return html`💾⚠️`;
+        icons = '💾';
     }
+    return html`Backup: ${icons}`;
   }
   override firstUpdated() {
     this.addEventListener('click', this.onClick);

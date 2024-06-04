@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "lib": ["esnext", "dom"],
-    "types": ["wicg-file-system-access", "trusted-types"],
+    "types": ["wicg-file-system-access", "trusted-types", "dom-view-transitions"],
     "esModuleInterop": true,
     "target": "esnext",
     "module": "esnext",

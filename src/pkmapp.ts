@@ -14,6 +14,7 @@
 
 import './markdown/block-render.js';
 import './editor.js';
+import './sidebar.js';
 import './command-palette-dialog.js';
 
 import {libraryContext} from './app-context.js';
@@ -99,20 +100,29 @@ export class PkmApp extends LitElement {
     return [
       ...styles,
       css`
-        pkm-backup-sidebar {
-          position: absolute;
+        :host {
+          display: flex;
+        }
+        pkm-sidebar:not([collapsed]) {
+          align-self: start;
+          position: sticky;
+          top: 0;
+          height: 100vh;
+        }
+        pkm-sidebar[collapsed] {
+          align-self: flex-start;
+          position: fixed;
           top: 0;
           right: 0;
-          padding: 10px;
-          cursor: pointer;
         }
-        #version {
-          position: sticky;
-          text-align: right;
-          bottom: 0px;
-          padding: 5px;
-          opacity: 0.5;
-          font-family: monospace;
+        #main {
+          display: flex;
+          justify-content: center;
+          flex-grow: 1;
+        }
+        pkm-editor {
+          width: 100%;
+          max-width: 700px;
         }
       `,
     ];
@@ -126,16 +136,19 @@ export class PkmApp extends LitElement {
       return html``;
     }
     return html`
-      <pkm-editor
-        @editor-navigate=${this.onEditorNavigate}
-        @editor-commands=${this.onCommands}
-        .defaultName=${defaultName}
-      ></pkm-editor>
-      <pkm-backup-sidebar
-        @backup-commands=${this.onCommands}
-      ></pkm-backup-sidebar>
+      <div id="main">
+        <pkm-editor
+          @editor-navigate=${this.onEditorNavigate}
+          @editor-commands=${this.onCommands}
+          .defaultName=${defaultName}
+        ></pkm-editor>
+      </div>
+      <pkm-sidebar collapsed>
+        <pkm-backup-sidebar
+          @backup-commands=${this.onCommands}
+        ></pkm-backup-sidebar>
+      </pkm-sidebar>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
-      <div id="version" inert>${import.meta.env.COMMIT}</div>
     `;
   }
   override async connectedCallback() {

@@ -130,14 +130,6 @@ export class Editor extends LitElement {
         #status {
           position: absolute;
         }
-        #content {
-          display: flex;
-          justify-content: center;
-          flex-grow: 1;
-        }
-        md-block-render {
-          width: 700px;
-        }
         pkm-title {
           display: block;
           position: sticky;
@@ -156,14 +148,12 @@ export class Editor extends LitElement {
         .node=${this.root}
         @title-item-click=${this.onTitleItemClick}
       ></pkm-title>
-      <div id="content">
-        <md-block-render
-          .block=${this.root}
-          @inline-input=${this.onInlineInput}
-          @inline-link-click=${this.onInlineLinkClick}
-          @inline-keydown=${this.onInlineKeyDown}
-        ></md-block-render>
-      </div>
+      <md-block-render
+        .block=${this.root}
+        @inline-input=${this.onInlineInput}
+        @inline-link-click=${this.onInlineLinkClick}
+        @inline-keydown=${this.onInlineKeyDown}
+      ></md-block-render>
       <pkm-autocomplete .editor=${this}></pkm-autocomplete>`;
   }
   override updated() {

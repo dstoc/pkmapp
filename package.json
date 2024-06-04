@@ -38,5 +38,8 @@
     "vite": "^5.2.11",
     "vitest": "^1.6.0",
     "web-tree-sitter": "^0.22.6"
+  },
+  "dependencies": {
+    "@types/dom-view-transitions": "^1.0.4"
   }
 }
