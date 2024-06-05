@@ -143,10 +143,7 @@ export class Editor extends LitElement {
     super();
   }
   override render() {
-    return html` <pkm-title
-        .node=${this.root}
-        @title-item-click=${this.onTitleItemClick}
-      ></pkm-title>
+    return html` <pkm-title .node=${this.root}></pkm-title>
       <md-block-render
         .block=${this.root}
         @inline-input=${this.onInlineInput}
@@ -361,9 +358,6 @@ export class Editor extends LitElement {
     } else {
       noAwait(this.navigateByName(destination, true));
     }
-  }
-  onTitleItemClick({detail}: CustomEvent<ViewModelNode>) {
-    this.root = detail;
   }
   onInlineKeyDown(event: CustomEvent<InlineKeyDown>) {
     // This function must only handle key events that do not generate text.

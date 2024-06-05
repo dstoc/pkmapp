@@ -38,7 +38,10 @@ import {CommandBundle} from './command-palette.js';
 import {assert} from './asserts.js';
 import {noAwait} from './async.js';
 import './backup-sidebar.js';
-import {InlineViewModelNode} from './markdown/view-model-node.js';
+import {
+  InlineViewModelNode,
+  ViewModelNode,
+} from './markdown/view-model-node.js';
 
 document.adoptedStyleSheets = [...styles];
 noAwait(loadFonts());
@@ -97,6 +100,7 @@ export class PkmApp extends LitElement {
       assert(typeof name === 'string');
       noAwait(this.editor.navigateByName(name));
     });
+    this.addEventListener('title-item-click', this.onTitleItemClick);
   }
   private initialLocation = location.toString();
   static override get styles() {
@@ -159,6 +163,11 @@ export class PkmApp extends LitElement {
   override async connectedCallback() {
     super.connectedCallback();
     noAwait(this.initComponents());
+  }
+  private onTitleItemClick({detail: root}: CustomEvent<ViewModelNode>) {
+    const document = this.library.getDocumentByTree(root.viewModel.tree);
+    assert(document);
+    this.editor.navigate(document, root);
   }
   private onBlockFocus({detail: node}: CustomEvent<InlineViewModelNode>) {
     this.focusNode = node;
