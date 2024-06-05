@@ -15,20 +15,22 @@
 import {InlineViewModelNode} from './markdown/view-model-node.js';
 import {Library, Document} from './library.js';
 import {traverseInlineNodes} from './markdown/view-model.js';
+import {Observe} from './observe.js';
 
 export class BackLinks {
   private links = new Map<InlineViewModelNode, Set<string>>();
   private backLinks = new Map<string, Set<InlineViewModelNode>>();
+  observe = new Observe<typeof this>(this);
 
-  private getBacklinksByName(name: string) {
-    return [...(this.backLinks.get(name)?.values() ?? [])].map(
-      (node) => node.viewModel.tree,
-    );
+  getBacklinksByName(name: string) {
+    return this.backLinks.get(name)?.values() ?? [];
   }
   getBacklinksByDocument(document: Document, library: Library) {
     const sources = new Set<string>();
     for (const name of document.allNames) {
-      for (const tree of this.getBacklinksByName(name)) {
+      for (const {
+        viewModel: {tree},
+      } of this.getBacklinksByName(name)) {
         const source = library.getDocumentByTree(tree)?.name;
         if (source == null) continue;
         sources.add(source);
@@ -42,11 +44,15 @@ export class BackLinks {
     node: InlineViewModelNode,
     change: 'connected' | 'disconnected' | 'changed',
   ) {
+    let changed = false;
+    function update(status: boolean | void) {
+      changed ||= status === true;
+    }
     if (change === 'disconnected') {
       const links = this.links.get(node);
       if (links) {
         for (const target of links) {
-          this.backLinks.get(target)?.delete(node);
+          update(this.backLinks.get(target)?.delete(node));
         }
         this.links.delete(node);
       }
@@ -73,14 +79,20 @@ export class BackLinks {
             backLinks = new Set();
             this.backLinks.set(destination, backLinks);
           }
-          backLinks.add(node);
+          if (!backLinks.has(node)) {
+            backLinks.add(node);
+            update(true);
+          }
           preLinks.delete(destination);
         }
       }
       for (const target of preLinks) {
-        this.backLinks.get(target)?.delete(node);
+        update(this.backLinks.get(target)?.delete(node));
         this.links.get(node)?.delete(target);
       }
+    }
+    if (changed) {
+      this.observe.notify();
     }
   }
 }

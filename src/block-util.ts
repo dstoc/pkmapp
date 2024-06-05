@@ -41,6 +41,15 @@ export function getLogicalContainingBlock(node?: ViewModelNode) {
   return;
 }
 
+export function getNamedContainingBlock(node?: ViewModelNode) {
+  let next = node;
+  while (next) {
+    if (isExplicitlyNamed(next)) return next;
+    next = getLogicalContainingBlock(next);
+  }
+  return;
+}
+
 export function isExplicitlyNamed(node?: ViewModelNode) {
   switch (node?.type) {
     case 'section':

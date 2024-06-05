@@ -38,6 +38,8 @@ export class Title extends LitElement {
     }
   `;
   @property({attribute: false})
+  simple = false;
+  @property({attribute: false})
   node?: ViewModelNode;
   @consume({context: libraryContext, subscribe: true})
   @state()
@@ -46,7 +48,12 @@ export class Title extends LitElement {
 
   override render() {
     if (!this.node) return ``;
-    if (!this.node.viewModel.parent && isExplicitlyNamed(this.node)) return ``;
+    if (
+      !this.simple &&
+      !this.node.viewModel.parent &&
+      isExplicitlyNamed(this.node)
+    )
+      return ``;
 
     this.observers?.clear();
     const containers: ViewModelNode[] = [];

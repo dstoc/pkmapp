@@ -15,6 +15,7 @@
 import './markdown/block-render.js';
 import './editor.js';
 import './sidebar.js';
+import './backlinks-sidebar.js';
 import './command-palette-dialog.js';
 
 import {focusContext, libraryContext} from './app-context.js';
@@ -150,6 +151,7 @@ export class PkmApp extends LitElement {
         <pkm-backup-sidebar
           @backup-commands=${this.onCommands}
         ></pkm-backup-sidebar>
+        <pkm-backlinks-sidebar></pkm-backlinks-sidebar>
       </pkm-sidebar>
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
