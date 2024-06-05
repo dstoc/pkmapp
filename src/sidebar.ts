@@ -19,6 +19,7 @@ export class Sidebar extends LitElement {
     }
     ::slotted(*) {
       padding: 5px;
+      border-bottom: solid gray 1px;
     }
     :host([collapsed]) ::slotted(*) {
       display: none;

@@ -1,5 +1,5 @@
 import {libraryContext} from './app-context.js';
-import {LitElement, customElement, html, state} from './deps/lit.js';
+import {LitElement, css, customElement, html, state} from './deps/lit.js';
 import {consume} from './deps/lit-context.js';
 import {Library} from './library.js';
 import {backupCommands} from './backup-commands.js';
@@ -10,16 +10,31 @@ export class BackupSidebar extends LitElement {
   @consume({context: libraryContext, subscribe: true})
   @state()
   library!: Library;
+  static override readonly styles = css`
+    :host {
+      display: block;
+    }
+  `;
   override render() {
-    let icons = '💾⚠️';
+    let status;
     switch (this.library.backup.state) {
       case 'idle':
-        icons = '';
+        status = 'Idle.';
         break;
       case 'writing':
-        icons = '💾';
+        status = '💾';
+        break;
+      case 'waiting-for-config':
+        status = 'Not configured ⚠️';
+        break;
+      case 'new':
+        status = 'Starting.';
+        break;
+      case 'waiting-for-permission':
+        status = 'Needs permission ⚠️';
+        break;
     }
-    return html`Backup: ${icons}`;
+    return html`Backup: ${status}`;
   }
   override firstUpdated() {
     this.addEventListener('click', this.onClick);
