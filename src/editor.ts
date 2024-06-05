@@ -19,7 +19,6 @@ import './title.js';
 import {libraryContext} from './app-context.js';
 import {assert, cast} from './asserts.js';
 import {
-  Command,
   CommandBundle,
   InputWrapper,
   SimpleCommandBundle,
@@ -681,14 +680,6 @@ export class Editor extends LitElement {
         },
       },
       {
-        description: 'Sync all',
-        execute: async () => void (await this.library.restore()),
-      },
-      {
-        description: 'Force save',
-        execute: async () => void this.document?.save(),
-      },
-      {
         description: 'Copy all',
         execute: async () => {
           const markdown = serializeToString(this.document!.tree.root);
@@ -771,20 +762,6 @@ export class Editor extends LitElement {
             },
           ]
         : []),
-      {
-        description: 'Backlinks',
-        execute: async () => {
-          const action = async (command: Command) =>
-            void this.navigateByName(command.description, true);
-          const commands = this.library.backLinks
-            .getBacklinksByDocument(this.document!, this.library)
-            .map((name) => ({
-              description: name,
-              execute: action,
-            }));
-          return new SimpleCommandBundle('Open Backlink', commands);
-        },
-      },
       ...(activeNode && startIndex !== undefined && endIndex !== undefined
         ? [
             {
