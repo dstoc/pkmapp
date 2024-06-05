@@ -1,45 +1,47 @@
 {
   "type": "module",
+  "name": "pkmapp",
+  "license": "Apache-2.0",
   "packageManager": "pnpm@9.0.6",
   "scripts": {
     "dev": "vite dev",
-    "preview": "pnpm vitebuild && vite preview",
-    "vitebuild": "vite build --target es2022",
+    "preview": "pnpm build && vite preview",
     "lint": "tsc --noEmit -p tsconfig.json && eslint src/",
-    "update-deps": "./build-wasm.sh && ./build-fonts.sh",
-    "build": "pnpm update-deps && pnpm vitebuild",
-    "build-cached": "pnpm vitebuild",
+    "build": "vite build",
     "unittest": "vitest --browser.name=chrome --browser.headless",
-    "test": "playwright test"
+    "test": "playwright test",
+    "prepare": "./build-wasm.sh"
   },
-  "license": "Apache-2.0",
+  "exports": {
+    "./*.ts": "./src/*.ts"
+  },
   "devDependencies": {
-    "@fontsource/noto-emoji": "^5.0.17",
-    "@lit/context": "^1.1.1",
-    "@playwright/test": "^1.44.1",
-    "@tree-sitter-grammars/tree-sitter-markdown": "^0.2.3",
-    "@types/jasmine": "^5.1.4",
-    "@types/trusted-types": "^2.0.7",
-    "@types/wicg-file-system-access": "^2023.10.4",
-    "@typescript-eslint/eslint-plugin": "^7.11.0",
-    "@typescript-eslint/parser": "^7.11.0",
-    "@vitest/browser": "^1.6.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
-    "firacode": "^6.2.0",
-    "lit": "^3.1.2",
+    "@playwright/test": "^1.44.1",
     "prettier": "3.2.5",
     "pretty-format": "^29.7.0",
     "tree-sitter-cli": "^0.22.6",
+    "@tree-sitter-grammars/tree-sitter-markdown": "^0.2.3",
     "ts-lit-plugin": "^2.0.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5",
     "typescript-eslint": "^7.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.11.0",
+    "@typescript-eslint/parser": "^7.11.0",
+    "@types/jasmine": "^5.1.4",
     "vite": "^5.2.11",
     "vitest": "^1.6.0",
-    "web-tree-sitter": "^0.22.6"
+    "@vitest/browser": "^1.6.0"
   },
   "dependencies": {
-    "@types/dom-view-transitions": "^1.0.4"
+    "firacode": "^6.2.0",
+    "@fontsource/noto-emoji": "^5.0.17",
+    "lit": "^3.1.2",
+    "@lit/context": "^1.1.1",
+    "typescript": "^5.4.5",
+    "@types/dom-view-transitions": "^1.0.4",
+    "@types/trusted-types": "^2.0.7",
+    "@types/wicg-file-system-access": "^2023.10.4",
+    "web-tree-sitter": "^0.22.6"
   }
 }

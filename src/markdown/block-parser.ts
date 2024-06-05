@@ -15,11 +15,12 @@
 import Parser from 'web-tree-sitter';
 import type {MarkdownNode, ParagraphNode} from './node.js';
 import {assert, cast} from '../asserts.js';
+import treeSitterWasm from 'web-tree-sitter/tree-sitter.wasm?url';
 
 await Parser.init({
   locateFile(path: string) {
     if (path == 'tree-sitter.wasm') {
-      return new URL('../deps/tree-sitter.wasm', import.meta.url).href;
+      return treeSitterWasm;
     }
     throw new Error(`unknown resource: ${path}`);
   },

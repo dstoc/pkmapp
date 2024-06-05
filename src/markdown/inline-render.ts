@@ -12,17 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {consume} from '../deps/lit-context.js';
-import {
-  customElement,
-  html,
-  LitElement,
-  property,
-  query,
-  queryAll,
-  repeat,
-  TemplateResult,
-} from '../deps/lit.js';
+import {consume} from '@lit/context';
+import {html, LitElement, TemplateResult} from 'lit';
+import {query, queryAll, property, customElement} from 'lit/decorators.js';
+import {repeat} from 'lit/directives/repeat.js';
 import Parser from 'web-tree-sitter';
 import {cast} from '../asserts.js';
 

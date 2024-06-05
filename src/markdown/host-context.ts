@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import {cast} from '../asserts.js';
-import {createContext} from '../deps/lit-context.js';
+import {createContext} from '@lit/context';
 
 import type {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
 import {compareDocumentOrder} from './view-model-util.js';

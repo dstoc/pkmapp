@@ -1,4 +1,4 @@
-import {css} from '../deps/lit';
+import {css} from 'lit';
 
 export const styles = [
   // Inline

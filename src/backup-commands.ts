@@ -1,6 +1,6 @@
 import {Backup, Snapshots, formatDate, formatTime} from './backup.js';
 import {SimpleCommandBundle, type Command} from './command-palette.js';
-import {html} from './deps/lit.js';
+import {html} from 'lit';
 import {yesNoBundle} from './yes-no-bundle.js';
 
 export function backupCommands(backup: Backup): Command[] {

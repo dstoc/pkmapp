@@ -20,16 +20,9 @@ import './command-palette-dialog.js';
 
 import {focusContext, libraryContext} from './app-context.js';
 import {CommandPaletteDialog} from './command-palette-dialog.js';
-import {provide} from './deps/lit-context.js';
-import {
-  css,
-  customElement,
-  html,
-  LitElement,
-  query,
-  render,
-  state,
-} from './deps/lit.js';
+import {provide} from '@lit/context';
+import {css, html, LitElement, render} from 'lit';
+import {customElement, query, state} from 'lit/decorators.js';
 import {Editor} from './editor.js';
 import {IdbLibrary, Library} from './library.js';
 import {styles, loadFonts} from './style.js';

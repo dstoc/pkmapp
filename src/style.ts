@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {css} from './deps/lit.js';
+import {css} from 'lit';
 
 export const styles = [
   css`
@@ -60,11 +60,7 @@ export const styles = [
 
 export async function loadFonts() {
   await Promise.all([
-    import('./deps/firacode/fira_code.css', {
-      with: {type: 'css'},
-    }),
-    import('./deps/noto-emoji/400.css', {
-      with: {type: 'css'},
-    }),
+    import('firacode/distr/fira_code.css'),
+    import('@fontsource/noto-emoji/400.css'),
   ]);
 }

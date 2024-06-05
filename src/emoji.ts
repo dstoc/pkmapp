@@ -13,7 +13,8 @@
 // limitations under the License.
 
 import {noAwait} from './async.js';
-import {customElement, html, LitElement, state, property} from './deps/lit.js';
+import {html, LitElement} from 'lit';
+import {state, customElement, property} from 'lit/decorators.js';
 
 async function getConsistentEmoji(value: string) {
   const sha1 = await crypto.subtle.digest(

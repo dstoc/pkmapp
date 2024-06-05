@@ -15,17 +15,10 @@
 import './markdown/block-render.js';
 import './command-palette.js';
 
-import {consume} from './deps/lit-context.js';
+import {consume} from '@lit/context';
 import {libraryContext} from './app-context.js';
-import {
-  css,
-  query,
-  customElement,
-  html,
-  LitElement,
-  property,
-  state,
-} from './deps/lit.js';
+import {css, html, LitElement} from 'lit';
+import {property, customElement, query, state} from 'lit/decorators.js';
 import {InlineKeyDown} from './markdown/inline-render.js';
 import {InlineViewModelNode} from './markdown/view-model-node.js';
 import {MarkdownInline} from './markdown/inline-render.js';

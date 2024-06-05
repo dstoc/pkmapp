@@ -1,6 +1,7 @@
 import {libraryContext} from './app-context.js';
-import {LitElement, css, customElement, html, state} from './deps/lit.js';
-import {consume} from './deps/lit-context.js';
+import {css, html, LitElement} from 'lit';
+import {state, customElement} from 'lit/decorators.js';
+import {consume} from '@lit/context';
 import {Library} from './library.js';
 import {backupCommands} from './backup-commands.js';
 import {CommandBundle, SimpleCommandBundle} from './command-palette.js';

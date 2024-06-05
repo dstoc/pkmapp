@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {createContext} from './deps/lit-context.js';
+import {createContext} from '@lit/context';
 import type {Library} from './library.js';
 import {InlineViewModelNode} from './markdown/view-model-node.js';
 

@@ -14,7 +14,8 @@
 
 import './command-palette.js';
 
-import {css, customElement, html, LitElement, query} from './deps/lit.js';
+import {css, html, LitElement} from 'lit';
+import {customElement, query} from 'lit/decorators.js';
 import {CommandPalette, CommandBundle} from './command-palette.js';
 import {noAwait} from './async.js';
 

@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {state, customElement, html, LitElement, property} from '../deps/lit.js';
+import {html, LitElement} from 'lit';
+import {state, customElement, property} from 'lit/decorators.js';
 
 import {MarkdownInline} from './inline-render.js';
 import {isInlineNode} from './node.js';
 import {InlineViewModelNode, type ViewModelNode} from './view-model-node.js';
 import './transclusion.js';
 import {hostContext, HostContext} from './host-context.js';
-import {provide, consume} from '../deps/lit-context.js';
+import {provide, consume} from '@lit/context';
 import {styles} from './style.js';
 
 @customElement('md-block')

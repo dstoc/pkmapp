@@ -1,5 +1,5 @@
 import {Command, SimpleCommandBundle} from './command-palette.js';
-import {html} from './deps/lit.js';
+import {html} from 'lit';
 import './markdown/block-render.js';
 import {parseBlocks, Tree} from './markdown/block-parser.js';
 import {DocumentNode} from './markdown/node.js';

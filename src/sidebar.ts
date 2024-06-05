@@ -1,4 +1,5 @@
-import {LitElement, css, customElement, html} from './deps/lit.js';
+import {css, html, LitElement} from 'lit';
+import {customElement} from 'lit/decorators.js';
 
 @customElement('pkm-sidebar')
 export class Sidebar extends LitElement {

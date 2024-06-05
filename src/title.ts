@@ -15,15 +15,9 @@
 import {Library} from './library.js';
 import {assert} from './asserts.js';
 import {findNextEditable} from './markdown/view-model-util.js';
-import {
-  state,
-  property,
-  css,
-  customElement,
-  html,
-  LitElement,
-} from './deps/lit.js';
-import {consume} from './deps/lit-context.js';
+import {css, html, LitElement} from 'lit';
+import {property, customElement, state} from 'lit/decorators.js';
+import {consume} from '@lit/context';
 import {libraryContext} from './app-context.js';
 import {getLogicalContainingBlock, isExplicitlyNamed} from './block-util.js';
 import {Observers, Observer} from './observe.js';

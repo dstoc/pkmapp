@@ -23,16 +23,9 @@ import {
   InputWrapper,
   SimpleCommandBundle,
 } from './command-palette.js';
-import {consume} from './deps/lit-context.js';
-import {
-  css,
-  customElement,
-  html,
-  LitElement,
-  property,
-  query,
-  state,
-} from './deps/lit.js';
+import {consume} from '@lit/context';
+import {css, html, LitElement} from 'lit';
+import {property, customElement, query, state} from 'lit/decorators.js';
 import {Document, Library} from './library.js';
 import {MarkdownRenderer} from './markdown/block-render.js';
 import {serializeToString} from './markdown/block-serializer.js';

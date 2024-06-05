@@ -1,7 +1,9 @@
 import {focusContext, libraryContext} from './app-context.js';
 import {getNamedContainingBlock} from './block-util.js';
-import {consume} from './deps/lit-context.js';
-import {html, customElement, LitElement, css, repeat} from './deps/lit.js';
+import {consume} from '@lit/context';
+import {css, html, LitElement} from 'lit';
+import {customElement} from 'lit/decorators.js';
+import {repeat} from 'lit/directives/repeat.js';
 import {Library} from './library.js';
 import {ViewModelNode} from './markdown/view-model-node.js';
 import './markdown/block-render.js';

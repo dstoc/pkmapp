@@ -12,23 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {
-  query,
-  customElement,
-  html,
-  css,
-  state,
-  LitElement,
-  property,
-} from '../deps/lit.js';
-
+import {css, html, LitElement} from 'lit';
+import {property, customElement, query, state} from 'lit/decorators.js';
 import {MarkdownRenderer} from './block-render.js';
 import type {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
 import {CodeBlockNode} from './node.js';
 import {Library} from '../library.js';
 import {libraryContext} from '../app-context.js';
 import './block-render.js';
-import {consume} from '../deps/lit-context.js';
+import {consume} from '@lit/context';
 import {HostContext, hostContext} from './host-context.js';
 import {findNextEditable, findFinalEditable} from './view-model-util.js';
 import {noAwait} from '../async.js';

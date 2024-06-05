@@ -12,7 +12,6 @@ A local-only personal knowledge management app.
 
 1. Clone this repo.
 1. `pnpm i`
-1. `pnpm build-deps`
 
 ## Develop
 

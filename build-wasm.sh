@@ -14,26 +14,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PKMAPP_ROOT=$PWD
-(
-  (
-    export EXTENSION_TAGS=1
-    export EXTENSION_GFM=1
-    export NO_DEFAULT_EXTENSIONS=1
-    (
-      cd $PKMAPP_ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown
-      $PKMAPP_ROOT/node_modules/.bin/tree-sitter generate || exit 1
-    )
-    (
-      cd $PKMAPP_ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown-inline
-      $PKMAPP_ROOT/node_modules/.bin/tree-sitter generate || exit 1
-    )
-  )
-  mkdir -p build/deps/
-  cd build/deps/
-  $PKMAPP_ROOT/node_modules/.bin/tree-sitter build --wasm $PKMAPP_ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown || exit 1
-  $PKMAPP_ROOT/node_modules/.bin/tree-sitter build --wasm $PKMAPP_ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
-)
-cp node_modules/web-tree-sitter/tree-sitter.js build/deps/ || exit 1
-echo 'export default TreeSitter;' >> build/deps/tree-sitter.js
-cp node_modules/web-tree-sitter/tree-sitter.wasm build/deps/ || exit 1
+ROOT=$PWD
+
+mkdir -p src/deps/
+touch src/deps/stamp
+
+NEWSTAMP=$(cat pnpm-lock.yaml build-wasm.sh | sha1sum)
+OLDSTAMP=$(cat src/deps/stamp)
+
+if [ "$NEWSTAMP" == "$OLDSTAMP" ]; then
+  exit 0
+fi
+
+echo "$NEWSTAMP" > src/deps/stamp
+
+block() {
+  export EXTENSION_TAGS=1
+  export EXTENSION_GFM=1
+  export NO_DEFAULT_EXTENSIONS=1
+  cd $ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown
+  $ROOT/node_modules/.bin/tree-sitter generate || exit 1
+  cd $ROOT/src/deps/
+  $ROOT/node_modules/.bin/tree-sitter build --wasm $ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown || exit 1
+}
+
+inline() {
+  export EXTENSION_TAGS=1
+  export EXTENSION_GFM=1
+  export NO_DEFAULT_EXTENSIONS=1
+  cd $ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown-inline
+  $ROOT/node_modules/.bin/tree-sitter generate || exit 1
+  cd $ROOT/src/deps/
+  $ROOT/node_modules/.bin/tree-sitter build --wasm $ROOT/node_modules/@tree-sitter-grammars/tree-sitter-markdown/tree-sitter-markdown-inline || exit 1
+}
+
+block &
+pid1=$!
+inline &
+pid2=$!
+
+wait $pid1
+status1=$?
+wait $pid2
+status2=$?
+
+if [ $status1 -ne 0 ]; then
+  exit $status1
+fi
+
+if [ $status2 -ne 0 ]; then
+  exit $status2
+fi

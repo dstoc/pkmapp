@@ -12,16 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {
-  TemplateResult,
-  css,
-  customElement,
-  html,
-  LitElement,
-  query,
-  state,
-  property,
-} from './deps/lit.js';
+import {css, html, LitElement, TemplateResult} from 'lit';
+import {property, customElement, query, state} from 'lit/decorators.js';
 import {assert} from './asserts.js';
 import './emoji.js';
 import {noAwait} from './async.js';
