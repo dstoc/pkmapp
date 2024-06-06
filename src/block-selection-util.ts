@@ -22,9 +22,14 @@ import {assert, cast} from './asserts.js';
 import {dfs} from './markdown/view-model-util.js';
 import {isInlineNode} from './markdown/node.js';
 
+export type BlockSelectionTarget = Element & {
+  hostContext?: HostContext;
+  node?: InlineViewModelNode;
+};
+
 export function getBlockSelectionTarget(
   element: Element & {hostContext?: HostContext; node?: InlineViewModelNode},
-) {
+): BlockSelectionTarget | undefined {
   if (element.hostContext?.hasSelection) return element;
   // Retarget if there's any containing transclusion that has a selection.
   let transclusion;

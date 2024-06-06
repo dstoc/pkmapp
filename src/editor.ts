@@ -18,11 +18,7 @@ import './title.js';
 
 import {libraryContext} from './app-context.js';
 import {assert, cast} from './asserts.js';
-import {
-  CommandBundle,
-  InputWrapper,
-  SimpleCommandBundle,
-} from './command-palette.js';
+import {Command, InputWrapper, SimpleCommandBundle} from './command-palette.js';
 import {consume} from '@lit/context';
 import {css, html, LitElement} from 'lit';
 import {property, customElement, query, state} from 'lit/decorators.js';
@@ -59,10 +55,7 @@ import {
   blockIcon,
   BlockCommandBundle,
 } from './block-command-bundle.js';
-import {getLanguageTools} from './language-tool-bundle.js';
-import {debugCommands} from './debug-commands.js';
 import {noAwait} from './async.js';
-import {backupCommands} from './backup-commands.js';
 import {yesNoBundle} from './yes-no-bundle.js';
 import {editBlockSelectionIndent} from './edits/indent-block-selection.js';
 import {editInlineIndent} from './edits/indent-inline.js';
@@ -78,6 +71,7 @@ import {
 import {MarkdownTreeEdit} from './markdown/view-model.js';
 import {Focus} from './markdown/view-model-ops.js';
 import {findOpenCreateBundle} from './commands/find-open-create.js';
+import {CommandContext} from './commands/context.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -128,6 +122,9 @@ export class Editor extends LitElement {
           top: 0;
           padding-bottom: 0.5em;
           background: var(--root-background-color);
+        }
+        pkm-title:empty {
+          display: none;
         }
       `,
     ];
@@ -645,7 +642,24 @@ export class Editor extends LitElement {
     }
     return false;
   }
-  getCommands(): CommandBundle {
+  getCommandContext(): CommandContext {
+    const inlineSelection = this.markdownRenderer.getInlineSelection();
+    return {
+      inlineSelection,
+      node: inlineSelection.inline?.node,
+      root: this.root,
+      document: this.document,
+      library: this.library,
+      editor: this,
+      transclusion:
+        inlineSelection.inline &&
+        getContainingTransclusion(inlineSelection.inline),
+      blockSelectionTarget:
+        inlineSelection.inline &&
+        getBlockSelectionTarget(inlineSelection.inline),
+    };
+  }
+  getCommands(): Iterable<Command> {
     const {
       inline: activeInline,
       startIndex,
@@ -659,7 +673,7 @@ export class Editor extends LitElement {
     const selectionTarget =
       activeInline && getBlockSelectionTarget(activeInline);
     const selectionHostContext = selectionTarget?.hostContext;
-    return new SimpleCommandBundle('Choose command...', [
+    return [
       {
         description: 'Find, Open, Create...',
         execute: async () => {
@@ -922,12 +936,7 @@ export class Editor extends LitElement {
             },
           ]
         : []),
-      ...(activeInline?.hostContext?.hasSelection
-        ? getLanguageTools(() => serializeSelection(activeInline.hostContext!))
-        : []),
-      ...debugCommands(this.library),
-      ...backupCommands(this.library.backup),
-    ]);
+    ];
   }
 }
 

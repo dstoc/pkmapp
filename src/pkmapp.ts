@@ -27,7 +27,11 @@ import {Editor} from './editor.js';
 import {IdbLibrary, Library} from './library.js';
 import {styles, loadFonts} from './style.js';
 import {EditorNavigation} from './editor.js';
-import {CommandBundle} from './command-palette.js';
+import {
+  Command,
+  CommandBundle,
+  SimpleCommandBundle,
+} from './command-palette.js';
 import {assert} from './asserts.js';
 import {noAwait} from './async.js';
 import './backup-sidebar.js';
@@ -35,6 +39,9 @@ import {
   InlineViewModelNode,
   ViewModelNode,
 } from './markdown/view-model-node.js';
+import {debugCommands} from './debug-commands.js';
+import {backupCommands} from './backup-commands.js';
+import {CommandContext} from './commands/context.js';
 
 export function injectStyles() {
   document.adoptedStyleSheets = [...styles];
@@ -81,7 +88,12 @@ export class PkmApp extends LitElement {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'p' && e.ctrlKey) {
         e.preventDefault();
-        this.commandPalette.trigger(this.editor.getCommands());
+        const context = this.editor.getCommandContext();
+        this.commandPalette.trigger(
+          new SimpleCommandBundle('Choose Command', [
+            ...this.getCommands(context),
+          ]),
+        );
       }
     });
     window.addEventListener('popstate', (e) => {
@@ -120,6 +132,7 @@ export class PkmApp extends LitElement {
         pkm-editor {
           width: 100%;
           max-width: 700px;
+          padding: 5px;
         }
       `,
     ];
@@ -151,6 +164,11 @@ export class PkmApp extends LitElement {
     `;
   }
   protected componentsReady() {}
+  protected *getCommands(context: CommandContext): Iterable<Command> {
+    yield* this.editor.getCommands();
+    yield* debugCommands(context.library);
+    yield* backupCommands(context.library.backup);
+  }
   private onTitleItemClick({detail: root}: CustomEvent<ViewModelNode>) {
     const document = this.library.getDocumentByTree(root.viewModel.tree);
     assert(document);
