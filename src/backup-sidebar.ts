@@ -4,7 +4,7 @@ import {state, customElement} from 'lit/decorators.js';
 import {consume} from '@lit/context';
 import {Library} from './library.js';
 import {backupCommands} from './backup-commands.js';
-import {CommandBundle, SimpleCommandBundle} from './command-palette.js';
+import {SimpleCommandBundle} from './command-palette.js';
 
 @customElement('pkm-backup-sidebar')
 export class BackupSidebar extends LitElement {
@@ -46,7 +46,7 @@ export class BackupSidebar extends LitElement {
       this.library.backup.checkForPermission();
     } else {
       this.dispatchEvent(
-        new CustomEvent('backup-commands', {
+        new CustomEvent('pkm-commands', {
           detail: new SimpleCommandBundle(
             `Backup options...`,
             backupCommands(this.library.backup),
@@ -56,11 +56,5 @@ export class BackupSidebar extends LitElement {
         }),
       );
     }
-  }
-}
-
-declare global {
-  interface HTMLElementEventMap {
-    'backup-commands': CustomEvent<CommandBundle>;
   }
 }

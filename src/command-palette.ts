@@ -331,4 +331,7 @@ declare global {
   interface HTMLElementTagNameMap {
     'pkm-command-palette': CommandPalette;
   }
+  interface HTMLElementEventMap {
+    'pkm-commands': CustomEvent<CommandBundle>;
+  }
 }

@@ -197,7 +197,7 @@ export class Editor extends LitElement {
       } else if (results.length > 1) {
         Object.assign(this, old);
         this.dispatchEvent(
-          new CustomEvent('editor-commands', {
+          new CustomEvent('pkm-commands', {
             detail: new SimpleCommandBundle(
               `Which "${name}"?`,
               results.map(({document, root}) => ({
@@ -215,7 +215,7 @@ export class Editor extends LitElement {
       } else {
         Object.assign(this, old);
         this.dispatchEvent(
-          new CustomEvent('editor-commands', {
+          new CustomEvent('pkm-commands', {
             detail: new InputWrapper(name, findOpenCreateBundle(this)),
             bubbles: true,
             composed: true,
@@ -986,6 +986,5 @@ declare global {
   }
   interface HTMLElementEventMap {
     'editor-navigate': CustomEvent<EditorNavigation>;
-    'editor-commands': CustomEvent<CommandBundle>;
   }
 }
