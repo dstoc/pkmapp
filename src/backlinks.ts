@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {InlineViewModelNode} from './markdown/view-model-node.js';
+import {InlineViewModelNode, viewModel} from './markdown/view-model-node.js';
 import {Library, Document} from './library.js';
 import {traverseInlineNodes} from './markdown/view-model.js';
 import {Observe} from './observe.js';
@@ -29,7 +29,7 @@ export class BackLinks {
     const sources = new Set<string>();
     for (const name of document.allNames) {
       for (const {
-        viewModel: {tree},
+        [viewModel]: {tree},
       } of this.getBacklinksByName(name)) {
         const source = library.getDocumentByTree(tree)?.name;
         if (source == null) continue;
@@ -60,7 +60,7 @@ export class BackLinks {
       let links = this.links.get(node);
       const preLinks = new Set(links?.values() ?? []);
       for (const next of traverseInlineNodes(
-        node.viewModel.inlineTree.rootNode,
+        node[viewModel].inlineTree.rootNode,
       )) {
         if (next.type === 'inline_link' || next.type === 'shortcut_link') {
           const text =

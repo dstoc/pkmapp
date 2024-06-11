@@ -22,6 +22,7 @@ import {libraryContext} from './app-context.js';
 import {getLogicalContainingBlock, isExplicitlyNamed} from './block-util.js';
 import {Observers, Observer} from './observe.js';
 import type {ViewModelNode} from './markdown/view-model-node.js';
+import {viewModel} from './markdown/view-model-node.js';
 
 @customElement('pkm-title')
 export class Title extends LitElement {
@@ -44,7 +45,7 @@ export class Title extends LitElement {
     if (!this.node) return ``;
     if (
       !this.simple &&
-      !this.node.viewModel.parent &&
+      !this.node[viewModel].parent &&
       isExplicitlyNamed(this.node)
     )
       return ``;
@@ -60,7 +61,7 @@ export class Title extends LitElement {
       ...containers.map(
         (container) =>
           new Observer(
-            () => container.viewModel.observe,
+            () => container[viewModel].observe,
             () => this.requestUpdate(),
             (target, observer) => target.add(observer),
             (target, observer) => target.remove(observer),
@@ -109,7 +110,7 @@ function getTitle(node: ViewModelNode, library: Library): string {
       // TODO: use metadata
       return node.content;
     case 'document': {
-      const document = library.getDocumentByTree(node.viewModel.tree);
+      const document = library.getDocumentByTree(node[viewModel].tree);
       return document?.name ?? 'no-document';
     }
     default:

@@ -14,6 +14,7 @@ import {
   shallowTraverse,
   swapNodes,
 } from '../markdown/view-model-util';
+import {viewModel} from '../markdown/view-model-node.js';
 
 export function insertParagraph(context: EditContext, index: number) {
   if (
@@ -37,7 +38,7 @@ function unindentIfEmptyListItem(context: EditContext): boolean {
   assert(isInlineViewModelNode(node));
   if (node.type !== 'paragraph') return false;
   if (node.content.length > 0) return false;
-  const parent = node.viewModel.parent;
+  const parent = node[viewModel].parent;
   if (!parent || parent.type !== 'list-item' || parent === context.root)
     return false;
   if (parent.children!.length > 1) return false;
@@ -61,7 +62,7 @@ function splitBlockQuoteOrListItemOnEmptyParagraph(
   assert(isInlineViewModelNode(node));
   if (node.type !== 'paragraph') return false;
   if (node.content.length > 0) return false;
-  if (!node.viewModel.parent) return false;
+  if (!node[viewModel].parent) return false;
   const {ancestor} = findAncestor(
     node,
     context.root,
@@ -75,36 +76,36 @@ function splitBlockQuoteOrListItemOnEmptyParagraph(
   let target: ViewModelNode;
   if (ancestor.type === 'list-item') {
     // Insert a new list-item to hold the empty paragraph.
-    target = node.viewModel.tree.add({
+    target = node[viewModel].tree.add({
       type: 'list-item',
       marker: ancestor.marker,
     });
-    target.viewModel.insertBefore(
-      cast(ancestor.viewModel.parent),
-      ancestor.viewModel.nextSibling,
+    target[viewModel].insertBefore(
+      cast(ancestor[viewModel].parent),
+      ancestor[viewModel].nextSibling,
     );
-    node.viewModel.insertBefore(target);
+    node[viewModel].insertBefore(target);
   } else {
     // Insert the empty paragraph after the block quote.
     assert(ancestor.type === 'block-quote');
-    node.viewModel.insertBefore(
-      cast(ancestor.viewModel.parent),
-      ancestor.viewModel.nextSibling,
+    node[viewModel].insertBefore(
+      cast(ancestor[viewModel].parent),
+      ancestor[viewModel].nextSibling,
     );
     target = node;
   }
   if (tail.length) {
     // Construct a new block-quote or list-item to hold the tail
     // of nodes following the empty paragraph.
-    const tailTarget = node.viewModel.tree.add(
+    const tailTarget = node[viewModel].tree.add(
       cloneNode(ancestor, () => false),
     );
-    tailTarget.viewModel.insertBefore(
-      cast(ancestor.viewModel.parent),
-      target.viewModel.nextSibling,
+    tailTarget[viewModel].insertBefore(
+      cast(ancestor[viewModel].parent),
+      target[viewModel].nextSibling,
     );
     for (const node of tail) {
-      node.viewModel.insertBefore(tailTarget);
+      node[viewModel].insertBefore(tailTarget);
     }
   }
   context.focus(node, 0);
@@ -115,7 +116,7 @@ function insertSiblingParagraph(context: EditContext, startIndex: number) {
   const node = context.node;
   assert(isInlineViewModelNode(node));
   context.startEditing();
-  const newParagraph = node.viewModel.tree.add({
+  const newParagraph = node[viewModel].tree.add({
     type: 'paragraph',
     content: '',
   });
@@ -125,15 +126,15 @@ function insertSiblingParagraph(context: EditContext, startIndex: number) {
     if (startIndex === 0) {
       // Inserting before the section is also special. Handle it directly rather than
       // in finishInsertParagraph.
-      newParagraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
+      newParagraph[viewModel].insertBefore(cast(node[viewModel].parent), node);
       context.focus(newParagraph, 0);
       return;
     }
-    newParagraph.viewModel.insertBefore(node, node.viewModel.firstChild);
+    newParagraph[viewModel].insertBefore(node, node[viewModel].firstChild);
   } else {
-    newParagraph.viewModel.insertBefore(
-      cast(node.viewModel.parent),
-      node.viewModel.nextSibling,
+    newParagraph[viewModel].insertBefore(
+      cast(node[viewModel].parent),
+      node[viewModel].nextSibling,
     );
   }
   finishInsertParagraph(context, node, newParagraph, startIndex);
@@ -160,7 +161,7 @@ function insertParagraphInList(
       path[0].type === 'list-item' &&
       path[1].type === 'paragraph' &&
       (path[0].children?.length === 1 ||
-        path[1].viewModel.nextSibling?.type === 'list')
+        path[1][viewModel].nextSibling?.type === 'list')
     )
   ) {
     // Abort if we're dealing with something other than the simple list
@@ -170,44 +171,44 @@ function insertParagraphInList(
   context.startEditing();
   let targetList;
   let targetListItemNextSibling;
-  if (node.viewModel.nextSibling) {
-    if (node.viewModel.nextSibling.type === 'list') {
-      targetList = node.viewModel.nextSibling;
-      targetListItemNextSibling = targetList.viewModel.firstChild;
+  if (node[viewModel].nextSibling) {
+    if (node[viewModel].nextSibling.type === 'list') {
+      targetList = node[viewModel].nextSibling;
+      targetListItemNextSibling = targetList[viewModel].firstChild;
     } else {
-      targetList = node.viewModel.tree.add({
+      targetList = node[viewModel].tree.add({
         type: 'list',
       });
-      targetList.viewModel.insertBefore(
-        cast(node.viewModel.parent),
-        node.viewModel.nextSibling,
+      targetList[viewModel].insertBefore(
+        cast(node[viewModel].parent),
+        node[viewModel].nextSibling,
       );
       targetListItemNextSibling = undefined;
     }
   } else {
     targetList = ancestor;
-    targetListItemNextSibling = path[0].viewModel.nextSibling;
+    targetListItemNextSibling = path[0][viewModel].nextSibling;
   }
 
-  const firstListItem = targetList.viewModel.firstChild;
+  const firstListItem = targetList[viewModel].firstChild;
   // TODO: can't return false here, already started editing above...
   if (firstListItem && firstListItem.type !== 'list-item') return false;
-  const newListItem = node.viewModel.tree.add({
+  const newListItem = node[viewModel].tree.add({
     type: 'list-item',
     marker: firstListItem?.marker ?? '* ',
   });
-  newListItem.viewModel.insertBefore(targetList, targetListItemNextSibling);
+  newListItem[viewModel].insertBefore(targetList, targetListItemNextSibling);
   if (
-    newListItem.viewModel.previousSibling?.type === 'list-item' &&
-    newListItem.viewModel.previousSibling.checked !== undefined
+    newListItem[viewModel].previousSibling?.type === 'list-item' &&
+    newListItem[viewModel].previousSibling.checked !== undefined
   ) {
-    newListItem.viewModel.updateChecked(false);
+    newListItem[viewModel].updateChecked(false);
   }
-  const newParagraph = node.viewModel.tree.add({
+  const newParagraph = node[viewModel].tree.add({
     type: 'paragraph',
     content: '',
   });
-  newParagraph.viewModel.insertBefore(newListItem);
+  newParagraph[viewModel].insertBefore(newListItem);
   finishInsertParagraph(context, node, newParagraph, startIndex);
   return true;
 }
@@ -237,14 +238,14 @@ function finishInsertParagraph(
   if (shouldSwap) {
     swapNodes(node, newParagraph);
   } else {
-    newParagraph.viewModel.edit({
+    newParagraph[viewModel].edit({
       startIndex: 0,
       newEndIndex: 0,
       oldEndIndex: 0,
       newText: node.content.substring(startIndex),
     });
 
-    node.viewModel.edit({
+    node[viewModel].edit({
       startIndex,
       oldEndIndex: node.content.length,
       newEndIndex: startIndex,

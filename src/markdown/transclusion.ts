@@ -24,6 +24,7 @@ import {consume} from '@lit/context';
 import {HostContext, hostContext} from './host-context.js';
 import {findNextEditable, findFinalEditable} from './view-model-util.js';
 import {noAwait} from '../async.js';
+import {viewModel} from './view-model-node.js';
 
 @customElement('md-transclusion')
 export class MarkdownTransclusion extends LitElement {
@@ -88,7 +89,7 @@ export class MarkdownTransclusion extends LitElement {
       this.hostContext.focusOffset;
     this.hostContext.focusNode = undefined;
     this.hostContext.focusOffset = undefined;
-    node?.viewModel.observe.notify();
+    node?.[viewModel].observe.notify();
   }
   override connectedCallback() {
     super.connectedCallback();
@@ -109,10 +110,10 @@ export class MarkdownTransclusion extends LitElement {
     this.maybeUpdateFocus();
   };
   private addObserver(node: ViewModelNode | undefined) {
-    node?.viewModel.observe.add(this.observer);
+    node?.[viewModel].observe.add(this.observer);
   }
   private removeObserver(node: ViewModelNode | undefined) {
-    node?.viewModel.observe.remove(this.observer);
+    node?.[viewModel].observe.remove(this.observer);
   }
 }
 

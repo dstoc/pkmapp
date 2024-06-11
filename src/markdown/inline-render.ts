@@ -20,7 +20,7 @@ import Parser from 'web-tree-sitter';
 import {cast} from '../asserts.js';
 
 import {HostContext, hostContext} from './host-context.js';
-import {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
+import {InlineViewModelNode, ViewModelNode, viewModel} from './view-model-node.js';
 import {noAwait} from '../async.js';
 import {InlineTreeNode} from './view-model.js';
 
@@ -77,10 +77,10 @@ export class MarkdownInline extends LitElement {
   override render() {
     if (!this.node) return;
     // TODO: How can we avoid reaching this state?
-    if (!this.node.viewModel.connected) return;
+    if (!this.node[viewModel].connected) return;
     this.selected = this.hostContext?.selection.has(this.node) ?? false;
     return html`<md-span
-      .node=${this.node.viewModel.inlineTree.rootNode}
+      .node=${this.node[viewModel].inlineTree.rootNode}
     ></md-span>`;
   }
   override willUpdate(changedProperties: Map<string, unknown>) {
@@ -357,10 +357,10 @@ export class MarkdownInline extends LitElement {
     this.requestUpdate();
   };
   private addObserver(node: ViewModelNode | undefined) {
-    node?.viewModel.observe.add(this.observer);
+    node?.[viewModel].observe.add(this.observer);
   }
   private removeObserver(node: ViewModelNode | undefined) {
-    node?.viewModel.observe.remove(this.observer);
+    node?.[viewModel].observe.remove(this.observer);
   }
 }
 

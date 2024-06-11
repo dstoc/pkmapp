@@ -20,7 +20,7 @@ import {libraryContext} from './app-context.js';
 import {css, html, LitElement} from 'lit';
 import {property, customElement, query, state} from 'lit/decorators.js';
 import {InlineKeyDown} from './markdown/inline-render.js';
-import {InlineViewModelNode} from './markdown/view-model-node.js';
+import {InlineViewModelNode, viewModel} from './markdown/view-model-node.js';
 import {MarkdownInline} from './markdown/inline-render.js';
 import {
   SimpleCommandBundle,
@@ -121,7 +121,7 @@ export class Autocomplete extends LitElement {
       this.editor.runEditAction(inline, (context: EditContext) => {
         context.startEditing();
         const newEndIndex = this.startIndex + arg.length;
-        node.viewModel.edit({
+        node[viewModel].edit({
           startIndex: this.startIndex,
           newEndIndex,
           oldEndIndex: this.endIndex,
@@ -143,7 +143,7 @@ export class Autocomplete extends LitElement {
       execute: async (_command, updatePreview) => {
         this.editor.runEditAction(inline, (context: EditContext) => {
           context.startEditing();
-          node.viewModel.edit({
+          node[viewModel].edit({
             // TODO: numbers are too contextual
             startIndex: this.startIndex - 1,
             newEndIndex: this.startIndex + 2,
@@ -174,7 +174,7 @@ export class Autocomplete extends LitElement {
       if (newText === '[') {
         context.startEditing();
         this.activate(inline, cursorIndex);
-        node.viewModel.edit({
+        node[viewModel].edit({
           startIndex: cursorIndex,
           newEndIndex: cursorIndex + 1,
           oldEndIndex: cursorIndex,
@@ -194,7 +194,7 @@ export class Autocomplete extends LitElement {
       }
     } else if (newText === ']') {
       context.startEditing();
-      node.viewModel.edit({
+      node[viewModel].edit({
         startIndex: cursorIndex - 1,
         newEndIndex: cursorIndex - 1,
         oldEndIndex: cursorIndex,

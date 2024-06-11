@@ -35,6 +35,7 @@ import {
   doOp,
   undoOp,
 } from './view-model-ops.js';
+import {viewModel} from './view-model-node.js';
 
 export class ViewModel {
   constructor(
@@ -69,19 +70,19 @@ export class ViewModel {
   previousSibling?: ViewModelNode;
   readonly observe;
   protected signalMutation(op: Op, notify = true) {
-    this.version = this.tree.root.viewModel.version + 1;
+    this.version = this.tree.root[viewModel].version + 1;
     this.tree.record(op);
     let parent = this.parent;
     while (parent) {
-      parent.viewModel.version = this.version;
-      parent = parent.viewModel.parent;
+      parent[viewModel].version = this.version;
+      parent = parent[viewModel].parent;
     }
     for (const node of dfs(
       this.self,
       this.self,
-      (node) => !node.viewModel.connected,
+      (node) => !node[viewModel].connected,
     )) {
-      node.viewModel.version = this.version;
+      node[viewModel].version = this.version;
     }
     if (notify) {
       this.observe.notify();
@@ -97,24 +98,24 @@ export class ViewModel {
   remove() {
     assert(this.tree.state === 'editing');
     assert(this.parent);
-    if (this.parent?.viewModel.firstChild === this.self) {
-      this.parent.viewModel.firstChild = this.nextSibling;
+    if (this.parent?.[viewModel].firstChild === this.self) {
+      this.parent[viewModel].firstChild = this.nextSibling;
     }
-    if (this.parent?.viewModel.lastChild === this.self) {
-      this.parent.viewModel.lastChild = this.previousSibling;
+    if (this.parent?.[viewModel].lastChild === this.self) {
+      this.parent[viewModel].lastChild = this.previousSibling;
     }
     if (this.previousSibling) {
-      this.previousSibling.viewModel.nextSibling = this.nextSibling;
+      this.previousSibling[viewModel].nextSibling = this.nextSibling;
     }
     if (this.nextSibling) {
-      this.nextSibling.viewModel.previousSibling = this.previousSibling;
+      this.nextSibling[viewModel].previousSibling = this.previousSibling;
     }
     const index = this.parent.children!.indexOf(this.self);
     this.parent.children!.splice(index, 1);
     if (!this.previousSibling)
-      this.parent.viewModel.firstChild = this.nextSibling;
+      this.parent[viewModel].firstChild = this.nextSibling;
     if (!this.nextSibling)
-      this.parent.viewModel.lastChild = this.previousSibling;
+      this.parent[viewModel].lastChild = this.previousSibling;
     const parent = this.parent;
     const nextSibling = this.nextSibling;
     this.signalMutation(
@@ -130,7 +131,7 @@ export class ViewModel {
     this.nextSibling = undefined;
     this.previousSibling = undefined;
     this.tree.removed.add(this.self);
-    parent.viewModel.observe.notify();
+    parent[viewModel].observe.notify();
   }
 
   insertBefore(parent: ViewModelNode, nextSibling?: ViewModelNode) {
@@ -147,22 +148,22 @@ export class ViewModel {
     const hadParent = !!this.parent;
     if (this.parent) this.remove();
     const previousSibling = nextSibling
-      ? nextSibling?.viewModel.previousSibling
-      : parent.viewModel.lastChild;
+      ? nextSibling?.[viewModel].previousSibling
+      : parent[viewModel].lastChild;
 
     this.parent = parent;
     this.previousSibling = previousSibling;
     this.nextSibling = nextSibling;
 
     if (previousSibling) {
-      previousSibling.viewModel.nextSibling = this.self;
+      previousSibling[viewModel].nextSibling = this.self;
     } else {
-      parent.viewModel.firstChild = this.self;
+      parent[viewModel].firstChild = this.self;
     }
     if (nextSibling) {
-      nextSibling.viewModel.previousSibling = this.self;
+      nextSibling[viewModel].previousSibling = this.self;
     } else {
-      parent.viewModel.lastChild = this.self;
+      parent[viewModel].lastChild = this.self;
     }
     if (!parent.children) {
       parent.children = [];
@@ -186,7 +187,7 @@ export class ViewModel {
       },
       false,
     );
-    parent.viewModel.observe.notify();
+    parent[viewModel].observe.notify();
   }
 
   updateMarker(marker: string) {
@@ -327,7 +328,7 @@ export class InlineViewModel extends ViewModel {
     const newNodes: ViewModelNode[] = [];
     for (const child of blocks) {
       const node = this.tree.add<MarkdownNode>(child);
-      node.viewModel.insertBefore(cast(this.parent), this.nextSibling);
+      node[viewModel].insertBefore(cast(this.parent), this.nextSibling);
       newNodes.push(node);
     }
     this.remove();
@@ -382,8 +383,8 @@ export class MarkdownTree {
   private redoStack: OpBatch[] = [];
 
   setRoot(node: DocumentNode & ViewModelNode) {
-    assert(node.viewModel.tree === this);
-    assert(!node.viewModel.parent);
+    assert(node[viewModel].tree === this);
+    assert(!node[viewModel].parent);
     using _ = this.edit();
     // Ensures that the whole tree is considered new and marked
     // as connected in post-edit.
@@ -397,7 +398,7 @@ export class MarkdownTree {
   }
 
   add<T extends MarkdownNode>(node: T) {
-    if ((node as MaybeViewModelNode).viewModel) {
+    if ((node as MaybeViewModelNode)[viewModel]) {
       throw new Error('node is already part of a tree');
     }
     return this.addDom(node);
@@ -458,7 +459,7 @@ export class MarkdownTree {
   // TODO: Remove recursive edit.
   edit(): MarkdownTreeEdit {
     if (this.state === 'idle') {
-      this.editStartVersion = this.root.viewModel.version;
+      this.editStartVersion = this.root[viewModel].version;
       this.editResumeObserve = this.observe.suspend();
       this.state = 'editing';
       this.removed.clear();
@@ -498,27 +499,27 @@ export class MarkdownTree {
     normalizeTree(this);
     const removedRoots = new Set<ViewModelNode>();
     for (const node of this.removed.values()) {
-      if (!node.viewModel.parent) {
+      if (!node[viewModel].parent) {
         removedRoots.add(node);
       }
     }
     this.state = 'post-edit';
     for (const root of removedRoots.values()) {
       for (const node of dfs(root)) {
-        node.viewModel.disconnect();
+        node[viewModel].disconnect();
         this.delegate?.postEditUpdate(node, 'disconnected');
       }
     }
     for (const node of dfs(
       this.root,
       undefined,
-      (node) => node.viewModel.version > this.editStartVersion,
+      (node) => node[viewModel].version > this.editStartVersion,
     )) {
-      if (!node.viewModel.connected) {
-        node.viewModel.connect();
+      if (!node[viewModel].connected) {
+        node[viewModel].connect();
         this.delegate?.postEditUpdate(node, 'connected');
       } else {
-        assert(node.viewModel.version > this.editStartVersion);
+        assert(node[viewModel].version > this.editStartVersion);
         this.delegate?.postEditUpdate(node, 'changed');
       }
     }
@@ -550,7 +551,7 @@ export class MarkdownTree {
 
     this.state = 'idle';
     if (
-      this.root.viewModel.version > this.editStartVersion &&
+      this.root[viewModel].version > this.editStartVersion &&
       // setRoot uses -1 to force connection
       this.editStartVersion >= 0
     ) {
@@ -569,16 +570,16 @@ export class MarkdownTree {
   ) {
     const result = node as T & ViewModelNode;
     if (isInlineNode(result)) {
-      assert(!result.viewModel);
-      result.viewModel = new InlineViewModel(
+      assert(!result[viewModel]);
+      result[viewModel] = new InlineViewModel(
         result as InlineViewModelNode,
         this,
         parent,
         childIndex,
       );
     } else {
-      assert(!result.viewModel);
-      result.viewModel = new ViewModel(result, this, parent, childIndex);
+      assert(!result[viewModel]);
+      result[viewModel] = new ViewModel(result, this, parent, childIndex);
     }
     if (result.children) {
       for (let i = 0; i < result.children.length; i++) {
@@ -590,13 +591,13 @@ export class MarkdownTree {
 
   serialize(node?: ViewModelNode): MarkdownNode {
     node = node ?? this.root;
-    assert(node.viewModel.tree === this);
+    assert(node[viewModel].tree === this);
     assert(this.state === 'idle');
     const result: MarkdownNode & MaybeViewModelNode = {
       ...node,
       [Symbol.for('markdown-tree')]: true,
     };
-    delete result.viewModel;
+    delete result[viewModel];
     result.children = node.children?.map((node: ViewModelNode) =>
       this.serialize(node),
     );

@@ -15,7 +15,7 @@
 import {SectionNode} from './node.js';
 import {children, dfs} from './view-model-util.js';
 import {MarkdownTree} from './view-model.js';
-import {ViewModelNode} from './view-model-node.js';
+import {ViewModelNode, viewModel} from './view-model-node.js';
 import {cast} from '../asserts.js';
 
 function moveTrailingNodesIntoSections(tree: MarkdownTree) {
@@ -25,7 +25,7 @@ function moveTrailingNodesIntoSections(tree: MarkdownTree) {
       if (child.type === 'section') {
         section = child;
       } else if (section) {
-        child.viewModel.insertBefore(section);
+        child[viewModel].insertBefore(section);
       }
     }
   }
@@ -47,8 +47,8 @@ function normalizeContiguousSections(
     node: SectionNode & ViewModelNode,
   ) {
     return (
-      (!parent.viewModel.previousSibling &&
-        parent.viewModel.parent!.type !== 'section') ||
+      (!parent[viewModel].previousSibling &&
+        parent[viewModel].parent!.type !== 'section') ||
       node.marker.length > parent.marker.length
     );
   }
@@ -64,20 +64,20 @@ function normalizeContiguousSections(
         // If we run out of sections, insert it as the next
         // sibling of the last one we saw. This happens when we have a
         // run of sections that are not contained by another section.
-        section.viewModel.insertBefore(
-          last!.viewModel.parent!,
-          last!.viewModel.nextSibling,
+        section[viewModel].insertBefore(
+          last![viewModel].parent!,
+          last![viewModel].nextSibling,
         );
       }
     }
     if (activeSections.length && contains(activeSection(), section)) {
       // If the active section can contain this section...
-      if (last && last.viewModel.parent === activeSection()) {
+      if (last && last[viewModel].parent === activeSection()) {
         // Place it next to the last section, if that section was also contained
         // by the active section.
-        section.viewModel.insertBefore(
-          last.viewModel.parent,
-          last.viewModel.nextSibling,
+        section[viewModel].insertBefore(
+          last[viewModel].parent,
+          last[viewModel].nextSibling,
         );
       } else {
         // Otherwise ensure it's the first section child of the active
@@ -90,7 +90,7 @@ function normalizeContiguousSections(
             break;
           }
         }
-        section.viewModel.insertBefore(activeSection(), next);
+        section[viewModel].insertBefore(activeSection(), next);
       }
     }
     activeSections.push(section);
@@ -103,8 +103,8 @@ function normalizeSections(tree: MarkdownTree) {
   const ranges = new Map<Section, Section[]>();
   for (const node of dfs(tree.root)) {
     if (node.type !== 'section') continue;
-    const previousSibling = node.viewModel.previousSibling;
-    const parent = node.viewModel.parent;
+    const previousSibling = node[viewModel].previousSibling;
+    const parent = node[viewModel].parent;
     let range: Section[];
     if (previousSibling?.type === 'section') {
       range = cast(ranges.get(previousSibling));
@@ -127,24 +127,24 @@ export function normalizeTree(tree: MarkdownTree) {
   for (const node of dfs(tree.root)) {
     // Merge adjacent lists.
     if (node.type === 'list') {
-      while (node.viewModel.nextSibling?.type === 'list') {
-        const next = node.viewModel.nextSibling;
-        while (next.viewModel.firstChild) {
-          next.viewModel.firstChild.viewModel.insertBefore(node);
+      while (node[viewModel].nextSibling?.type === 'list') {
+        const next = node[viewModel].nextSibling;
+        while (next[viewModel].firstChild) {
+          next[viewModel].firstChild[viewModel].insertBefore(node);
         }
-        next.viewModel.remove();
+        next[viewModel].remove();
       }
     }
     // Collapse directly nested lists.
     if (node.type === 'list-item') {
       if (
-        node.viewModel.firstChild?.type === 'list' &&
+        node[viewModel].firstChild?.type === 'list' &&
         node.children?.length === 1
       ) {
-        const list = node.viewModel.firstChild;
-        while (list.viewModel.firstChild) {
-          list.viewModel.firstChild.viewModel.insertBefore(
-            cast(node.viewModel.parent),
+        const list = node[viewModel].firstChild;
+        while (list[viewModel].firstChild) {
+          list[viewModel].firstChild[viewModel].insertBefore(
+            cast(node[viewModel].parent),
             node,
           );
         }
@@ -157,23 +157,23 @@ export function normalizeTree(tree: MarkdownTree) {
   // Remove empty blocks.
   const emptyPredicate = (node?: ViewModelNode) =>
     node &&
-    node.viewModel.parent &&
-    !node.viewModel.firstChild &&
+    node[viewModel].parent &&
+    !node[viewModel].firstChild &&
     ['list-item', 'list', 'block-quote'].includes(node.type);
   for (const empty of [...dfs(tree.root)].filter(emptyPredicate)) {
     let node: ViewModelNode | undefined = empty;
     while (node) {
-      const parent: ViewModelNode | undefined = node.viewModel.parent;
-      node.viewModel.remove();
+      const parent: ViewModelNode | undefined = node[viewModel].parent;
+      node[viewModel].remove();
       node = emptyPredicate(parent) ? parent : undefined;
     }
   }
 
-  if (!tree.root.viewModel.firstChild) {
+  if (!tree.root[viewModel].firstChild) {
     const child = tree.add({
       type: 'paragraph',
       content: '',
     });
-    child.viewModel.insertBefore(tree.root);
+    child[viewModel].insertBefore(tree.root);
   }
 }

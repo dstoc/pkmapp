@@ -37,8 +37,7 @@ import {noAwait} from './async.js';
 import './backup-sidebar.js';
 import {
   InlineViewModelNode,
-  ViewModelNode,
-} from './markdown/view-model-node.js';
+  ViewModelNode, viewModel} from './markdown/view-model-node.js';
 import {debugCommands} from './debug-commands.js';
 import {backupCommands} from './backup-commands.js';
 import {CommandContext} from './commands/context.js';
@@ -170,7 +169,7 @@ export class PkmApp extends LitElement {
     yield* backupCommands(context.library.backup);
   }
   private onTitleItemClick({detail: root}: CustomEvent<ViewModelNode>) {
-    const document = this.library.getDocumentByTree(root.viewModel.tree);
+    const document = this.library.getDocumentByTree(root[viewModel].tree);
     assert(document);
     this.editor.navigate(document, root);
   }

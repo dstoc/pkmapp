@@ -16,8 +16,7 @@ import {DocumentNode} from './markdown/node.js';
 import {MarkdownTree} from './markdown/view-model.js';
 import {
   ViewModelNode,
-  InlineViewModelNode,
-} from './markdown/view-model-node.js';
+  InlineViewModelNode, viewModel} from './markdown/view-model-node.js';
 import {Observe} from './observe.js';
 import {BackLinks} from './backlinks.js';
 import {Metadata} from './metadata.js';
@@ -178,7 +177,7 @@ export class IdbLibrary implements Library {
     for (let i = 0; i < parts.length; i++) {
       blocks[i] = this.findByName(parts[i]).map((root) => {
         return {
-          document: cast(this.getDocumentByTree(root.viewModel.tree)),
+          document: cast(this.getDocumentByTree(root[viewModel].tree)),
           root,
         };
       });

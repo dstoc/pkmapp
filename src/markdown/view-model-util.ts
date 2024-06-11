@@ -18,41 +18,40 @@ import {
   isInlineViewModelNode,
   type InlineViewModelNode,
   type MaybeViewModelNode,
-  type ViewModelNode,
-} from './view-model-node.js';
+  type ViewModelNode, viewModel} from './view-model-node.js';
 import {MarkdownNode} from './node.js';
 
 export function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
-  if (node1.viewModel.nextSibling === node2) {
-    node2.viewModel.insertBefore(cast(node1.viewModel.parent), node1);
+  if (node1[viewModel].nextSibling === node2) {
+    node2[viewModel].insertBefore(cast(node1[viewModel].parent), node1);
     return;
   }
-  if (node2.viewModel.nextSibling === node1) {
-    node1.viewModel.insertBefore(cast(node2.viewModel.parent), node2);
+  if (node2[viewModel].nextSibling === node1) {
+    node1[viewModel].insertBefore(cast(node2[viewModel].parent), node2);
     return;
   }
-  const node1Parent = node1.viewModel.parent!;
-  const node1NextSibling = node1.viewModel.nextSibling;
-  node1.viewModel.insertBefore(cast(node2.viewModel.parent), node2);
-  node2.viewModel.insertBefore(node1Parent, node1NextSibling);
+  const node1Parent = node1[viewModel].parent!;
+  const node1NextSibling = node1[viewModel].nextSibling;
+  node1[viewModel].insertBefore(cast(node2[viewModel].parent), node2);
+  node2[viewModel].insertBefore(node1Parent, node1NextSibling);
 }
 
 export function isAncestorOf(ancestor: ViewModelNode, node: ViewModelNode) {
-  let parent = node.viewModel.parent;
+  let parent = node[viewModel].parent;
   while (parent) {
     if (parent === ancestor) return true;
-    parent = parent.viewModel.parent;
+    parent = parent[viewModel].parent;
   }
   return false;
 }
 
 export function* ancestors(
   node: ViewModelNode,
-  root: ViewModelNode = node.viewModel.tree.root,
+  root: ViewModelNode = node[viewModel].tree.root,
 ) {
-  while (node.viewModel.parent) {
-    yield node.viewModel.parent;
-    node = node.viewModel.parent;
+  while (node[viewModel].parent) {
+    yield node[viewModel].parent;
+    node = node[viewModel].parent;
     if (node === root) return;
   }
 }
@@ -65,12 +64,12 @@ export function* reverseDfs(node: ViewModelNode, limit?: ViewModelNode) {
     return next && (node = next);
   }
   do {
-    while (next(node.viewModel.previousSibling)) {
-      while (next(node.viewModel.lastChild));
+    while (next(node[viewModel].previousSibling)) {
+      while (next(node[viewModel].lastChild));
       yield node;
       if (node === limit) return;
     }
-    if (next(node.viewModel.parent)) {
+    if (next(node[viewModel].parent)) {
       yield node;
       if (node === limit) return;
       continue;
@@ -95,12 +94,12 @@ export function* dfs(
   do {
     if (!predicate || predicate(node)) {
       yield node;
-      if (next(node.viewModel.firstChild)) continue;
+      if (next(node[viewModel].firstChild)) continue;
     }
-    if (next(node.viewModel.nextSibling)) continue;
+    if (next(node[viewModel].nextSibling)) continue;
     do {
-      if (!next(node.viewModel.parent)) return;
-    } while (!next(node.viewModel.nextSibling));
+      if (!next(node[viewModel].parent)) return;
+    } while (!next(node[viewModel].nextSibling));
   } while (true);
 }
 
@@ -115,10 +114,10 @@ export function* shallowTraverse(node: ViewModelNode, root: ViewModelNode) {
   }
   do {
     yield node;
-    if (next(node.viewModel.nextSibling)) continue;
+    if (next(node[viewModel].nextSibling)) continue;
     do {
-      if (!next(node.viewModel.parent)) return;
-    } while (!next(node.viewModel.nextSibling));
+      if (!next(node[viewModel].parent)) return;
+    } while (!next(node[viewModel].nextSibling));
   } while (true);
 }
 
@@ -176,7 +175,7 @@ export function findNextDfs<T extends ViewModelNode>(
   root: ViewModelNode,
   predicate: (node: ViewModelNode) => node is T,
 ) {
-  for (const next of dfs(node, root.viewModel.parent)) {
+  for (const next of dfs(node, root[viewModel].parent)) {
     if (next !== node && predicate(next)) return next;
   }
   return null;
@@ -194,11 +193,11 @@ export function findPreviousDfs<T extends ViewModelNode>(
 }
 
 export function* children(node: ViewModelNode) {
-  let next = node.viewModel.firstChild;
+  let next = node[viewModel].firstChild;
   while (next) {
-    assert(next.viewModel.parent === node);
+    assert(next[viewModel].parent === node);
     const child = next;
-    next = child.viewModel.nextSibling;
+    next = child[viewModel].nextSibling;
     yield child;
   }
 }
@@ -243,7 +242,7 @@ export function cloneNode(
     ...node,
     children: [...cloneChildren(node.children ?? [], predicate)],
   };
-  delete (result as MaybeViewModelNode).viewModel;
+  delete (result as MaybeViewModelNode)[viewModel];
   return result;
 }
 
@@ -264,7 +263,7 @@ export function compareDocumentOrder(
   for (
     let node: ViewModelNode | undefined = node1Ancestor;
     node;
-    node = node.viewModel.nextSibling
+    node = node[viewModel].nextSibling
   ) {
     if (node2Ancestor === node) {
       return -1;
@@ -275,18 +274,18 @@ export function compareDocumentOrder(
 
 export function nextLogicalInsertionPoint(node: ViewModelNode) {
   if (
-    !node.viewModel.nextSibling &&
-    node.viewModel.parent?.type === 'list-item'
+    !node[viewModel].nextSibling &&
+    node[viewModel].parent?.type === 'list-item'
   ) {
-    const listItem = node.viewModel.parent;
+    const listItem = node[viewModel].parent;
     return {
-      parent: cast(listItem.viewModel.parent),
-      nextSibling: listItem.viewModel.nextSibling,
+      parent: cast(listItem[viewModel].parent),
+      nextSibling: listItem[viewModel].nextSibling,
     };
   }
   return {
-    parent: cast(node.viewModel.parent),
-    nextSibling: node.viewModel.nextSibling,
+    parent: cast(node[viewModel].parent),
+    nextSibling: node[viewModel].nextSibling,
   };
 }
 
@@ -302,13 +301,13 @@ export function performLogicalInsertion(
     nextSibling = undefined;
     for (const node of nodes) {
       if (node.type === 'section') {
-        const list = parent.viewModel.tree.add({type: 'list'});
-        const listItem = parent.viewModel.tree.add({
+        const list = parent[viewModel].tree.add({type: 'list'});
+        const listItem = parent[viewModel].tree.add({
           type: 'list-item',
           marker: '* ',
         });
-        list.viewModel.insertBefore(parent, nextSibling);
-        listItem.viewModel.insertBefore(list);
+        list[viewModel].insertBefore(parent, nextSibling);
+        listItem[viewModel].insertBefore(list);
         parent = listItem;
         nextSibling = undefined;
         break;
@@ -319,17 +318,17 @@ export function performLogicalInsertion(
       const [node] = nodes;
       nodes = [...children(node)];
     } else {
-      const listItem = parent.viewModel.tree.add({
+      const listItem = parent[viewModel].tree.add({
         type: 'list-item',
         // TODO: infer from list
         marker: '* ',
       });
-      listItem.viewModel.insertBefore(parent, nextSibling);
+      listItem[viewModel].insertBefore(parent, nextSibling);
       parent = listItem;
       nextSibling = undefined;
     }
   }
   for (const node of nodes) {
-    node.viewModel.insertBefore(parent, nextSibling);
+    node[viewModel].insertBefore(parent, nextSibling);
   }
 }

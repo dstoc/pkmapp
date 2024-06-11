@@ -21,6 +21,7 @@ import {getContainingTransclusion} from './markdown/transclusion.js';
 import {assert, cast} from './asserts.js';
 import {dfs} from './markdown/view-model-util.js';
 import {isInlineNode} from './markdown/node.js';
+import {viewModel} from './markdown/view-model-node.js';
 
 export type BlockSelectionTarget = Element & {
   hostContext?: HostContext;
@@ -51,8 +52,8 @@ export function expandSelection(hostContext: HostContext) {
   const visited = new Set<ViewModelNode>();
   const seeds = new Set<ViewModelNode>();
   for (const node of hostContext.selection) {
-    if (node.type === 'section' && node.viewModel.firstChild) {
-      seeds.add(node.viewModel.firstChild);
+    if (node.type === 'section' && node[viewModel].firstChild) {
+      seeds.add(node[viewModel].firstChild);
     } else {
       seeds.add(node);
     }
@@ -62,8 +63,8 @@ export function expandSelection(hostContext: HostContext) {
     const iteration = [...seeds];
     seeds.clear();
     for (const node of iteration) {
-      const next = node.viewModel.parent;
-      if (!next || next === hostContext.root?.viewModel.parent) {
+      const next = node[viewModel].parent;
+      if (!next || next === hostContext.root?.[viewModel].parent) {
         continue;
       }
       if (!visited.has(next)) {

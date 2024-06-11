@@ -17,7 +17,7 @@ import {state, customElement, property} from 'lit/decorators.js';
 
 import {MarkdownInline} from './inline-render.js';
 import {isInlineNode} from './node.js';
-import {InlineViewModelNode, type ViewModelNode} from './view-model-node.js';
+import {InlineViewModelNode, type ViewModelNode, viewModel} from './view-model-node.js';
 import './transclusion.js';
 import {hostContext, HostContext} from './host-context.js';
 import {provide, consume} from '@lit/context';
@@ -68,8 +68,8 @@ export class MarkdownBlock extends LitElement {
     }
     if (node.type === 'section') {
       if (
-        node.viewModel.parent?.type !== 'section' &&
-        !node.viewModel.previousSibling
+        node[viewModel].parent?.type !== 'section' &&
+        !node[viewModel].previousSibling
       ) {
         this.marker = undefined;
       } else {
@@ -101,7 +101,7 @@ export class MarkdownBlock extends LitElement {
     if (node.type === 'list-item') {
       if (e.target !== this) return;
       e.preventDefault();
-      using _ = node.viewModel.tree.edit();
+      using _ = node[viewModel].tree.edit();
       let newValue;
       switch (node.checked) {
         case true:
@@ -114,7 +114,7 @@ export class MarkdownBlock extends LitElement {
           newValue = false;
           break;
       }
-      node.viewModel.updateChecked(newValue);
+      node[viewModel].updateChecked(newValue);
     }
   }
   private readonly observer = (node: ViewModelNode) => {
@@ -125,10 +125,10 @@ export class MarkdownBlock extends LitElement {
     this.requestUpdate();
   };
   private addObserver(node: ViewModelNode | undefined) {
-    node?.viewModel.observe.add(this.observer);
+    node?.[viewModel].observe.add(this.observer);
   }
   private removeObserver(node: ViewModelNode | undefined) {
-    node?.viewModel.observe.remove(this.observer);
+    node?.[viewModel].observe.remove(this.observer);
   }
 }
 

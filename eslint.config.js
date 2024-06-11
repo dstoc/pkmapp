@@ -69,6 +69,8 @@ export default tseslint.config(
     },
     rules: {
       'custom/noArrayLengthMinusOne': 'error',
+      // Conflicts with prettier.
+      'no-unexpected-multiline': 'off',
       'no-constant-binary-expression': 'error',
       'no-constant-condition': [
         'error',

@@ -6,8 +6,7 @@ import {MarkdownNode} from './markdown/node.js';
 import {MarkdownTree} from './markdown/view-model.js';
 import {
   ViewModelNode,
-  isInlineViewModelNode,
-} from './markdown/view-model-node.js';
+  isInlineViewModelNode, viewModel} from './markdown/view-model-node.js';
 import {
   ancestors,
   cloneNode,
@@ -22,7 +21,7 @@ export function insertMarkdown(markdown: string, node: ViewModelNode) {
   if (!root) return;
   assert(root.type === 'document' && root.children);
   const newNodes = root.children.map((newNode) =>
-    node.viewModel.tree.add<MarkdownNode>(newNode),
+    node[viewModel].tree.add<MarkdownNode>(newNode),
   );
 
   const newInlineNodes = newNodes
@@ -60,7 +59,7 @@ export function serializeSelection(hostContext: HostContext) {
   // 5. Serialize the new document.
   const expand = (node: ViewModelNode) => {
     let result = node;
-    if (node.viewModel.previousSibling) {
+    if (node[viewModel].previousSibling) {
       return result;
     }
     for (const ancestor of ancestors(node, cast(hostContext.root))) {
@@ -68,7 +67,7 @@ export function serializeSelection(hostContext: HostContext) {
         break;
       }
       result = ancestor;
-      if (ancestor.viewModel.previousSibling) {
+      if (ancestor[viewModel].previousSibling) {
         break;
       }
     }
@@ -93,10 +92,10 @@ export function serializeSelection(hostContext: HostContext) {
   {
     using _ = tree.edit();
     // The document will have an empty paragraph due to normalization.
-    cast(tree.root.children)[0].viewModel.remove();
+    cast(tree.root.children)[0][viewModel].remove();
     for (const root of roots) {
       const node = tree.add<MarkdownNode>(root);
-      node.viewModel.insertBefore(tree.root);
+      node[viewModel].insertBefore(tree.root);
     }
   }
   return serializeToString(tree.root);

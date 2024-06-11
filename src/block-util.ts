@@ -13,14 +13,15 @@
 // limitations under the License.
 
 import type {ViewModelNode} from './markdown/view-model-node.js';
+import {viewModel} from './markdown/view-model-node.js';
 
 export function isLogicalContainingBlock(node?: ViewModelNode) {
   switch (node?.type) {
     case 'section':
       if (
-        !node.viewModel.previousSibling &&
-        (node.viewModel.parent?.type === 'list-item' ||
-          node.viewModel.parent?.type === 'document')
+        !node[viewModel].previousSibling &&
+        (node[viewModel].parent?.type === 'list-item' ||
+          node[viewModel].parent?.type === 'document')
       )
         return false;
       return true;
@@ -33,10 +34,10 @@ export function isLogicalContainingBlock(node?: ViewModelNode) {
 }
 
 export function getLogicalContainingBlock(node?: ViewModelNode) {
-  let next = node?.viewModel.parent;
+  let next = node?.[viewModel].parent;
   while (next) {
     if (isLogicalContainingBlock(next)) return next;
-    next = next.viewModel.parent;
+    next = next[viewModel].parent;
   }
   return;
 }
@@ -56,7 +57,7 @@ export function isExplicitlyNamed(node?: ViewModelNode) {
       return true;
     case 'list-item':
     case 'document':
-      return node.viewModel.firstChild?.type === 'section';
+      return node[viewModel].firstChild?.type === 'section';
     default:
       return false;
   }

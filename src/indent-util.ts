@@ -15,54 +15,55 @@
 import type {ViewModelNode} from './markdown/view-model-node.js';
 import {cast} from './asserts.js';
 import {findAncestor, ancestors} from './markdown/view-model-util.js';
+import {viewModel} from './markdown/view-model-node.js';
 
 export function unindent(node: ViewModelNode, root: ViewModelNode) {
   const {ancestor: listItem, path} = findAncestor(node, root, 'list-item');
   if (!listItem || !path) return;
   const target = path[0];
-  const nextSibling = listItem.viewModel.nextSibling;
-  const list = listItem.viewModel.parent!;
-  const targetListItemSibling = list.viewModel.parent!;
+  const nextSibling = listItem[viewModel].nextSibling;
+  const list = listItem[viewModel].parent!;
+  const targetListItemSibling = list[viewModel].parent!;
   if (targetListItemSibling?.type === 'list-item') {
-    listItem.viewModel.insertBefore(
-      cast(targetListItemSibling.viewModel.parent),
-      targetListItemSibling.viewModel.nextSibling,
+    listItem[viewModel].insertBefore(
+      cast(targetListItemSibling[viewModel].parent),
+      targetListItemSibling[viewModel].nextSibling,
     );
   } else {
-    target.viewModel.insertBefore(
-      cast(list.viewModel.parent),
-      list.viewModel.nextSibling,
+    target[viewModel].insertBefore(
+      cast(list[viewModel].parent),
+      list[viewModel].nextSibling,
     );
-    listItem.viewModel.remove();
+    listItem[viewModel].remove();
   }
   // Siblings of the undended list-item move to sublist.
   if (nextSibling) {
     let next: ViewModelNode | undefined = nextSibling;
     while (next) {
-      if (listItem.viewModel.lastChild?.type !== 'list') {
-        listItem.viewModel.tree
+      if (listItem[viewModel].lastChild?.type !== 'list') {
+        listItem[viewModel].tree
           .add({
             type: 'list',
           })
-          .viewModel.insertBefore(listItem);
+          [viewModel].insertBefore(listItem);
       }
-      const targetList = listItem.viewModel.lastChild!;
+      const targetList = listItem[viewModel].lastChild!;
       const toMove: ViewModelNode = next;
-      next = toMove.viewModel.nextSibling;
-      toMove.viewModel.insertBefore(targetList);
+      next = toMove[viewModel].nextSibling;
+      toMove[viewModel].insertBefore(targetList);
     }
   }
   // The target might have been removed from the list item. Move any
   // remaining siblings to the same level.
-  if (listItem.children?.length && !listItem.viewModel.parent) {
+  if (listItem.children?.length && !listItem[viewModel].parent) {
     // TODO: move more than the first child.
-    listItem.viewModel.firstChild?.viewModel.insertBefore(
-      cast(target.viewModel.parent),
-      target.viewModel.nextSibling,
+    listItem[viewModel].firstChild?.[viewModel].insertBefore(
+      cast(target[viewModel].parent),
+      target[viewModel].nextSibling,
     );
   }
   if (!list.children?.length) {
-    list.viewModel.remove();
+    list[viewModel].remove();
   }
 }
 
@@ -81,33 +82,33 @@ export function indent(node: ViewModelNode, root: ViewModelNode) {
     target = ancestor;
   }
   let listItem: ViewModelNode;
-  if (target.viewModel.parent!.type === 'list-item') {
-    listItem = target.viewModel.parent!;
+  if (target[viewModel].parent!.type === 'list-item') {
+    listItem = target[viewModel].parent!;
   } else {
-    listItem = target.viewModel.tree.add({
+    listItem = target[viewModel].tree.add({
       type: 'list-item',
       marker: '* ',
     });
-    listItem.viewModel.insertBefore(cast(target.viewModel.parent), target);
-    target.viewModel.insertBefore(listItem);
+    listItem[viewModel].insertBefore(cast(target[viewModel].parent), target);
+    target[viewModel].insertBefore(listItem);
   }
-  const listItemPreviousSibling = listItem.viewModel.previousSibling;
+  const listItemPreviousSibling = listItem[viewModel].previousSibling;
   if (listItemPreviousSibling?.type === 'list-item') {
-    const lastChild = listItemPreviousSibling.viewModel.lastChild;
+    const lastChild = listItemPreviousSibling[viewModel].lastChild;
     if (lastChild?.type === 'list') {
-      listItem.viewModel.insertBefore(lastChild);
+      listItem[viewModel].insertBefore(lastChild);
     } else {
-      listItem.viewModel.insertBefore(listItemPreviousSibling);
+      listItem[viewModel].insertBefore(listItemPreviousSibling);
     }
   } else if (listItemPreviousSibling?.type === 'list') {
-    listItem.viewModel.insertBefore(listItemPreviousSibling);
+    listItem[viewModel].insertBefore(listItemPreviousSibling);
   }
   // Ensure the list-item we may have created is in a list.
-  if (listItem.viewModel.parent!.type !== 'list') {
-    const list = target.viewModel.tree.add({
+  if (listItem[viewModel].parent!.type !== 'list') {
+    const list = target[viewModel].tree.add({
       type: 'list',
     });
-    list.viewModel.insertBefore(cast(listItem.viewModel.parent), listItem);
-    listItem.viewModel.insertBefore(list);
+    list[viewModel].insertBefore(cast(listItem[viewModel].parent), listItem);
+    listItem[viewModel].insertBefore(list);
   }
 }

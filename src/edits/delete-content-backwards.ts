@@ -6,6 +6,7 @@ import {
   isInlineViewModelNode,
 } from '../markdown/view-model-node';
 import {children, findAncestor, reverseDfs} from '../markdown/view-model-util';
+import {viewModel} from '../markdown/view-model-node.js';
 
 export function deleteContentBackwards(context: EditContext): boolean {
   const node = context.node;
@@ -13,20 +14,20 @@ export function deleteContentBackwards(context: EditContext): boolean {
   // Turn sections and code-blocks into paragraphs.
   if (node.type === 'section') {
     context.startEditing();
-    node.viewModel.updateMarker(
+    node[viewModel].updateMarker(
       node.marker.substring(0, node.marker.length - 1),
     );
     if (node.marker === '') {
-      const paragraph = node.viewModel.tree.add({
+      const paragraph = node[viewModel].tree.add({
         type: 'paragraph',
         content: node.content,
       });
-      paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
+      paragraph[viewModel].insertBefore(cast(node[viewModel].parent), node);
       // Move all section content out.
       for (const child of children(node)) {
-        child.viewModel.insertBefore(cast(node.viewModel.parent), node);
+        child[viewModel].insertBefore(cast(node[viewModel].parent), node);
       }
-      node.viewModel.remove();
+      node[viewModel].remove();
       context.focus(paragraph, 0);
     } else {
       context.focus(node, 0);
@@ -34,12 +35,12 @@ export function deleteContentBackwards(context: EditContext): boolean {
     return true;
   } else if (node.type === 'code-block') {
     context.startEditing();
-    const paragraph = node.viewModel.tree.add({
+    const paragraph = node[viewModel].tree.add({
       type: 'paragraph',
       content: node.content, // TODO: detect new blocks
     });
-    paragraph.viewModel.insertBefore(cast(node.viewModel.parent), node);
-    node.viewModel.remove();
+    paragraph[viewModel].insertBefore(cast(node[viewModel].parent), node);
+    node[viewModel].remove();
     context.focus(paragraph, 0);
     return true;
   }
@@ -54,9 +55,9 @@ export function deleteContentBackwards(context: EditContext): boolean {
       if (maybeMergeContentInto(context, node, prev)) return true;
     }
     for (const child of [...children(ancestor)]) {
-      child.viewModel.insertBefore(cast(ancestor.viewModel.parent), ancestor);
+      child[viewModel].insertBefore(cast(ancestor[viewModel].parent), ancestor);
     }
-    ancestor.viewModel.remove();
+    ancestor[viewModel].remove();
     // TODO: offset was undefined before
     context.focus(node, 0);
     return true;
@@ -82,13 +83,13 @@ function maybeMergeContentInto(
   ) {
     assert(isInlineViewModelNode(target));
     context.startEditing();
-    target.viewModel.edit({
+    target[viewModel].edit({
       startIndex: target.content.length,
       oldEndIndex: target.content.length,
       newEndIndex: target.content.length + node.content.length,
       newText: node.content,
     });
-    node.viewModel.remove();
+    node[viewModel].remove();
     context.focus(target, target.content.length);
     return true;
   }

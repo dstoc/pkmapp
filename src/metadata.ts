@@ -16,6 +16,7 @@ import type {CodeBlockNode, SectionNode} from './markdown/node.js';
 import {
   InlineViewModelNode,
   ViewModelNode,
+  viewModel,
 } from './markdown/view-model-node.js';
 import {
   getLogicalContainingBlock,
@@ -125,7 +126,7 @@ export class Metadata {
   private meta = new ProviderMap<ViewModelNode, ViewModelNode, string>(
     (target, value) => {
       this.nameMap.update(target, value !== undefined ? [value] : []);
-      target.viewModel.observe.notify();
+      target[viewModel].observe.notify();
     },
   );
   private nameMap = new SetBiMap<ViewModelNode>();
@@ -142,9 +143,9 @@ export class Metadata {
   getPreferredName(node: ViewModelNode) {
     if (
       node.type !== 'section' &&
-      node.viewModel.firstChild?.type === 'section'
+      node[viewModel].firstChild?.type === 'section'
     ) {
-      node = node.viewModel.firstChild;
+      node = node[viewModel].firstChild;
     }
     if (node.type === 'section') return node.content;
     const [result] = this.nameMap.getValues(node)?.values() ?? [];
@@ -153,9 +154,9 @@ export class Metadata {
   getNames(node: ViewModelNode) {
     if (
       node.type !== 'section' &&
-      node.viewModel.firstChild?.type === 'section'
+      node[viewModel].firstChild?.type === 'section'
     ) {
-      node = node.viewModel.firstChild;
+      node = node[viewModel].firstChild;
     }
     const result = [...(this.nameMap.getValues(node)?.values() ?? [])];
     if (node.type === 'section') result.push(node.content);
@@ -166,14 +167,14 @@ export class Metadata {
       ...(this.sectionNameMap.getTargets(name)?.values() ?? []),
     ].map((section) => {
       if (!isLogicalContainingBlock(section)) {
-        return section.viewModel.parent!;
+        return section[viewModel].parent!;
       }
       return section;
     });
     const named = [...(this.nameMap.getTargets(name)?.values() ?? [])].map(
       (result) => {
         if (result && !isLogicalContainingBlock(result)) {
-          return result.viewModel.parent!;
+          return result[viewModel].parent!;
         }
         return result;
       },
@@ -193,14 +194,14 @@ export class Metadata {
       this.sectionNameMap.update(node, [node.content]);
     }
     if (change === 'changed' && !isLogicalContainingBlock(node)) {
-      node.viewModel.parent?.viewModel.observe.notify();
+      node[viewModel].parent?.[viewModel].observe.notify();
     }
   }
   updateCodeblock(
     node: ViewModelNode & CodeBlockNode,
     change: 'connected' | 'disconnected' | 'changed',
   ) {
-    const parent = node.viewModel.parent;
+    const parent = node[viewModel].parent;
     const isMetadata = change !== 'disconnected' && node.info === 'meta';
     const valid =
       isMetadata &&
@@ -223,7 +224,7 @@ export class Metadata {
       // to generate the inlineTree. Modifying caches should mark
       // for saving. Edits should wipe out caches before postEditUpdate.
       for (const next of traverseInlineNodes(
-        node.viewModel.inlineTree.rootNode,
+        node[viewModel].inlineTree.rootNode,
       )) {
         if (next.type !== 'tag') continue;
         // TODO: Make sure the tag is not contained within a link

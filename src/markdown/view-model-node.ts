@@ -9,19 +9,21 @@ import {
 } from './node.js';
 import type {ViewModel, InlineViewModel} from './view-model.js';
 
+export const viewModel = Symbol('viewModel');
+
 interface MaybeViewModelNodeParts {
-  viewModel?: ViewModel;
+  [viewModel]?: ViewModel;
   children?: MarkdownNode[];
 }
 export type MaybeViewModelNode = MarkdownNode & MaybeViewModelNodeParts;
 
 interface ViewModelNodeParts {
-  viewModel: ViewModel;
+  [viewModel]: ViewModel;
   children?: (MarkdownNode & ViewModelNode)[];
 }
 
 interface InlineViewModelNodeParts extends ViewModelNodeParts {
-  viewModel: InlineViewModel;
+  [viewModel]: InlineViewModel;
   children?: (MarkdownNode & ViewModelNode)[];
 }
 

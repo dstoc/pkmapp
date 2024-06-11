@@ -1,5 +1,5 @@
 import {InlineEdit} from './view-model';
-import {InlineViewModelNode, ViewModelNode} from './view-model-node.js';
+import {InlineViewModelNode, ViewModelNode, viewModel} from './view-model-node.js';
 import {isAncestorOf} from './view-model-util';
 
 export type Op = RemoveOp | InsertOp | EditOp | UpdateMarkerOp | UpdateCheckOp;
@@ -56,19 +56,19 @@ interface UpdateCheckOp {
 export function doOp(op: Op) {
   switch (op.type) {
     case 'check':
-      op.node.viewModel.updateChecked(op.checked);
+      op.node[viewModel].updateChecked(op.checked);
       break;
     case 'edit':
-      op.node.viewModel.edit(op.edit, false);
+      op.node[viewModel].edit(op.edit, false);
       break;
     case 'insert':
-      op.node.viewModel.insertBefore(op.parent, op.nextSibling);
+      op.node[viewModel].insertBefore(op.parent, op.nextSibling);
       break;
     case 'marker':
-      op.node.viewModel.updateMarker(op.marker);
+      op.node[viewModel].updateMarker(op.marker);
       break;
     case 'remove':
-      op.node.viewModel.remove();
+      op.node[viewModel].remove();
       break;
   }
 }
@@ -76,10 +76,10 @@ export function doOp(op: Op) {
 export function undoOp(op: Op) {
   switch (op.type) {
     case 'check':
-      op.node.viewModel.updateChecked(op.oldChecked);
+      op.node[viewModel].updateChecked(op.oldChecked);
       break;
     case 'edit':
-      op.node.viewModel.edit({
+      op.node[viewModel].edit({
         startIndex: op.edit.startIndex,
         newEndIndex: op.edit.oldEndIndex,
         oldEndIndex: op.edit.newEndIndex,
@@ -88,14 +88,14 @@ export function undoOp(op: Op) {
       break;
     case 'insert':
       if (!op.hadParent) {
-        op.node.viewModel.remove();
+        op.node[viewModel].remove();
       }
       break;
     case 'marker':
-      op.node.viewModel.updateMarker(op.oldMarker);
+      op.node[viewModel].updateMarker(op.oldMarker);
       break;
     case 'remove':
-      op.node.viewModel.insertBefore(op.parent, op.nextSibling);
+      op.node[viewModel].insertBefore(op.parent, op.nextSibling);
       break;
   }
 }
@@ -117,7 +117,7 @@ export function classify(root: ViewModelNode, batch: OpBatch): Classification {
   let result: Classification | undefined;
   function merge(node?: ViewModelNode) {
     if (!node) return;
-    if (!node.viewModel.connected) return;
+    if (!node[viewModel].connected) return;
     const value =
       root === node || isAncestorOf(root, node) ? 'inside' : 'outside';
     if (result === undefined) {

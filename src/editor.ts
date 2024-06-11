@@ -38,8 +38,7 @@ import {
 } from './markdown/view-model-util.js';
 import {
   ViewModelNode,
-  InlineViewModelNode,
-} from './markdown/view-model-node.js';
+  InlineViewModelNode, viewModel} from './markdown/view-model-node.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
 import {
@@ -229,8 +228,8 @@ export class Editor extends LitElement {
       if (this.status === 'loading') this.status = 'loaded';
       return;
     }
-    assert(document.tree === root.viewModel.tree);
-    assert(root.viewModel.connected);
+    assert(document.tree === root[viewModel].tree);
+    assert(root[viewModel].connected);
     this.document = document;
     this.root = root;
     this.name = this.document.name;
@@ -298,7 +297,7 @@ export class Editor extends LitElement {
           }
           startFocus.selection = [...hostContext.selection];
         }
-        edit ||= this.node.viewModel.tree.edit();
+        edit ||= this.node[viewModel].tree.edit();
       },
       keepFocus() {
         if (hostContext.selectionFocus) {
@@ -338,7 +337,7 @@ export class Editor extends LitElement {
       } else if (endFocus) {
         hostContext.focusNode = endFocus.node;
         hostContext.focusOffset = endFocus.offset;
-        endFocus.node.viewModel.observe.notify();
+        endFocus.node[viewModel].observe.notify();
       }
     }
   }
@@ -445,7 +444,7 @@ export class Editor extends LitElement {
     } else if (keyboardEvent.key === 'z' && keyboardEvent.ctrlKey) {
       if (!hostContext.root) return;
       event.preventDefault();
-      const focus = hostContext.root.viewModel.tree.undo(hostContext.root);
+      const focus = hostContext.root[viewModel].tree.undo(hostContext.root);
       if (focus) {
         hostContext.clearSelection();
         if (focus.selection) {
@@ -453,12 +452,12 @@ export class Editor extends LitElement {
         }
         hostContext.focusNode = focus.node;
         hostContext.focusOffset = focus.offset;
-        focus.node.viewModel.observe.notify();
+        focus.node[viewModel].observe.notify();
       }
     } else if (keyboardEvent.key === 'y' && keyboardEvent.ctrlKey) {
       if (!hostContext.root) return;
       event.preventDefault();
-      const focus = hostContext.root.viewModel.tree.redo(hostContext.root);
+      const focus = hostContext.root[viewModel].tree.redo(hostContext.root);
       if (focus) {
         hostContext.clearSelection();
         if (focus.selection) {
@@ -466,7 +465,7 @@ export class Editor extends LitElement {
         }
         hostContext.focusNode = focus.node;
         hostContext.focusOffset = focus.offset;
-        focus.node.viewModel.observe.notify();
+        focus.node[viewModel].observe.notify();
       }
     } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
       this.autocomplete.abort();
@@ -667,7 +666,7 @@ export class Editor extends LitElement {
     } = this.markdownRenderer.getInlineSelection();
     const activeNode = activeInline?.node;
     const inTopLevelDocument =
-      activeNode?.viewModel.tree === (this.root?.viewModel.tree ?? false);
+      activeNode?.[viewModel].tree === (this.root?.[viewModel].tree ?? false);
     const transclusion =
       activeInline && getContainingTransclusion(activeInline);
     const selectionTarget =
@@ -808,9 +807,9 @@ export class Editor extends LitElement {
             {
               description: 'Focus on containing block',
               execute: async () => {
-                if (this.root?.viewModel.parent)
+                if (this.root?.[viewModel].parent)
                   this.root = getLogicalContainingBlock(
-                    this.root.viewModel.parent,
+                    this.root[viewModel].parent,
                   );
                 if (activeNode && activeInline)
                   focusNode(
@@ -821,7 +820,7 @@ export class Editor extends LitElement {
               },
               preview: () => {
                 const block = getLogicalContainingBlock(
-                  this.root?.viewModel.parent,
+                  this.root?.[viewModel].parent,
                 );
                 return block
                   ? html`<md-block-render .block=${block}></md-block-render>`
@@ -859,7 +858,7 @@ export class Editor extends LitElement {
               execute: async () => {
                 this.runEditAction(transclusion, (context: EditContext) => {
                   context.startEditing();
-                  transclusion.node!.viewModel.remove();
+                  transclusion.node![viewModel].remove();
                   // TODO: focus
                 });
               },
@@ -875,14 +874,14 @@ export class Editor extends LitElement {
                   this.runEditAction(activeInline, (context: EditContext) => {
                     context.startEditing();
                     context.keepFocus();
-                    const transclusion = activeNode.viewModel.tree.add({
+                    const transclusion = activeNode[viewModel].tree.add({
                       type: 'code-block',
                       info: 'tc',
                       content: name,
                     });
-                    transclusion.viewModel.insertBefore(
-                      cast(activeNode.viewModel.parent),
-                      activeNode.viewModel.nextSibling,
+                    transclusion[viewModel].insertBefore(
+                      cast(activeNode[viewModel].parent),
+                      activeNode[viewModel].nextSibling,
                     );
                   });
                 };
@@ -902,13 +901,13 @@ export class Editor extends LitElement {
               description: 'Insert before transclusion',
               execute: async () => {
                 const node = transclusion.node!;
-                using _ = node.viewModel.tree.edit();
-                const newParagraph = node.viewModel.tree.add({
+                using _ = node[viewModel].tree.edit();
+                const newParagraph = node[viewModel].tree.add({
                   type: 'paragraph',
                   content: '',
                 });
-                newParagraph.viewModel.insertBefore(
-                  cast(node.viewModel.parent),
+                newParagraph[viewModel].insertBefore(
+                  cast(node[viewModel].parent),
                   node,
                 );
                 focusNode(cast(transclusion.hostContext), newParagraph, 0);
@@ -922,14 +921,14 @@ export class Editor extends LitElement {
               description: 'Insert after transclusion',
               execute: async () => {
                 const node = transclusion.node!;
-                using _ = node.viewModel.tree.edit();
-                const newParagraph = node.viewModel.tree.add({
+                using _ = node[viewModel].tree.edit();
+                const newParagraph = node[viewModel].tree.add({
                   type: 'paragraph',
                   content: '',
                 });
-                newParagraph.viewModel.insertBefore(
-                  cast(node.viewModel.parent),
-                  node.viewModel.nextSibling,
+                newParagraph[viewModel].insertBefore(
+                  cast(node[viewModel].parent),
+                  node[viewModel].nextSibling,
                 );
                 focusNode(cast(transclusion.hostContext), newParagraph, 0);
               },
@@ -960,14 +959,14 @@ async function sendTo(
     case 'remove':
       break;
     case 'transclude':
-      replacement = focus.viewModel.tree.add({
+      replacement = focus[viewModel].tree.add({
         type: 'code-block',
         info: 'tc',
         content: targetName,
       });
       break;
     case 'link':
-      replacement = focus.viewModel.tree.add({
+      replacement = focus[viewModel].tree.add({
         type: 'paragraph',
         content: `[${targetName}]`,
       });
@@ -980,11 +979,11 @@ async function sendTo(
     // the same document this will batch it together with the other
     // parts of the action.
     using _ =
-      root.viewModel.tree !== element.node?.viewModel.tree
-        ? root.viewModel.tree.edit()
+      root[viewModel].tree !== element.node?.[viewModel].tree
+        ? root[viewModel].tree.edit()
         : undefined;
-    insertMarkdown(markdown, root.viewModel.lastChild ?? root);
-    replacement?.viewModel.insertBefore(cast(focus.viewModel.parent), focus);
+    insertMarkdown(markdown, root[viewModel].lastChild ?? root);
+    replacement?.[viewModel].insertBefore(cast(focus[viewModel].parent), focus);
     removeSelectedNodes(context);
   });
 }
