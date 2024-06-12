@@ -122,6 +122,12 @@ class ProviderMap<Provider, Target, Value> {
 
 type Section = ViewModelNode & SectionNode;
 
+declare module './markdown/view-model-node.js' {
+  interface Caches {
+    metadata?: string[];
+  }
+}
+
 export class Metadata {
   private meta = new ProviderMap<ViewModelNode, ViewModelNode, string>(
     (target, value) => {
@@ -219,18 +225,19 @@ export class Metadata {
     if (change === 'disconnected') {
       this.tagMap.update(node, []);
     } else {
-      const tags = new Set<string>();
-      // TODO: Cache the results in the view model to avoid the need
-      // to generate the inlineTree. Modifying caches should mark
-      // for saving. Edits should wipe out caches before postEditUpdate.
-      for (const next of traverseInlineNodes(
-        node[viewModel].inlineTree.rootNode,
-      )) {
-        if (next.type !== 'tag') continue;
-        // TODO: Make sure the tag is not contained within a link
-        tags.add(next.text);
-      }
-      this.tagMap.update(node, tags);
+      const cache = node.caches?.metadata ?? getTags(node);
+      this.tagMap.update(node, new Set(cache));
+      node[viewModel].tree.setCache(node, 'metadata', cache);
     }
   }
+}
+
+function getTags(node: InlineViewModelNode) {
+  const tags = [];
+  for (const next of traverseInlineNodes(node[viewModel].inlineTree.rootNode)) {
+    if (next.type !== 'tag') continue;
+    // TODO: Make sure the tag is not contained within a link
+    tags.push(next.text);
+  }
+  return tags;
 }

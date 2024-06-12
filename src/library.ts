@@ -13,10 +13,12 @@
 // limitations under the License.
 
 import {DocumentNode} from './markdown/node.js';
-import {MarkdownTree} from './markdown/view-model.js';
+import {MarkdownTree, TreeChange} from './markdown/view-model.js';
 import {
   ViewModelNode,
-  InlineViewModelNode, viewModel} from './markdown/view-model-node.js';
+  InlineViewModelNode,
+  viewModel,
+} from './markdown/view-model-node.js';
 import {Observe} from './observe.js';
 import {BackLinks} from './backlinks.js';
 import {Metadata} from './metadata.js';
@@ -277,7 +279,7 @@ class IdbDocument implements Document {
     readonly metadata: Readonly<DocumentMetadata>,
   ) {
     this.tree = new MarkdownTree(cast(root), this);
-    this.tree.observe.add(() => this.treeChanged());
+    this.tree.observe.add((_tree, change) => this.treeChanged(change));
   }
   readonly tree: MarkdownTree;
   dirty = false;
@@ -324,7 +326,6 @@ class IdbDocument implements Document {
   }
   async replace(root: DocumentNode) {
     this.tree.setRoot(this.tree.add<DocumentNode>(root));
-    this.tree.observe.notify();
   }
   async save() {
     if (this.metadata.state !== 'active') return;
@@ -363,11 +364,13 @@ class IdbDocument implements Document {
   private metadataChanged() {
     noAwait(this.markDirty());
   }
-  private treeChanged() {
-    this.updateMetadata((metadata) => {
-      metadata.modificationTime = Date.now();
-      return true;
-    }, false);
+  private treeChanged(change: TreeChange) {
+    if (change === 'edit') {
+      this.updateMetadata((metadata) => {
+        metadata.modificationTime = Date.now();
+        return true;
+      }, false);
+    }
     noAwait(this.markDirty());
     this.library.observeDocuments.notify(this);
   }

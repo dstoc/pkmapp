@@ -17,6 +17,12 @@ import {Library, Document} from './library.js';
 import {traverseInlineNodes} from './markdown/view-model.js';
 import {Observe} from './observe.js';
 
+declare module './markdown/view-model-node.js' {
+  interface Caches {
+    backlinks?: string[];
+  }
+}
+
 export class BackLinks {
   private links = new Map<InlineViewModelNode, Set<string>>();
   private backLinks = new Map<string, Set<InlineViewModelNode>>();
@@ -57,42 +63,50 @@ export class BackLinks {
         this.links.delete(node);
       }
     } else {
+      const cache = node.caches?.backlinks ?? getLinks(node);
       let links = this.links.get(node);
       const preLinks = new Set(links?.values() ?? []);
-      for (const next of traverseInlineNodes(
-        node[viewModel].inlineTree.rootNode,
-      )) {
-        if (next.type === 'inline_link' || next.type === 'shortcut_link') {
-          const text =
-            next.namedChildren.find((node) => node.type === 'link_text')
-              ?.text ?? '';
-          const destination =
-            next.namedChildren.find((node) => node.type === 'link_destination')
-              ?.text ?? text;
-          if (!links) {
-            links = new Set();
-            this.links.set(node, links);
-          }
-          links.add(destination);
-          let backLinks = this.backLinks.get(destination);
-          if (!backLinks) {
-            backLinks = new Set();
-            this.backLinks.set(destination, backLinks);
-          }
-          if (!backLinks.has(node)) {
-            backLinks.add(node);
-            update(true);
-          }
-          preLinks.delete(destination);
+      for (const destination of cache) {
+        if (!links) {
+          links = new Set();
+          this.links.set(node, links);
         }
+        links.add(destination);
+        let backLinks = this.backLinks.get(destination);
+        if (!backLinks) {
+          backLinks = new Set();
+          this.backLinks.set(destination, backLinks);
+        }
+        if (!backLinks.has(node)) {
+          backLinks.add(node);
+          update(true);
+        }
+        preLinks.delete(destination);
       }
       for (const target of preLinks) {
         update(this.backLinks.get(target)?.delete(node));
         this.links.get(node)?.delete(target);
       }
+      node[viewModel].tree.setCache(node, 'backlinks', cache);
     }
     if (changed) {
       this.observe.notify();
     }
   }
+}
+
+function getLinks(node: InlineViewModelNode) {
+  const result: string[] = [];
+  for (const next of traverseInlineNodes(node[viewModel].inlineTree.rootNode)) {
+    if (next.type === 'inline_link' || next.type === 'shortcut_link') {
+      const text =
+        next.namedChildren.find((node) => node.type === 'link_text')?.text ??
+        '';
+      const destination =
+        next.namedChildren.find((node) => node.type === 'link_destination')
+          ?.text ?? text;
+      result.push(destination);
+    }
+  }
+  return result;
 }

@@ -21,7 +21,8 @@ export class Observe<T, V = void, D = unknown> {
   private resumed?: Promise<void>;
   constructor(
     readonly target: T,
-    private delegate?: Observe<D, void, unknown>,
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    private delegate?: Observe<D, any, unknown>,
   ) {
     this.state = delegate ? 'delegated' : 'active';
   }

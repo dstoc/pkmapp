@@ -17,6 +17,7 @@ import type {
   ViewModelNode,
   MaybeViewModelNode,
   InlineViewModelNode,
+  Caches,
 } from './view-model-node.js';
 
 import {parser as inlineParser} from './inline-parser.js';
@@ -361,6 +362,8 @@ export interface MarkdownTreeEdit {
   [Symbol.dispose]: () => void;
 }
 
+export type TreeChange = 'edit' | 'cache';
+
 export class MarkdownTree {
   constructor(
     root: DocumentNode,
@@ -375,8 +378,10 @@ export class MarkdownTree {
   private editStartVersion = 0;
   private editResumeObserve: () => void = () => void 0;
   private editOperations: Op[] = [];
+  private editChangedCaches = false;
+
   root: ViewModelNode & DocumentNode;
-  readonly observe = new Observe(this);
+  readonly observe = new Observe<this, TreeChange>(this);
   removed = new Set<ViewModelNode>();
 
   private undoStack: OpBatch[] = [];
@@ -482,6 +487,25 @@ export class MarkdownTree {
     };
   }
 
+  setCache<K extends keyof Caches>(
+    node: ViewModelNode,
+    key: K,
+    value?: Caches[K],
+  ) {
+    assert(this.state === 'post-edit');
+    assert(node[viewModel].tree === this);
+    this.editChangedCaches = true;
+    if (value !== undefined) {
+      node.caches ??= {};
+      node.caches[key] = value;
+    } else if (value === undefined) {
+      delete node.caches?.[key];
+      if (node.caches && !Object.keys(node.caches)) {
+        delete node.caches;
+      }
+    }
+  }
+
   record(op: Op) {
     assert(this.state === 'editing');
     this.editOperations.push(op);
@@ -507,6 +531,7 @@ export class MarkdownTree {
     for (const root of removedRoots.values()) {
       for (const node of dfs(root)) {
         node[viewModel].disconnect();
+        delete node.caches;
         this.delegate?.postEditUpdate(node, 'disconnected');
       }
     }
@@ -520,6 +545,11 @@ export class MarkdownTree {
         this.delegate?.postEditUpdate(node, 'connected');
       } else {
         assert(node[viewModel].version > this.editStartVersion);
+        // TODO: Sometimes it could be safe to keep the cache.
+        // e.g. if a node has moved it's content can be unchanged.
+        // Could move the clearing responsibility to the impls,
+        // otherwise they may need to build other optimizations.
+        delete node.caches;
         this.delegate?.postEditUpdate(node, 'changed');
       }
     }
@@ -555,9 +585,10 @@ export class MarkdownTree {
       // setRoot uses -1 to force connection
       this.editStartVersion >= 0
     ) {
-      // TODO: Probably need to track/notify whether it's a
-      // cache/metadata change, or an edit.
-      this.observe.notify();
+      this.observe.notify('edit');
+    } else if (this.editChangedCaches) {
+      this.editChangedCaches = false;
+      this.observe.notify('cache');
     }
     this.editResumeObserve();
     return result;
