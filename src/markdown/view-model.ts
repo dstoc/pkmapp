@@ -593,14 +593,8 @@ export class MarkdownTree {
     node = node ?? this.root;
     assert(node[viewModel].tree === this);
     assert(this.state === 'idle');
-    const result: MarkdownNode & MaybeViewModelNode = {
-      ...node,
-      [Symbol.for('markdown-tree')]: true,
-    };
-    delete result[viewModel];
-    result.children = node.children?.map((node: ViewModelNode) =>
-      this.serialize(node),
-    );
+    const result = structuredClone(node);
+    assert(!result[viewModel]);
     return result;
   }
 }

@@ -38,7 +38,9 @@ import {
 } from './markdown/view-model-util.js';
 import {
   ViewModelNode,
-  InlineViewModelNode, viewModel} from './markdown/view-model-node.js';
+  InlineViewModelNode,
+  viewModel,
+} from './markdown/view-model-node.js';
 import {getContainingTransclusion} from './markdown/transclusion.js';
 import {Autocomplete} from './autocomplete.js';
 import {
@@ -164,7 +166,10 @@ export class Editor extends LitElement {
     }
   }
   serialize() {
-    return this.document!.tree.serialize();
+    return {
+      ...this.document!.tree.serialize(),
+      [Symbol.for('markdown-tree')]: true,
+    };
   }
   async createAndNavigateByName(name: string, fireEvent = false) {
     const document = await this.library.newDocument(name);
