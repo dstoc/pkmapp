@@ -10,7 +10,7 @@ export interface Config {
 export class ConfigStore {
   constructor(private readonly database: IDBDatabase) {}
   static async init(prefix: string) {
-    const request = indexedDB.open(`${prefix}-configuration`);
+    const request = indexedDB.open(`${prefix}configuration`);
     request.onupgradeneeded = () => {
       const database = request.result;
       database.createObjectStore(store);

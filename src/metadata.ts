@@ -24,6 +24,7 @@ import {
 } from './block-util.js';
 import {assert} from './asserts.js';
 import {traverseInlineNodes} from './markdown/view-model.js';
+import {Library} from './library.js';
 
 class SetBiMap<T> {
   private index = new Map<string, Set<T>>();
@@ -138,6 +139,20 @@ export class Metadata {
   private nameMap = new SetBiMap<ViewModelNode>();
   private tagMap = new SetBiMap<InlineViewModelNode>();
   private sectionNameMap = new SetBiMap<Section>();
+
+  constructor(library: Library) {
+    library.observePostEditUpdate.add((node, change) => {
+      if (node.type === 'code-block') {
+        this.updateCodeblock(node, change);
+      }
+      if (node.type === 'section') {
+        this.updateSection(node, change);
+      }
+      if (node.type === 'paragraph') {
+        this.updateInlineNode(node, change);
+      }
+    });
+  }
 
   getAllNames() {
     return [

@@ -15,8 +15,10 @@
 import {createContext} from '@lit/context';
 import type {Library} from './library.js';
 import {InlineViewModelNode} from './markdown/view-model-node.js';
+import {Components} from './components.js';
 
 export const libraryContext = createContext<Library>('libraryContext');
+export const componentContext = createContext<Components>('componentContext');
 export const focusContext = createContext<InlineViewModelNode | undefined>(
   'focusContext',
 );

@@ -20,7 +20,7 @@ export class Observe<T, V = void, D = unknown> {
   private state: 'active' | 'suspended' | 'delegated';
   private resumed?: Promise<void>;
   constructor(
-    readonly target: T,
+    readonly target?: T,
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     private delegate?: Observe<D, any, unknown>,
   ) {
@@ -40,18 +40,18 @@ export class Observe<T, V = void, D = unknown> {
     );
     return result!;
   }
-  notify(value: V) {
+  notify(value: V, target = cast(this.target)) {
     if ((this.delegate?.state ?? this.state) === 'suspended') {
       // TODO: coalesce
       noAwait(
         cast(this.delegate?.resumed ?? this.resumed).then(() =>
-          this.notify(value),
+          this.notify(value, target),
         ),
       );
       return;
     }
     for (const observer of this.observers.values()) {
-      observer(this.target, value);
+      observer(target, value);
     }
   }
   add(observer: (target: T, value: V) => void) {

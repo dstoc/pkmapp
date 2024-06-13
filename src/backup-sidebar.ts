@@ -1,16 +1,16 @@
-import {libraryContext} from './app-context.js';
+import {componentContext} from './app-context.js';
 import {css, html, LitElement} from 'lit';
 import {state, customElement} from 'lit/decorators.js';
 import {consume} from '@lit/context';
-import {Library} from './library.js';
 import {backupCommands} from './backup-commands.js';
 import {SimpleCommandBundle} from './command-palette.js';
+import {Components} from './components.js';
 
 @customElement('pkm-backup-sidebar')
 export class BackupSidebar extends LitElement {
-  @consume({context: libraryContext, subscribe: true})
+  @consume({context: componentContext, subscribe: true})
   @state()
-  library!: Library;
+  components!: Components;
   static override readonly styles = css`
     :host {
       display: block;
@@ -18,7 +18,7 @@ export class BackupSidebar extends LitElement {
   `;
   override render() {
     let status;
-    switch (this.library.backup.state) {
+    switch (this.components.backup.state) {
       case 'idle':
         status = 'Idle.';
         break;
@@ -39,17 +39,17 @@ export class BackupSidebar extends LitElement {
   }
   override firstUpdated() {
     this.addEventListener('click', this.onClick);
-    this.library.backup.observe.add(() => this.requestUpdate());
+    this.components.backup.observe.add(() => this.requestUpdate());
   }
   onClick() {
-    if (this.library.backup.state === 'waiting-for-permission') {
-      this.library.backup.checkForPermission();
+    if (this.components.backup.state === 'waiting-for-permission') {
+      this.components.backup.checkForPermission();
     } else {
       this.dispatchEvent(
         new CustomEvent('pkm-commands', {
           detail: new SimpleCommandBundle(
             `Backup options...`,
-            backupCommands(this.library.backup),
+            backupCommands(this.components.backup),
           ),
           bubbles: true,
           composed: true,

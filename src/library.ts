@@ -14,21 +14,14 @@
 
 import {DocumentNode} from './markdown/node.js';
 import {MarkdownTree, TreeChange} from './markdown/view-model.js';
-import {
-  ViewModelNode,
-  InlineViewModelNode,
-  viewModel,
-} from './markdown/view-model-node.js';
+import {ViewModelNode, viewModel} from './markdown/view-model-node.js';
 import {Observe} from './observe.js';
-import {BackLinks} from './backlinks.js';
 import {Metadata} from './metadata.js';
 import {assert, cast} from './asserts.js';
 import {resolveDateAlias} from './date-aliases.js';
 import {getLogicalContainingBlock} from './block-util.js';
 import {noAwait} from './async.js';
-import {Backup} from './backup.js';
 import {wrap} from './indexeddb.js';
-import {ConfigStore} from './config-store.js';
 
 export interface DocumentMetadata {
   creationTime: number;
@@ -63,12 +56,14 @@ export interface Library {
   // TODO: Does this need to be async? Make iterable?
   getAllNames(): Promise<string[]>;
   getAllDocuments(): IterableIterator<Document>;
-  readonly backLinks: BackLinks;
   readonly metadata: Metadata;
-  readonly backup: Backup;
   restore(): Promise<void>;
   import(root: DocumentNode, key: string): Promise<Document>;
   readonly observeDocuments: Observe<Library, Document>;
+  observePostEditUpdate: Observe<
+    ViewModelNode,
+    'connected' | 'disconnected' | 'changed'
+  >;
   readonly ready: Promise<void>;
 }
 
@@ -86,34 +81,30 @@ interface StoredDocument {
 }
 
 export class IdbLibrary implements Library {
-  constructor(
-    readonly database: IDBDatabase,
-    private store: ConfigStore,
-  ) {
+  constructor(readonly database: IDBDatabase) {
+    this.metadata = new Metadata(this);
     this.ready = new Promise((resolve) => {
       noAwait(this.restore().then(resolve));
     });
   }
+  metadata: Metadata;
   cache = new Map<string, Document>();
-  backLinks = new BackLinks();
-  metadata = new Metadata();
   observeDocuments: Observe<Library, Document> = new Observe<Library, Document>(
     this,
   );
-  backup: Backup = new Backup(this, this.store);
+  observePostEditUpdate = new Observe<
+    ViewModelNode,
+    'connected' | 'disconnected' | 'changed'
+  >();
   ready: Promise<void>;
-  static async init(dbName: string) {
-    const request = indexedDB.open(dbName);
+  static async init(prefix = '') {
+    const request = indexedDB.open(prefix + 'library');
     request.onupgradeneeded = () => {
       const database = request.result;
       database.createObjectStore('documents');
     };
     const {result: database} = await wrap(request);
-    const store = await ConfigStore.init('default');
-    const library = new IdbLibrary(database, store);
-    // TODO: Don't await this. Other components should wait for restore if
-    // necessary.
-    await library.ready;
+    const library = new IdbLibrary(database);
     return library;
   }
   getAllDocuments() {
@@ -270,6 +261,13 @@ export class IdbLibrary implements Library {
     await doc.replace(root);
     return doc;
   }
+
+  postEditUpdate(
+    node: ViewModelNode,
+    change: 'connected' | 'disconnected' | 'changed',
+  ) {
+    this.observePostEditUpdate.notify(change, node);
+  }
 }
 
 class IdbDocument implements Document {
@@ -278,7 +276,7 @@ class IdbDocument implements Document {
     root: DocumentNode,
     readonly metadata: Readonly<DocumentMetadata>,
   ) {
-    this.tree = new MarkdownTree(cast(root), this);
+    this.tree = new MarkdownTree(cast(root), library);
     this.tree.observe.add((_tree, change) => this.treeChanged(change));
   }
   readonly tree: MarkdownTree;
@@ -300,29 +298,6 @@ class IdbDocument implements Document {
   get allNames() {
     const names = [...this.library.metadata.getNames(this.tree.root)];
     return names.length ? names : [this.metadata.key];
-  }
-  postEditUpdate(
-    node: ViewModelNode,
-    change: 'connected' | 'disconnected' | 'changed',
-  ) {
-    if (node.type === 'paragraph') {
-      this.library.backLinks.postEditUpdate(
-        node as InlineViewModelNode,
-        change,
-      );
-    }
-    if (node.type === 'code-block') {
-      this.library.metadata.updateCodeblock(node, change);
-    }
-    if (node.type === 'section') {
-      this.library.metadata.updateSection(node, change);
-    }
-    if (node.type === 'paragraph') {
-      this.library.metadata.updateInlineNode(
-        node as InlineViewModelNode,
-        change,
-      );
-    }
   }
   async replace(root: DocumentNode) {
     this.tree.setRoot(this.tree.add<DocumentNode>(root));

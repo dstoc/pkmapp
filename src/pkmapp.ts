@@ -18,11 +18,11 @@ import './sidebar.js';
 import './backlinks-sidebar.js';
 import './command-palette-dialog.js';
 
-import {focusContext, libraryContext} from './app-context.js';
+import {componentContext, focusContext, libraryContext} from './app-context.js';
 import {CommandPaletteDialog} from './command-palette-dialog.js';
 import {provide} from '@lit/context';
-import {css, html, LitElement, TemplateResult} from 'lit';
-import {customElement, query, state} from 'lit/decorators.js';
+import {css, html, LitElement} from 'lit';
+import {query, state} from 'lit/decorators.js';
 import {Editor} from './editor.js';
 import {IdbLibrary, Library} from './library.js';
 import {styles, loadFonts} from './style.js';
@@ -32,15 +32,21 @@ import {
   CommandBundle,
   SimpleCommandBundle,
 } from './command-palette.js';
-import {assert} from './asserts.js';
+import {assert, cast} from './asserts.js';
 import {noAwait} from './async.js';
 import './backup-sidebar.js';
 import {
   InlineViewModelNode,
-  ViewModelNode, viewModel} from './markdown/view-model-node.js';
+  ViewModelNode,
+  viewModel,
+} from './markdown/view-model-node.js';
 import {debugCommands} from './debug-commands.js';
 import {backupCommands} from './backup-commands.js';
 import {CommandContext} from './commands/context.js';
+import {Components, ComponentsBuilder} from './components.js';
+import {Backup} from './backup.js';
+import {ConfigStore} from './config-store.js';
+import {BackLinks} from './backlinks.js';
 
 export function injectStyles() {
   document.adoptedStyleSheets = [...styles];
@@ -76,11 +82,11 @@ export async function enforceSingleProcess() {
   }
 }
 
-@customElement('pkm-app')
-export class PkmApp extends LitElement {
+export abstract class PkmAppBase extends LitElement {
   @query('pkm-editor') editor!: Editor;
   @query('pkm-command-palette-dialog') commandPalette!: CommandPaletteDialog;
   @provide({context: libraryContext}) @state() library!: Library;
+  @provide({context: componentContext}) @state() components!: Components;
   @provide({context: focusContext}) @state() focusNode?: InlineViewModelNode;
   constructor() {
     super();
@@ -156,17 +162,16 @@ export class PkmApp extends LitElement {
       <pkm-command-palette-dialog></pkm-command-palette-dialog>
     `;
   }
-  protected renderSidebarContents(): TemplateResult {
+  protected renderSidebarContents(): unknown {
     return html`
       <pkm-backup-sidebar></pkm-backup-sidebar>
       <pkm-backlinks-sidebar></pkm-backlinks-sidebar>
     `;
   }
-  protected componentsReady() {}
   protected *getCommands(context: CommandContext): Iterable<Command> {
     yield* this.editor.getCommands();
     yield* debugCommands(context.library);
-    yield* backupCommands(context.library.backup);
+    yield* backupCommands(this.components.backup);
   }
   private onTitleItemClick({detail: root}: CustomEvent<ViewModelNode>) {
     const document = this.library.getDocumentByTree(root[viewModel].tree);
@@ -199,24 +204,39 @@ export class PkmApp extends LitElement {
     assert(!this.library);
     assert(!this.loading);
     this.loading = true;
+    const builder = new ComponentsBuilder();
     try {
       const opener = window.opener as Window | undefined;
       const host = opener?.document.querySelector(this.tagName);
-      const parent = (host as typeof this)?.library;
+      const parent = (host as typeof this)?.components;
       if (parent) {
-        this.library = parent;
+        this.components = parent;
       } else {
-        this.library = await IdbLibrary.init('library');
+        const library = await IdbLibrary.init(this.idbPrefix);
+        const store = await ConfigStore.init(this.idbPrefix);
+        builder.add('library', () => library);
+        builder.add('configStore', () => store);
+        builder.add('metadata', (components) => components.library!.metadata);
+        builder.add(
+          'backLinks',
+          (components) => new BackLinks(cast(components.library)),
+        );
+        builder.add(
+          'backup',
+          (components) =>
+            new Backup(cast(components.library), cast(components.configStore)),
+        );
+        this.addComponents(builder);
+        const components = builder.build(this.verifyComponents);
+        await components.library.ready;
+        this.components = components;
+        this.library = components.library;
       }
     } finally {
       this.loading = false;
     }
-    this.componentsReady();
   }
-}
-
-declare global {
-  interface HTMLElementTagNameMap {
-    'pkm-app': PkmApp;
-  }
+  protected abstract verifyComponents(result: Partial<Components>): Components;
+  protected readonly idbPrefix = '';
+  protected abstract addComponents(builder: ComponentsBuilder): void;
 }
