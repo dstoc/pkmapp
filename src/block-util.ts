@@ -54,11 +54,43 @@ export function getNamedContainingBlock(node?: ViewModelNode) {
 export function isExplicitlyNamed(node?: ViewModelNode) {
   switch (node?.type) {
     case 'section':
-      return true;
+      return !(
+        !node[viewModel].previousSibling &&
+        (node[viewModel].parent?.type === 'list-item' ||
+          node[viewModel].parent?.type === 'document')
+      );
     case 'list-item':
-    case 'document':
       return node[viewModel].firstChild?.type === 'section';
+    case 'document':
+      return true;
     default:
       return false;
+  }
+}
+
+export function getNameSource(node?: ViewModelNode) {
+  switch (node?.type) {
+    case 'section':
+      if (
+        !(
+          !node[viewModel].previousSibling &&
+          (node[viewModel].parent?.type === 'list-item' ||
+            node[viewModel].parent?.type === 'document')
+        )
+      )
+        return node;
+      return undefined;
+    case 'list-item':
+      if (node[viewModel].firstChild?.type === 'section') {
+        return node[viewModel].firstChild;
+      }
+      return undefined;
+    case 'document':
+      if (node[viewModel].firstChild?.type === 'section') {
+        return node[viewModel].firstChild;
+      }
+      return node;
+    default:
+      return undefined;
   }
 }
