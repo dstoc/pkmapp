@@ -487,6 +487,28 @@ export class MarkdownTree {
     };
   }
 
+  editCache<K extends keyof Caches>(
+    node: ViewModelNode,
+    version: number,
+    key: K,
+    value?: Caches[K],
+  ) {
+    assert(this.state === 'idle');
+    assert(node[viewModel].version === version);
+    assert(node[viewModel].connected);
+    assert(node[viewModel].tree === this);
+    if (value !== undefined) {
+      node.caches ??= {};
+      node.caches[key] = value;
+    } else if (value === undefined) {
+      delete node.caches?.[key];
+      if (node.caches && !Object.keys(node.caches)) {
+        delete node.caches;
+      }
+    }
+    this.observe.notify('cache');
+  }
+
   setCache<K extends keyof Caches>(
     node: ViewModelNode,
     key: K,
