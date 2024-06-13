@@ -41,6 +41,8 @@ async function runImport(
         parseBlocks(text).node,
         entry.name.replace(/\.md$/, ''),
       );
+    } else if (entry.kind === 'directory') {
+      await runImport(library, entry);
     }
   }
 }
