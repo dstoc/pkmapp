@@ -37,6 +37,7 @@ import {
   undoOp,
 } from './view-model-ops.js';
 import {viewModel} from './view-model-node.js';
+import {batch, signal} from '@preact/signals-core';
 
 export class ViewModel {
   constructor(
@@ -46,7 +47,6 @@ export class ViewModel {
     childIndex?: number,
   ) {
     this.initialize(parent, childIndex);
-    this.observe = new Observe(this.self, this.tree.observe);
   }
   get connected(): boolean {
     return this.connected_;
@@ -69,7 +69,7 @@ export class ViewModel {
   lastChild?: ViewModelNode;
   nextSibling?: ViewModelNode;
   previousSibling?: ViewModelNode;
-  readonly observe;
+  readonly renderSignal = signal(0);
   protected signalMutation(op: Op, notify = true) {
     this.version = this.tree.root[viewModel].version + 1;
     this.tree.record(op);
@@ -86,7 +86,7 @@ export class ViewModel {
       node[viewModel].version = this.version;
     }
     if (notify) {
-      this.observe.notify();
+      this.renderSignal.value++;
     }
   }
   private connected_ = false;
@@ -132,7 +132,7 @@ export class ViewModel {
     this.nextSibling = undefined;
     this.previousSibling = undefined;
     this.tree.removed.add(this.self);
-    parent[viewModel].observe.notify();
+    parent[viewModel].renderSignal.value++;
   }
 
   insertBefore(parent: ViewModelNode, nextSibling?: ViewModelNode) {
@@ -188,7 +188,7 @@ export class ViewModel {
       },
       false,
     );
-    parent[viewModel].observe.notify();
+    parent[viewModel].renderSignal.value++;
   }
 
   updateMarker(marker: string) {
@@ -369,9 +369,7 @@ export class MarkdownTree {
   }
 
   state: 'editing' | 'post-edit' | 'idle' = 'idle';
-  private editCount = 0;
   private editStartVersion = 0;
-  private editResumeObserve: () => void = () => void 0;
   private editOperations: Op[] = [];
   private editChangedCaches = false;
 
@@ -463,10 +461,9 @@ export class MarkdownTree {
   edit(editFn: () => {startFocus?: Focus; endFocus?: Focus}): Op[] {
     assert(this.state === 'idle');
     this.editStartVersion = this.root[viewModel].version;
-    this.editResumeObserve = this.observe.suspend();
     this.state = 'editing';
     this.removed.clear();
-    const {startFocus, endFocus} = editFn();
+    const {startFocus, endFocus} = batch(editFn);
     return this.finishEdit(startFocus, endFocus);
   }
 
@@ -521,9 +518,9 @@ export class MarkdownTree {
     endFocus: Focus | undefined,
   ) {
     assert(this.state === 'editing');
-    this.editCount--;
-    if (this.editCount > 0) return [];
-    normalizeTree(this);
+    if (this.root[viewModel].version > this.editStartVersion) {
+      normalizeTree(this);
+    }
     const removedRoots = new Set<ViewModelNode>();
     for (const node of this.removed.values()) {
       if (!node[viewModel].parent) {
@@ -593,7 +590,6 @@ export class MarkdownTree {
       this.editChangedCaches = false;
       this.observe.notify('cache');
     }
-    this.editResumeObserve();
     return result;
   }
 

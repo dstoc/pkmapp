@@ -20,9 +20,9 @@ import {property, customElement, state} from 'lit/decorators.js';
 import {consume} from '@lit/context';
 import {libraryContext} from './app-context.js';
 import {getLogicalContainingBlock, isExplicitlyNamed} from './block-util.js';
-import {Observers, Observer} from './observe.js';
 import type {ViewModelNode} from './markdown/view-model-node.js';
 import {viewModel} from './markdown/view-model-node.js';
+import {effect} from '@preact/signals-core';
 
 @customElement('pkm-title')
 export class Title extends LitElement {
@@ -39,7 +39,11 @@ export class Title extends LitElement {
   @consume({context: libraryContext, subscribe: true})
   @state()
   accessor library!: Library;
-  observers?: Observers;
+  private effectDispose?: () => void;
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.effectDispose?.();
+  }
 
   override render() {
     if (!this.node) return ``;
@@ -50,25 +54,19 @@ export class Title extends LitElement {
     )
       return ``;
 
-    this.observers?.clear();
     const containers: ViewModelNode[] = [];
     let next: ViewModelNode | undefined = this.node;
     while (next) {
       containers.unshift(next);
       next = getLogicalContainingBlock(next);
     }
-    this.observers = new Observers(
-      ...containers.map(
-        (container) =>
-          new Observer(
-            () => container[viewModel].observe,
-            () => this.requestUpdate(),
-            (target, observer) => target.add(observer),
-            (target, observer) => target.remove(observer),
-          ),
-      ),
-    );
-    this.observers.update();
+    this.effectDispose?.();
+    this.effectDispose = effect(() => {
+      for (const container of containers) {
+        container[viewModel].renderSignal.value;
+      }
+      this.requestUpdate();
+    });
 
     return html`
       ${containers.map(

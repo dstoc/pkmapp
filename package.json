@@ -36,6 +36,7 @@
   "dependencies": {
     "@fontsource/noto-emoji": "^5.0.17",
     "@lit/context": "^1.1.2",
+    "@preact/signals-core": "^1.6.1",
     "@types/dom-view-transitions": "^1.0.4",
     "@types/trusted-types": "^2.0.7",
     "@types/wicg-file-system-access": "^2023.10.4",

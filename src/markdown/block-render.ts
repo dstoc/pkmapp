@@ -26,9 +26,10 @@ import './transclusion.js';
 import {hostContext, HostContext} from './host-context.js';
 import {provide, consume} from '@lit/context';
 import {styles} from './style.js';
+import {sigprop, SigpropHost} from '../signal-utils.js';
 
 @customElement('md-block')
-export class MarkdownBlock extends LitElement {
+export class MarkdownBlock extends LitElement implements SigpropHost {
   @property({type: String, reflect: true}) accessor checked:
     | 'true'
     | 'false'
@@ -36,30 +37,22 @@ export class MarkdownBlock extends LitElement {
   @property({type: Boolean, reflect: true}) accessor root: boolean | undefined;
   @property({type: String, reflect: true}) accessor type = '';
   @property({type: String, reflect: true}) accessor marker: string | undefined;
-  @property({attribute: false}) accessor node: ViewModelNode | undefined;
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
   accessor hostContext: HostContext | undefined;
+  @sigprop accessor node: ViewModelNode | undefined;
   constructor() {
     super();
     this.addEventListener('click', (e) => this.handleClick(e));
   }
-  override connectedCallback(): void {
-    super.connectedCallback();
-    this.addObserver(this.node);
+  effectDispose?: () => void;
+  effect() {
+    this.node?.[viewModel].renderSignal.value;
+    this.requestUpdate();
   }
   override disconnectedCallback(): void {
     super.disconnectedCallback();
-    this.removeObserver(this.node);
-  }
-  override willUpdate(changedProperties: Map<string, unknown>) {
-    if (changedProperties.has('node')) {
-      const oldNode = changedProperties.get('node') as ViewModelNode;
-      this.removeObserver(oldNode);
-      if (this.isConnected) {
-        this.addObserver(this.node);
-      }
-    }
+    this.effectDispose?.();
   }
   override render() {
     const node = this.node;
@@ -125,19 +118,6 @@ export class MarkdownBlock extends LitElement {
         return {};
       });
     }
-  }
-  private readonly observer = (node: ViewModelNode) => {
-    if (node !== this.node) {
-      this.removeObserver(node);
-      return;
-    }
-    this.requestUpdate();
-  };
-  private addObserver(node: ViewModelNode | undefined) {
-    node?.[viewModel].observe.add(this.observer);
-  }
-  private removeObserver(node: ViewModelNode | undefined) {
-    node?.[viewModel].observe.remove(this.observer);
   }
 }
 

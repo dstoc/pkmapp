@@ -133,7 +133,7 @@ export class Metadata {
   private meta = new ProviderMap<ViewModelNode, ViewModelNode, string>(
     (target, value) => {
       this.nameMap.update(target, value !== undefined ? [value] : []);
-      target[viewModel].observe.notify();
+      target[viewModel].renderSignal.value++;
     },
   );
   private nameMap = new SetBiMap<ViewModelNode>();
@@ -215,7 +215,8 @@ export class Metadata {
       this.sectionNameMap.update(node, [node.content]);
     }
     if (change === 'changed' && !isLogicalContainingBlock(node)) {
-      node[viewModel].parent?.[viewModel].observe.notify();
+      node[viewModel].parent &&
+        node[viewModel].parent[viewModel].renderSignal.value++;
     }
   }
   updateCodeblock(

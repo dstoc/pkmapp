@@ -20,13 +20,10 @@ import Parser from 'web-tree-sitter';
 import {cast} from '../asserts.js';
 
 import {HostContext, hostContext} from './host-context.js';
-import {
-  InlineViewModelNode,
-  ViewModelNode,
-  viewModel,
-} from './view-model-node.js';
+import {InlineViewModelNode, viewModel} from './view-model-node.js';
 import {noAwait} from '../async.js';
 import {InlineTreeNode} from './view-model.js';
+import {sigprop, SigpropHost} from '../signal-utils.js';
 
 export interface InlineInputPoint {
   span?: MarkdownSpan;
@@ -63,7 +60,7 @@ declare global {
 }
 
 @customElement('md-inline')
-export class MarkdownInline extends LitElement {
+export class MarkdownInline extends LitElement implements SigpropHost {
   constructor() {
     super();
     this.addEventListener('beforeinput', this.onBeforeInput, {capture: true});
@@ -73,14 +70,25 @@ export class MarkdownInline extends LitElement {
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
   accessor hostContext: HostContext | undefined;
-  @property({type: Object, reflect: false}) accessor node:
-    | InlineViewModelNode
-    | undefined;
   @property({type: Boolean, reflect: true}) accessor contenteditable = true;
   @property({type: Boolean, reflect: true}) accessor selected:
     | boolean
     | undefined;
   @query('md-span') accessor span!: MarkdownSpan;
+
+  @sigprop accessor node: InlineViewModelNode | undefined;
+  effectDispose?: () => void;
+  effect() {
+    // TODO: Also need to invalidate if this node becomes focused or selected (in hostContext)
+    // Is it better to route this via the view model (targets focused/selection changed nodes only)
+    // or broadcast to all via the hostContext?
+    this.node?.[viewModel].renderSignal.value;
+    this.requestUpdate();
+  }
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.effectDispose?.();
+  }
 
   override render() {
     if (!this.node) return;
@@ -90,13 +98,6 @@ export class MarkdownInline extends LitElement {
     return html`<md-span
       .node=${this.node[viewModel].inlineTree.rootNode}
     ></md-span>`;
-  }
-  override willUpdate(changedProperties: Map<string, unknown>) {
-    if (changedProperties.has('node')) {
-      const oldNode = changedProperties.get('node') as ViewModelNode;
-      this.removeObserver(oldNode);
-      this.addObserver(this.node);
-    }
   }
   override updated() {
     if (!this.node) return;
@@ -356,19 +357,6 @@ export class MarkdownInline extends LitElement {
   }
   onPointerDown() {
     this.hostContext?.clearSelection();
-  }
-  private readonly observer = (node: ViewModelNode) => {
-    if (node !== this.node) {
-      this.removeObserver(node);
-      return;
-    }
-    this.requestUpdate();
-  };
-  private addObserver(node: ViewModelNode | undefined) {
-    node?.[viewModel].observe.add(this.observer);
-  }
-  private removeObserver(node: ViewModelNode | undefined) {
-    node?.[viewModel].observe.remove(this.observer);
   }
 }
 

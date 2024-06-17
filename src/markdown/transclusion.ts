@@ -25,15 +25,16 @@ import {HostContext, hostContext} from './host-context.js';
 import {findNextEditable, findFinalEditable} from './view-model-util.js';
 import {noAwait} from '../async.js';
 import {viewModel} from './view-model-node.js';
+import {sigprop, SigpropHost} from '../signal-utils.js';
 
 @customElement('md-transclusion')
-export class MarkdownTransclusion extends LitElement {
-  @property({attribute: false}) accessor node:
-    | (InlineViewModelNode & CodeBlockNode)
-    | undefined;
+export class MarkdownTransclusion extends LitElement implements SigpropHost {
   @consume({context: libraryContext, subscribe: true})
   @state()
+  @sigprop
   accessor library!: Library;
+
+  @sigprop accessor node: (InlineViewModelNode & CodeBlockNode) | undefined;
 
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
@@ -45,15 +46,18 @@ export class MarkdownTransclusion extends LitElement {
   @query('md-block-render')
   private accessor markdownRenderer!: MarkdownRenderer;
 
-  override update(changedProperties: Map<string, unknown>) {
-    super.update(changedProperties);
-    if (changedProperties.has('node')) {
-      this.root = undefined;
-      if (this.node) {
-        noAwait(this.load(this.node.content.trim()));
-      }
+  oldNode?: typeof this.node;
+  effect() {
+    if (!this.node || !this.library) return;
+    if (this.node !== this.oldNode) {
+      noAwait(this.load(this.node.content.trim()));
     }
+    this.node[viewModel].renderSignal.value;
+    this.requestUpdate();
+    this.maybeUpdateFocus();
   }
+  effectDispose?: () => void;
+
   override render() {
     return this.root
       ? html`
@@ -90,31 +94,11 @@ export class MarkdownTransclusion extends LitElement {
       this.hostContext.focusOffset;
     this.hostContext.focusNode = undefined;
     this.hostContext.focusOffset = undefined;
-    node?.[viewModel].observe.notify();
-  }
-  override connectedCallback() {
-    super.connectedCallback();
-    this.addObserver(this.node);
+    node && node[viewModel].renderSignal.value++;
   }
   override disconnectedCallback() {
     super.disconnectedCallback();
-    this.removeObserver(this.node);
-  }
-  override willUpdate(changedProperties: Map<string, unknown>) {
-    if (changedProperties.has('node')) {
-      const oldNode = changedProperties.get('node') as ViewModelNode;
-      this.removeObserver(oldNode);
-      this.addObserver(this.node);
-    }
-  }
-  private readonly observer = () => {
-    this.maybeUpdateFocus();
-  };
-  private addObserver(node: ViewModelNode | undefined) {
-    node?.[viewModel].observe.add(this.observer);
-  }
-  private removeObserver(node: ViewModelNode | undefined) {
-    node?.[viewModel].observe.remove(this.observer);
+    this.effectDispose?.();
   }
 }
 

@@ -38,7 +38,7 @@ export class HostContext {
     this.selectionAnchor = undefined;
     this.selectionFocus = undefined;
     for (const node of selection) {
-      node[viewModel].observe.notify();
+      node[viewModel].renderSignal.value++;
     }
   }
 
@@ -50,8 +50,8 @@ export class HostContext {
     this.selectionFocus = focus;
     this.selection.add(anchor);
     this.selection.add(focus);
-    anchor[viewModel].observe.notify();
-    focus[viewModel].observe.notify();
+    anchor[viewModel].renderSignal.value++;
+    focus[viewModel].renderSignal.value++;
   }
 
   extendSelection(from: InlineViewModelNode, to: InlineViewModelNode) {
@@ -60,11 +60,11 @@ export class HostContext {
       if (this.selectionAnchor === from) {
         this.selectionAnchor = to;
       }
-      from[viewModel].observe.notify();
+      from[viewModel].renderSignal.value++;
     }
     this.selection.add(to);
     this.selectionFocus = to;
-    to[viewModel].observe.notify();
+    to[viewModel].renderSignal.value++;
   }
 
   expandSelection(nodes: Iterable<InlineViewModelNode>) {
@@ -74,15 +74,15 @@ export class HostContext {
       this.selection.add(node);
     }
     for (const node of nodes) {
-      node[viewModel].observe.notify();
+      node[viewModel].renderSignal.value++;
     }
     // TODO: Consider whether there's a smarter way to set the
     // selectionAnchor/focus after this operation.
     const sorted = [...this.selection].sort(compareDocumentOrder);
     this.selectionAnchor = sorted[0];
     this.selectionFocus = cast(sorted.at(-1));
-    oldAnchor?.[viewModel].observe.notify();
-    oldFocus?.[viewModel].observe.notify();
+    oldAnchor && oldAnchor[viewModel].renderSignal.value++;
+    oldFocus && oldFocus[viewModel].renderSignal.value++;
     focusNode(this, this.selectionFocus);
   }
 }
@@ -97,5 +97,5 @@ export function focusNode(
 ) {
   context.focusNode = node;
   context.focusOffset = offset;
-  node[viewModel].observe.notify();
+  node[viewModel].renderSignal.value++;
 }

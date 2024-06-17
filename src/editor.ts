@@ -341,7 +341,7 @@ export class Editor extends LitElement {
     } else if (endFocus) {
       hostContext.focusNode = endFocus.node;
       hostContext.focusOffset = endFocus.offset;
-      endFocus.node[viewModel].observe.notify();
+      endFocus.node[viewModel].renderSignal.value++;
     }
     return actionResult!;
   }
@@ -456,7 +456,7 @@ export class Editor extends LitElement {
         }
         hostContext.focusNode = focus.node;
         hostContext.focusOffset = focus.offset;
-        focus.node[viewModel].observe.notify();
+        focus.node[viewModel].renderSignal.value++;
       }
     } else if (keyboardEvent.key === 'y' && keyboardEvent.ctrlKey) {
       if (!hostContext.root) return;
@@ -469,7 +469,7 @@ export class Editor extends LitElement {
         }
         hostContext.focusNode = focus.node;
         hostContext.focusOffset = focus.offset;
-        focus.node[viewModel].observe.notify();
+        focus.node[viewModel].renderSignal.value++;
       }
     } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
       this.autocomplete.abort();
