@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@fontsource/noto-emoji':
-        specifier: ^5.0.17
-        version: 5.0.19
+        specifier: ^5.0.20
+        version: 5.0.20
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
@@ -258,8 +258,8 @@ packages:
     resolution: {integrity: sha512-Ys+3g2TaW7gADOJzPt83SJtCDhMjndcDMFVQ/Tj9iA1BfJzFKD9mAUXT3OenpuPHbI6P/myECxRJrofUsDx/5g==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@fontsource/noto-emoji@5.0.19':
-    resolution: {integrity: sha512-a2n0XlYXZi0Q2J763C/mvFsqx6X7k9I12U111EtNhzrCK+A5VaGhH49hGli880YokM8txDE3i3zF39qrEvljIw==}
+  '@fontsource/noto-emoji@5.0.20':
+    resolution: {integrity: sha512-uQl5p1qU91ygiPRnNs5JKS6vt9o/yZg2D5IY5f/vFjE9QCxz7crYhMjQEUvc4FGGaFKMJ5i8FdGUzW3cCC4ULQ==}
 
   '@humanwhocodes/config-array@0.11.14':
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
@@ -2370,6 +2370,18 @@ packages:
       utf-8-validate:
         optional: true
 
+  ws@8.17.1:
+    resolution: {integrity: sha512-6XQFvXTkbfUOZOKKILFG1PDK2NDQs4azKQl26T0YS5CxqWLgXajbPZ+h4gZekJyRqFU8pvnbAbbs/3TgRPy+GQ==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   xml-name-validator@5.0.0:
     resolution: {integrity: sha512-EvGK8EJ3DhaHfbRlETOWAS5pO9MZITeauHKJyb8wyajUfQUenkIg2MvLDTZ4T/TgIcm3HU0TFBgWWboAZ30UHg==}
     engines: {node: '>=18'}
@@ -2516,7 +2528,7 @@ snapshots:
 
   '@eslint/js@8.57.0': {}
 
-  '@fontsource/noto-emoji@5.0.19': {}
+  '@fontsource/noto-emoji@5.0.20': {}
 
   '@humanwhocodes/config-array@0.11.14':
     dependencies:
@@ -3761,7 +3773,7 @@ snapshots:
       whatwg-encoding: 3.1.1
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.0.0
-      ws: 8.17.0
+      ws: 8.17.1
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -4736,6 +4748,9 @@ snapshots:
   ws@8.13.0: {}
 
   ws@8.17.0: {}
+
+  ws@8.17.1:
+    optional: true
 
   xml-name-validator@5.0.0:
     optional: true
