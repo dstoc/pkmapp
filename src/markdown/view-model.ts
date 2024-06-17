@@ -357,11 +357,6 @@ export interface MarkdownTreeDelegate {
   ): void;
 }
 
-export interface MarkdownTreeEdit {
-  commit: (startFocus?: Focus, endFocus?: Focus) => Op[];
-  [Symbol.dispose]: () => void;
-}
-
 export type TreeChange = 'edit' | 'cache';
 
 export class MarkdownTree {
@@ -390,16 +385,18 @@ export class MarkdownTree {
   setRoot(node: DocumentNode & ViewModelNode) {
     assert(node[viewModel].tree === this);
     assert(!node[viewModel].parent);
-    using _ = this.edit();
-    // Ensures that the whole tree is considered new and marked
-    // as connected in post-edit.
-    this.editStartVersion = -1;
-    // TODO: Clear undo/redo
-    if (node !== this.root) {
-      // Disconnect the existing tree.
-      this.removed.add(this.root);
-      this.root = node;
-    }
+    this.edit(() => {
+      // Ensures that the whole tree is considered new and marked
+      // as connected in post-edit.
+      this.editStartVersion = -1;
+      // TODO: Clear undo/redo
+      if (node !== this.root) {
+        // Disconnect the existing tree.
+        this.removed.add(this.root);
+        this.root = node;
+      }
+      return {};
+    });
   }
 
   add<T extends MarkdownNode>(node: T) {
@@ -423,13 +420,14 @@ export class MarkdownTree {
     }
     if (!batch) return;
     {
-      using edit = this.edit();
-      for (const op of batch.ops.toReversed()) {
-        undoOp(op);
-      }
-      this.editOperations.length = 0;
-      this.redoStack.push(batch);
-      const newOps = edit.commit();
+      const newOps = this.edit(() => {
+        for (const op of batch.ops.toReversed()) {
+          undoOp(op);
+        }
+        this.editOperations.length = 0;
+        this.redoStack.push(batch);
+        return {};
+      });
       assert(newOps.length === 0);
     }
     return batch.startFocus;
@@ -449,42 +447,27 @@ export class MarkdownTree {
     }
     if (!batch) return;
     {
-      using edit = this.edit();
-      for (const op of batch.ops) {
-        doOp(op);
-      }
-      this.editOperations.length = 0;
-      this.undoStack.push(batch);
-      const newOps = edit.commit();
+      const newOps = this.edit(() => {
+        for (const op of batch.ops) {
+          doOp(op);
+        }
+        this.editOperations.length = 0;
+        this.undoStack.push(batch);
+        return {};
+      });
       assert(newOps.length === 0);
     }
     return batch.endFocus;
   }
 
-  // TODO: Remove recursive edit.
-  edit(): MarkdownTreeEdit {
-    if (this.state === 'idle') {
-      this.editStartVersion = this.root[viewModel].version;
-      this.editResumeObserve = this.observe.suspend();
-      this.state = 'editing';
-      this.removed.clear();
-    }
-    const editCount = ++this.editCount;
-    const finish = (startFocus?: Focus, endFocus?: Focus) =>
-      this.finishEdit(editCount, startFocus, endFocus);
-    let finished = false;
-    return {
-      commit: (startFocus?: Focus, endFocus?: Focus) => {
-        assert(!finished);
-        assert(this.editCount === 1);
-        finished = true;
-        return finish(startFocus, endFocus);
-      },
-      [Symbol.dispose]() {
-        if (finished) return;
-        finish();
-      },
-    };
+  edit(editFn: () => {startFocus?: Focus; endFocus?: Focus}): Op[] {
+    assert(this.state === 'idle');
+    this.editStartVersion = this.root[viewModel].version;
+    this.editResumeObserve = this.observe.suspend();
+    this.state = 'editing';
+    this.removed.clear();
+    const {startFocus, endFocus} = editFn();
+    return this.finishEdit(startFocus, endFocus);
   }
 
   editCache<K extends keyof Caches>(
@@ -534,11 +517,9 @@ export class MarkdownTree {
   }
 
   private finishEdit(
-    editCount: number,
     startFocus: Focus | undefined,
     endFocus: Focus | undefined,
   ) {
-    assert(this.editCount === editCount);
     assert(this.state === 'editing');
     this.editCount--;
     if (this.editCount > 0) return [];

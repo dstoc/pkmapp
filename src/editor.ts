@@ -69,7 +69,6 @@ import {
   insertMarkdown,
   serializeSelection,
 } from './copy-paste-util.js';
-import {MarkdownTreeEdit} from './markdown/view-model.js';
 import {Focus} from './markdown/view-model-ops.js';
 import {findOpenCreateBundle} from './commands/find-open-create.js';
 import {CommandContext} from './commands/context.js';
@@ -268,7 +267,6 @@ export class Editor extends LitElement {
   ): ReturnType<T> {
     const hostContext = cast(element.hostContext);
     const renderer = this.markdownRenderer;
-    let edit: MarkdownTreeEdit | undefined;
     let endFocus: Focus | undefined;
     let startFocus: Focus | undefined;
     const context: EditContext = {
@@ -303,7 +301,6 @@ export class Editor extends LitElement {
           }
           startFocus.selection = [...hostContext.selection];
         }
-        edit ||= this.node[viewModel].tree.edit();
       },
       keepFocus() {
         if (hostContext.selectionFocus) {
@@ -330,22 +327,23 @@ export class Editor extends LitElement {
         return hostContext.selection;
       },
     };
-    try {
-      return action(context, ...args);
-    } finally {
+    let actionResult: ReturnType<T>;
+    const ops = context.node[viewModel].tree.edit(() => {
+      actionResult = action(context, ...args);
       if (endFocus && hostContext.hasSelection) {
         endFocus.selection = [...hostContext.selection];
       }
-      const ops = edit?.commit(startFocus, endFocus)?.length ?? 0;
-      if (ops > 0 && !endFocus) {
-        // TODO: also check that the focus is still connected
-        console.warn(`Edit action: "${action.name}" did not set final focus`);
-      } else if (endFocus) {
-        hostContext.focusNode = endFocus.node;
-        hostContext.focusOffset = endFocus.offset;
-        endFocus.node[viewModel].observe.notify();
-      }
+      return {startFocus, endFocus};
+    });
+    if (ops.length > 0 && !endFocus) {
+      // TODO: also check that the focus is still connected
+      console.warn(`Edit action: "${action.name}" did not set final focus`);
+    } else if (endFocus) {
+      hostContext.focusNode = endFocus.node;
+      hostContext.focusOffset = endFocus.offset;
+      endFocus.node[viewModel].observe.notify();
     }
+    return actionResult!;
   }
   onInlineLinkClick({detail: {destination}}: CustomEvent<InlineLinkClick>) {
     if (/^(\w)+:/i.test(destination)) {
@@ -907,16 +905,18 @@ export class Editor extends LitElement {
               description: 'Insert before transclusion',
               execute: async () => {
                 const node = transclusion.node!;
-                using _ = node[viewModel].tree.edit();
-                const newParagraph = node[viewModel].tree.add({
-                  type: 'paragraph',
-                  content: '',
+                node[viewModel].tree.edit(() => {
+                  const newParagraph = node[viewModel].tree.add({
+                    type: 'paragraph',
+                    content: '',
+                  });
+                  newParagraph[viewModel].insertBefore(
+                    cast(node[viewModel].parent),
+                    node,
+                  );
+                  focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                  return {};
                 });
-                newParagraph[viewModel].insertBefore(
-                  cast(node[viewModel].parent),
-                  node,
-                );
-                focusNode(cast(transclusion.hostContext), newParagraph, 0);
               },
             },
           ]
@@ -927,16 +927,18 @@ export class Editor extends LitElement {
               description: 'Insert after transclusion',
               execute: async () => {
                 const node = transclusion.node!;
-                using _ = node[viewModel].tree.edit();
-                const newParagraph = node[viewModel].tree.add({
-                  type: 'paragraph',
-                  content: '',
+                node[viewModel].tree.edit(() => {
+                  const newParagraph = node[viewModel].tree.add({
+                    type: 'paragraph',
+                    content: '',
+                  });
+                  newParagraph[viewModel].insertBefore(
+                    cast(node[viewModel].parent),
+                    node[viewModel].nextSibling,
+                  );
+                  focusNode(cast(transclusion.hostContext), newParagraph, 0);
+                  return {};
                 });
-                newParagraph[viewModel].insertBefore(
-                  cast(node[viewModel].parent),
-                  node[viewModel].nextSibling,
-                );
-                focusNode(cast(transclusion.hostContext), newParagraph, 0);
               },
             },
           ]
@@ -984,11 +986,14 @@ async function sendTo(
     // If not, it's harmless to do this here. But if it is part of
     // the same document this will batch it together with the other
     // parts of the action.
-    using _ =
-      root[viewModel].tree !== element.node?.[viewModel].tree
-        ? root[viewModel].tree.edit()
-        : undefined;
-    insertMarkdown(markdown, root[viewModel].lastChild ?? root);
+    if (root[viewModel].tree === context.root[viewModel].tree) {
+      insertMarkdown(markdown, root[viewModel].lastChild ?? root);
+    } else {
+      root[viewModel].tree.edit(() => {
+        insertMarkdown(markdown, root[viewModel].lastChild ?? root);
+        return {};
+      });
+    }
     replacement?.[viewModel].insertBefore(cast(focus[viewModel].parent), focus);
     removeSelectedNodes(context);
   });

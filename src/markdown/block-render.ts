@@ -108,20 +108,22 @@ export class MarkdownBlock extends LitElement {
     if (node.type === 'list-item') {
       if (e.target !== this) return;
       e.preventDefault();
-      using _ = node[viewModel].tree.edit();
-      let newValue;
-      switch (node.checked) {
-        case true:
-          newValue = undefined;
-          break;
-        case false:
-          newValue = true;
-          break;
-        case undefined:
-          newValue = false;
-          break;
-      }
-      node[viewModel].updateChecked(newValue);
+      node[viewModel].tree.edit(() => {
+        let newValue;
+        switch (node.checked) {
+          case true:
+            newValue = undefined;
+            break;
+          case false:
+            newValue = true;
+            break;
+          case undefined:
+            newValue = false;
+            break;
+        }
+        node[viewModel].updateChecked(newValue);
+        return {};
+      });
     }
   }
   private readonly observer = (node: ViewModelNode) => {

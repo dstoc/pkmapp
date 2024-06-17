@@ -6,7 +6,9 @@ import {MarkdownNode} from './markdown/node.js';
 import {MarkdownTree} from './markdown/view-model.js';
 import {
   ViewModelNode,
-  isInlineViewModelNode, viewModel} from './markdown/view-model-node.js';
+  isInlineViewModelNode,
+  viewModel,
+} from './markdown/view-model-node.js';
 import {
   ancestors,
   cloneNode,
@@ -90,13 +92,15 @@ export function serializeSelection(hostContext: HostContext) {
     type: 'document',
   });
   {
-    using _ = tree.edit();
-    // The document will have an empty paragraph due to normalization.
-    cast(tree.root.children)[0][viewModel].remove();
-    for (const root of roots) {
-      const node = tree.add<MarkdownNode>(root);
-      node[viewModel].insertBefore(tree.root);
-    }
+    tree.edit(() => {
+      // The document will have an empty paragraph due to normalization.
+      cast(tree.root.children)[0][viewModel].remove();
+      for (const root of roots) {
+        const node = tree.add<MarkdownNode>(root);
+        node[viewModel].insertBefore(tree.root);
+      }
+      return {};
+    });
   }
   return serializeToString(tree.root);
 }
