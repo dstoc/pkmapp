@@ -45,7 +45,7 @@ export class Backup {
     private readonly library: Library,
     private readonly store: ConfigStore,
   ) {
-    library.observeDocuments.add((_library, document) =>
+    library.addEventListener('document-change', ({detail: document}) =>
       this.onDocumentUpdated(document),
     );
     noAwait(this.update());
@@ -171,7 +171,7 @@ export class Backup {
   }
 
   private onDocumentUpdated(document: Document) {
-    if (!['idle', 'waiting'].includes(this.state)) return;
+    if (!['idle', 'writing'].includes(this.state)) return;
     this.backlog.add(document);
     noAwait(this.update());
   }

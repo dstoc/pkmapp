@@ -29,11 +29,14 @@ export class BackLinks {
   observe = new Observe<typeof this>(this);
 
   constructor(private library: Library) {
-    this.library.observePostEditUpdate.add((node, change) => {
-      if (node.type === 'paragraph') {
-        this.postEditUpdate(node, change);
-      }
-    });
+    this.library.addEventListener(
+      'post-edit-update',
+      ({detail: {node, change}}) => {
+        if (node.type === 'paragraph') {
+          this.postEditUpdate(node, change);
+        }
+      },
+    );
   }
 
   getBacklinksByName(name: string) {

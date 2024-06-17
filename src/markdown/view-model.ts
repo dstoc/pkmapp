@@ -24,7 +24,6 @@ import {parser as inlineParser} from './inline-parser.js';
 import {parseBlocks} from './block-parser.js';
 import Parser from 'web-tree-sitter';
 import {assert, cast} from '../asserts.js';
-import {Observe} from '../observe.js';
 import {normalizeTree} from './normalize.js';
 import {dfs} from './view-model-util.js';
 import {
@@ -38,6 +37,7 @@ import {
 } from './view-model-ops.js';
 import {viewModel} from './view-model-node.js';
 import {batch, signal} from '@preact/signals-core';
+import {TypedCustomEvent, TypedEventTargetConstructor} from '../event-utils.js';
 
 export class ViewModel {
   constructor(
@@ -359,11 +359,19 @@ export interface MarkdownTreeDelegate {
 
 export type TreeChange = 'edit' | 'cache';
 
-export class MarkdownTree {
+interface MarkdownTreeEventMap {
+  'tree-change': CustomEvent<TreeChange>;
+}
+
+export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
+  MarkdownTree,
+  MarkdownTreeEventMap
+>) {
   constructor(
     root: DocumentNode,
     private readonly delegate?: MarkdownTreeDelegate,
   ) {
+    super();
     this.root = this.addDom<DocumentNode>(root);
     this.setRoot(this.root);
   }
@@ -374,7 +382,6 @@ export class MarkdownTree {
   private editChangedCaches = false;
 
   root: ViewModelNode & DocumentNode;
-  readonly observe = new Observe<this, TreeChange>(this);
   removed = new Set<ViewModelNode>();
 
   private undoStack: OpBatch[] = [];
@@ -486,7 +493,7 @@ export class MarkdownTree {
         delete node.caches;
       }
     }
-    this.observe.notify('cache');
+    this.dispatchEvent(new TypedCustomEvent('tree-change', {detail: 'cache'}));
   }
 
   setCache<K extends keyof Caches>(
@@ -585,10 +592,12 @@ export class MarkdownTree {
       // setRoot uses -1 to force connection
       this.editStartVersion >= 0
     ) {
-      this.observe.notify('edit');
+      this.dispatchEvent(new TypedCustomEvent('tree-change', {detail: 'edit'}));
     } else if (this.editChangedCaches) {
       this.editChangedCaches = false;
-      this.observe.notify('cache');
+      this.dispatchEvent(
+        new TypedCustomEvent('tree-change', {detail: 'cache'}),
+      );
     }
     return result;
   }

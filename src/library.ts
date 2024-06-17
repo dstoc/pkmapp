@@ -15,13 +15,17 @@
 import {DocumentNode} from './markdown/node.js';
 import {MarkdownTree, TreeChange} from './markdown/view-model.js';
 import {ViewModelNode, viewModel} from './markdown/view-model-node.js';
-import {Observe} from './observe.js';
 import {Metadata} from './metadata.js';
 import {assert, cast} from './asserts.js';
 import {resolveDateAlias} from './date-aliases.js';
 import {getLogicalContainingBlock} from './block-util.js';
 import {noAwait} from './async.js';
 import {wrap} from './indexeddb.js';
+import {
+  TypedCustomEvent,
+  TypedEventTarget,
+  TypedEventTargetConstructor,
+} from './event-utils.js';
 
 export interface DocumentMetadata {
   creationTime: number;
@@ -47,7 +51,15 @@ export interface Document {
   updateMetadata(updater: (metadata: DocumentMetadata) => boolean): void;
 }
 
-export interface Library {
+interface LibraryEventMap {
+  'post-edit-update': CustomEvent<{
+    node: ViewModelNode;
+    change: 'connected' | 'disconnected' | 'changed';
+  }>;
+  'document-change': CustomEvent<Document>;
+}
+
+export interface Library extends TypedEventTarget<Library, LibraryEventMap> {
   // TODO: Does this need to be async? Make iterable?
   findAll(name: string): Promise<{document: Document; root: ViewModelNode}[]>;
   newDocument(name: string): Promise<Document>;
@@ -58,11 +70,6 @@ export interface Library {
   readonly metadata: Metadata;
   restore(): Promise<void>;
   import(root: DocumentNode, key: string): Promise<Document>;
-  readonly observeDocuments: Observe<Library, Document>;
-  observePostEditUpdate: Observe<
-    ViewModelNode,
-    'connected' | 'disconnected' | 'changed'
-  >;
   readonly ready: Promise<void>;
 }
 
@@ -79,8 +86,12 @@ interface StoredDocument {
   metadata: DocumentMetadata;
 }
 
-export class IdbLibrary implements Library {
+export class IdbLibrary
+  extends (EventTarget as TypedEventTargetConstructor<Library, LibraryEventMap>)
+  implements Library
+{
   constructor(readonly database: IDBDatabase) {
+    super();
     this.metadata = new Metadata(this);
     this.ready = new Promise((resolve) => {
       noAwait(this.restore().then(resolve));
@@ -88,13 +99,6 @@ export class IdbLibrary implements Library {
   }
   metadata: Metadata;
   cache = new Map<string, Document>();
-  observeDocuments: Observe<Library, Document> = new Observe<Library, Document>(
-    this,
-  );
-  observePostEditUpdate = new Observe<
-    ViewModelNode,
-    'connected' | 'disconnected' | 'changed'
-  >();
   ready: Promise<void>;
   static async init(prefix = '') {
     const request = indexedDB.open(prefix + 'library');
@@ -265,7 +269,9 @@ export class IdbLibrary implements Library {
     node: ViewModelNode,
     change: 'connected' | 'disconnected' | 'changed',
   ) {
-    this.observePostEditUpdate.notify(change, node);
+    this.dispatchEvent(
+      new TypedCustomEvent('post-edit-update', {detail: {node, change}}),
+    );
   }
 }
 
@@ -276,7 +282,9 @@ class IdbDocument implements Document {
     readonly metadata: Readonly<DocumentMetadata>,
   ) {
     this.tree = new MarkdownTree(cast(root), library);
-    this.tree.observe.add((_tree, change) => this.treeChanged(change));
+    this.tree.addEventListener('tree-change', (e) => {
+      this.treeChanged(e.detail);
+    });
   }
   readonly tree: MarkdownTree;
   dirty = false;
@@ -345,7 +353,9 @@ class IdbDocument implements Document {
       }, false);
     }
     noAwait(this.markDirty());
-    this.library.observeDocuments.notify(this);
+    this.library.dispatchEvent(
+      new TypedCustomEvent('document-change', {detail: this}),
+    );
   }
   private pendingModifications = 0;
   private async markDirty() {

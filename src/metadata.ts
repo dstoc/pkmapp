@@ -141,7 +141,7 @@ export class Metadata {
   private sectionNameMap = new SetBiMap<Section>();
 
   constructor(library: Library) {
-    library.observePostEditUpdate.add((node, change) => {
+    library.addEventListener('post-edit-update', ({detail: {node, change}}) => {
       if (node.type === 'code-block') {
         this.updateCodeblock(node, change);
       }
