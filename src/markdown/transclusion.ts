@@ -28,21 +28,22 @@ import {viewModel} from './view-model-node.js';
 
 @customElement('md-transclusion')
 export class MarkdownTransclusion extends LitElement {
-  @property({attribute: false}) node:
+  @property({attribute: false}) accessor node:
     | (InlineViewModelNode & CodeBlockNode)
     | undefined;
   @consume({context: libraryContext, subscribe: true})
   @state()
-  library!: Library;
+  accessor library!: Library;
 
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
-  hostContext: HostContext | undefined;
+  accessor hostContext: HostContext | undefined;
 
   @state()
-  root: ViewModelNode | undefined;
+  accessor root: ViewModelNode | undefined;
 
-  @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
+  @query('md-block-render')
+  private accessor markdownRenderer!: MarkdownRenderer;
 
   override update(changedProperties: Map<string, unknown>) {
     super.update(changedProperties);

@@ -77,15 +77,15 @@ export class SimpleCommandBundle {
 
 @customElement('pkm-command-palette')
 export class CommandPalette extends LitElement {
-  @property({type: Boolean, attribute: true}) noHeader = false;
-  @property({type: Boolean, attribute: true}) collapsed = false;
-  @state() activeIndex = 0;
-  @state() bundle: CommandBundle | undefined;
-  @state() activeItems: Command[] = [];
-  @state() previewOverride?: TemplateResult;
+  @property({type: Boolean, attribute: true}) accessor noHeader = false;
+  @property({type: Boolean, attribute: true}) accessor collapsed = false;
+  @state() accessor activeIndex = 0;
+  @state() accessor bundle: CommandBundle | undefined;
+  @state() accessor activeItems: Command[] = [];
+  @state() accessor previewOverride: TemplateResult | undefined;
   private activeSearch?: string;
-  @query('input') input!: HTMLInputElement;
-  @query('#items') items!: HTMLElement;
+  @query('input') accessor input!: HTMLInputElement;
+  @query('#items') accessor items!: HTMLElement;
   static override styles = css`
     :host {
       display: grid;

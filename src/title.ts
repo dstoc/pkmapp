@@ -33,12 +33,12 @@ export class Title extends LitElement {
     }
   `;
   @property({attribute: false})
-  simple = false;
+  accessor simple = false;
   @property({attribute: false})
-  node?: ViewModelNode;
+  accessor node: ViewModelNode | undefined;
   @consume({context: libraryContext, subscribe: true})
   @state()
-  library!: Library;
+  accessor library!: Library;
   observers?: Observers;
 
   override render() {

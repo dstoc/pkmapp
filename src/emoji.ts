@@ -99,8 +99,8 @@ async function getConsistentEmoji(value: string) {
 
 @customElement('pkm-emoji')
 export class Emoji extends LitElement {
-  @property() text?: string;
-  @state() private emoji?: string;
+  @property() accessor text: string | undefined;
+  @state() private accessor emoji: string | undefined;
   override shouldUpdate(changedProperties: Map<string, unknown>) {
     if (changedProperties.has('text')) {
       noAwait(this.updateEmoji());

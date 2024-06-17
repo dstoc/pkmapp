@@ -21,8 +21,8 @@ import {noAwait} from './async.js';
 
 @customElement('pkm-command-palette-dialog')
 export class CommandPaletteDialog extends LitElement {
-  @query('dialog') dialog!: HTMLDialogElement;
-  @query('pkm-command-palette') palette!: CommandPalette;
+  @query('dialog') accessor dialog!: HTMLDialogElement;
+  @query('pkm-command-palette') accessor palette!: CommandPalette;
   static override styles = css`
     dialog[open] {
       color: var(--root-color);

@@ -55,18 +55,18 @@ export class Autocomplete extends LitElement {
       overflow: hidden;
     }
   `;
-  @query('pkm-command-palette') palette!: CommandPalette;
+  @query('pkm-command-palette') accessor palette!: CommandPalette;
   @property({reflect: true})
-  state: 'active' | 'inactive' = 'inactive';
+  accessor state: 'active' | 'inactive' = 'inactive';
   node?: InlineViewModelNode;
   startIndex = 0;
   @state()
-  endIndex = 0;
+  accessor endIndex = 0;
   @consume({context: libraryContext, subscribe: true})
   @state()
-  library!: Library;
-  @property({reflect: false})
-  editor!: Editor;
+  accessor library!: Library;
+  @property({reflect: false, attribute: false})
+  accessor editor!: Editor;
   override render() {
     return html`
       <pkm-command-palette

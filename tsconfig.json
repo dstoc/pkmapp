@@ -15,8 +15,6 @@
         "strict": true
       }
     ],
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
     "allowUnreachableCode": false,
     "inlineSources": true,
     "noEmitOnError": false,

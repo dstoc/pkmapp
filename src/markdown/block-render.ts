@@ -13,11 +13,15 @@
 // limitations under the License.
 
 import {html, LitElement} from 'lit';
-import {state, customElement, property} from 'lit/decorators.js';
+import {customElement, property} from 'lit/decorators.js';
 
 import {MarkdownInline} from './inline-render.js';
 import {isInlineNode} from './node.js';
-import {InlineViewModelNode, type ViewModelNode, viewModel} from './view-model-node.js';
+import {
+  InlineViewModelNode,
+  type ViewModelNode,
+  viewModel,
+} from './view-model-node.js';
 import './transclusion.js';
 import {hostContext, HostContext} from './host-context.js';
 import {provide, consume} from '@lit/context';
@@ -25,14 +29,17 @@ import {styles} from './style.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement {
-  @property({type: String, reflect: true}) checked?: 'true' | 'false';
-  @property({type: Boolean, reflect: true}) root?: boolean;
-  @property({type: String, reflect: true}) type = '';
-  @property({type: String, reflect: true}) marker?: string;
-  @property({attribute: false}) node?: ViewModelNode;
+  @property({type: String, reflect: true}) accessor checked:
+    | 'true'
+    | 'false'
+    | undefined;
+  @property({type: Boolean, reflect: true}) accessor root: boolean | undefined;
+  @property({type: String, reflect: true}) accessor type = '';
+  @property({type: String, reflect: true}) accessor marker: string | undefined;
+  @property({attribute: false}) accessor node: ViewModelNode | undefined;
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
-  hostContext: HostContext | undefined;
+  accessor hostContext: HostContext | undefined;
   constructor() {
     super();
     this.addEventListener('click', (e) => this.handleClick(e));
@@ -137,8 +144,13 @@ export class MarkdownRenderer extends LitElement {
   static override styles = styles;
 
   @provide({context: hostContext})
-  @state()
-  readonly hostContext = new HostContext();
+  accessor hostContext = new HostContext();
+
+  constructor() {
+    super();
+    // TODO: remove after lit/lit#4675
+    this.hostContext = new HostContext();
+  }
 
   protected override createRenderRoot() {
     const root = super.createRenderRoot();
@@ -146,7 +158,7 @@ export class MarkdownRenderer extends LitElement {
     return root;
   }
 
-  @property({attribute: false}) block!: ViewModelNode;
+  @property({attribute: false}) accessor block!: ViewModelNode;
   override render() {
     this.hostContext.root = this.block;
     if (!this.block) return html``;

@@ -4,7 +4,10 @@ import {consume} from '@lit/context';
 import {css, html, LitElement} from 'lit';
 import {customElement} from 'lit/decorators.js';
 import {repeat} from 'lit/directives/repeat.js';
-import {ViewModelNode} from './markdown/view-model-node.js';
+import {
+  InlineViewModelNode,
+  ViewModelNode,
+} from './markdown/view-model-node.js';
 import './markdown/block-render.js';
 import './title.js';
 import {Components} from './components.js';
@@ -21,10 +24,10 @@ export class BacklinksSidebar extends LitElement {
   `;
 
   @consume({context: focusContext, subscribe: true})
-  focusNode?: ViewModelNode;
+  accessor focusNode: InlineViewModelNode | undefined;
 
   @consume({context: componentContext})
-  components!: Components;
+  accessor components!: Components;
 
   private readonly observer = () => {
     this.requestUpdate();

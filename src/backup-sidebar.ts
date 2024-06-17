@@ -10,7 +10,7 @@ import {Components} from './components.js';
 export class BackupSidebar extends LitElement {
   @consume({context: componentContext, subscribe: true})
   @state()
-  components!: Components;
+  accessor components!: Components;
   static override readonly styles = css`
     :host {
       display: block;

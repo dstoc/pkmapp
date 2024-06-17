@@ -102,15 +102,16 @@ export interface EditContext {
 export class Editor extends LitElement {
   defaultName?: string;
   @property({type: String, reflect: true})
-  status: 'loading' | 'loaded' | 'error' | undefined;
-  @state() private document?: Document;
-  @state() private root?: ViewModelNode;
+  accessor status: 'loading' | 'loaded' | 'error' | undefined;
+  @state() private accessor document: Document | undefined;
+  @state() private accessor root: ViewModelNode | undefined;
   private name?: string;
   @consume({context: libraryContext, subscribe: true})
   @state()
-  library!: Library;
-  @query('md-block-render') private markdownRenderer!: MarkdownRenderer;
-  @query('pkm-autocomplete') private autocomplete!: Autocomplete;
+  accessor library!: Library;
+  @query('md-block-render')
+  private accessor markdownRenderer!: MarkdownRenderer;
+  @query('pkm-autocomplete') private accessor autocomplete!: Autocomplete;
   static override get styles() {
     return [
       css`

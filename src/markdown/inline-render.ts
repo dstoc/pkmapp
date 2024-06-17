@@ -20,7 +20,11 @@ import Parser from 'web-tree-sitter';
 import {cast} from '../asserts.js';
 
 import {HostContext, hostContext} from './host-context.js';
-import {InlineViewModelNode, ViewModelNode, viewModel} from './view-model-node.js';
+import {
+  InlineViewModelNode,
+  ViewModelNode,
+  viewModel,
+} from './view-model-node.js';
 import {noAwait} from '../async.js';
 import {InlineTreeNode} from './view-model.js';
 
@@ -68,11 +72,15 @@ export class MarkdownInline extends LitElement {
   }
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
-  hostContext: HostContext | undefined;
-  @property({type: Object, reflect: false}) node?: InlineViewModelNode;
-  @property({type: Boolean, reflect: true}) contenteditable = true;
-  @property({type: Boolean, reflect: true}) selected?: boolean;
-  @query('md-span') span!: MarkdownSpan;
+  accessor hostContext: HostContext | undefined;
+  @property({type: Object, reflect: false}) accessor node:
+    | InlineViewModelNode
+    | undefined;
+  @property({type: Boolean, reflect: true}) accessor contenteditable = true;
+  @property({type: Boolean, reflect: true}) accessor selected:
+    | boolean
+    | undefined;
+  @query('md-span') accessor span!: MarkdownSpan;
 
   override render() {
     if (!this.node) return;
@@ -366,11 +374,11 @@ export class MarkdownInline extends LitElement {
 
 @customElement('md-span')
 export class MarkdownSpan extends LitElement {
-  @property({type: Boolean, reflect: true}) formatting = false;
-  @property({type: String, reflect: true}) type = '';
+  @property({type: Boolean, reflect: true}) accessor formatting = false;
+  @property({type: String, reflect: true}) accessor type = '';
 
-  @property({attribute: false}) node?: InlineTreeNode;
-  @queryAll(':scope > md-span') spans!: NodeListOf<MarkdownSpan>;
+  @property({attribute: false}) accessor node: InlineTreeNode | undefined;
+  @queryAll(':scope > md-span') accessor spans!: NodeListOf<MarkdownSpan>;
 
   constructor() {
     super();

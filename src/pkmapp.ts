@@ -83,11 +83,16 @@ export async function enforceSingleProcess() {
 }
 
 export abstract class PkmAppBase extends LitElement {
-  @query('pkm-editor') editor!: Editor;
-  @query('pkm-command-palette-dialog') commandPalette!: CommandPaletteDialog;
-  @provide({context: libraryContext}) @state() library!: Library;
-  @provide({context: componentContext}) @state() components!: Components;
-  @provide({context: focusContext}) @state() focusNode?: InlineViewModelNode;
+  @query('pkm-editor') accessor editor!: Editor;
+  @query('pkm-command-palette-dialog')
+  accessor commandPalette!: CommandPaletteDialog;
+  @provide({context: libraryContext}) @state() accessor library!: Library;
+  @provide({context: componentContext})
+  @state()
+  accessor components!: Components;
+  @provide({context: focusContext}) @state() accessor focusNode:
+    | InlineViewModelNode
+    | undefined;
   constructor() {
     super();
     document.addEventListener('keydown', (e) => {
