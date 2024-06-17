@@ -44,7 +44,6 @@ export interface Document {
   readonly tree: MarkdownTree;
   readonly metadata: Readonly<DocumentMetadata>;
   readonly dirty: boolean;
-  readonly observe: Observe<Document>;
   updateMetadata(updater: (metadata: DocumentMetadata) => boolean): void;
 }
 
@@ -281,7 +280,6 @@ class IdbDocument implements Document {
   }
   readonly tree: MarkdownTree;
   dirty = false;
-  observe: Observe<Document> = new Observe<Document>(this);
   updateMetadata(
     updater: (metadata: DocumentMetadata) => boolean,
     markDirty = true,
@@ -352,7 +350,6 @@ class IdbDocument implements Document {
   private pendingModifications = 0;
   private async markDirty() {
     this.dirty = true;
-    this.observe.notify();
     if (this.pendingModifications++) return;
     while (true) {
       const preSave = this.pendingModifications;
@@ -361,7 +358,6 @@ class IdbDocument implements Document {
       if (this.pendingModifications === preSave) {
         this.pendingModifications = 0;
         this.dirty = false;
-        this.observe.notify();
         return;
       }
       // Wait for an idle period with no modifications.
