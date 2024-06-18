@@ -192,8 +192,10 @@ export abstract class PkmAppBase extends LitElement {
   private onEditorNavigate({
     detail: navigation,
   }: CustomEvent<EditorNavigation>) {
-    // TODO: use root name (metadata)
-    const name = navigation.document.name ?? 'pkmapp';
+    const name =
+      this.components.metadata.getPreferredName(navigation.root) ??
+      navigation.document.name ??
+      '';
     document.title = `${name}`;
     const url = new URL(this.initialLocation);
     url.pathname = name;
