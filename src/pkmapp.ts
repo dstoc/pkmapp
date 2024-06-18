@@ -181,7 +181,7 @@ export abstract class PkmAppBase extends LitElement {
   private onTitleItemClick({detail: root}: CustomEvent<ViewModelNode>) {
     const document = this.library.getDocumentByTree(root[viewModel].tree);
     assert(document);
-    this.editor.navigate(document, root);
+    this.editor.navigate(document, root, true);
   }
   private onBlockFocus({detail: node}: CustomEvent<InlineViewModelNode>) {
     this.focusNode = node;
