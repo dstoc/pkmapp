@@ -28,8 +28,14 @@ import {effect} from '@preact/signals-core';
 export class Title extends LitElement {
   static override styles = css`
     .item {
+      white-space: nowrap;
+    }
+    .item a {
       text-decoration: underline;
       cursor: pointer;
+    }
+    .marker {
+      color: var(--md-accent-color);
     }
   `;
   @property({attribute: false})
@@ -71,10 +77,12 @@ export class Title extends LitElement {
     return html`
       ${containers.map(
         (node) =>
-          html`»
+          html`<span class="item"
+            ><span class="marker">»</span>
             <a class="item" @click=${() => this.onItemClick(node)}
               >${getTitle(node, this.library)}</a
-            > `,
+            ></span
+          > `,
       )}
     `;
   }
