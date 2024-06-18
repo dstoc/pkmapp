@@ -86,6 +86,8 @@ interface StoredDocument {
   metadata: DocumentMetadata;
 }
 
+const SCHEMA_VERSION = 1;
+
 export class IdbLibrary
   extends (EventTarget as TypedEventTargetConstructor<Library, LibraryEventMap>)
   implements Library
@@ -100,9 +102,10 @@ export class IdbLibrary
   metadata: Metadata;
   cache = new Map<string, Document>();
   ready: Promise<void>;
-  static async init(prefix = '') {
-    const request = indexedDB.open(prefix + 'library');
-    request.onupgradeneeded = () => {
+  static async init(prefix: string) {
+    const request = indexedDB.open(prefix + 'library', SCHEMA_VERSION);
+    request.onupgradeneeded = (e) => {
+      assert(e.oldVersion === 0);
       const database = request.result;
       database.createObjectStore('documents');
     };

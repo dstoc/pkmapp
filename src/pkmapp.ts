@@ -113,6 +113,9 @@ export abstract class PkmAppBase extends LitElement {
     });
     this.addEventListener('title-item-click', this.onTitleItemClick);
     this.addEventListener('pkm-commands', this.onCommands);
+  }
+  override connectedCallback(): void {
+    super.connectedCallback();
     noAwait(this.initComponents());
   }
   private initialLocation = location.toString();
@@ -208,8 +211,8 @@ export abstract class PkmAppBase extends LitElement {
   }
   private loading = false;
   private async initComponents() {
-    assert(!this.library);
-    assert(!this.loading);
+    if (this.loading) return;
+    if (this.library) return;
     this.loading = true;
     const builder = new ComponentsBuilder();
     try {
@@ -244,6 +247,6 @@ export abstract class PkmAppBase extends LitElement {
     }
   }
   protected abstract verifyComponents(result: Partial<Components>): Components;
-  protected readonly idbPrefix = '';
+  protected abstract idbPrefix: string;
   protected abstract addComponents(builder: ComponentsBuilder): void;
 }

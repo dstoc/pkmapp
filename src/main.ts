@@ -13,6 +13,7 @@ await enforceSingleProcess();
 
 @customElement('pkm-app')
 export class PkmApp extends PkmAppBase {
+  protected override readonly idbPrefix: string = '';
   protected override verifyComponents(result: Partial<Components>) {
     return {
       library: cast(result.library),
