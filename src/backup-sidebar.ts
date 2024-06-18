@@ -5,10 +5,11 @@ import {consume} from '@lit/context';
 import {backupCommands} from './backup-commands.js';
 import {SimpleCommandBundle} from './command-palette.js';
 import {Components} from './components.js';
+import {SignalWatcher} from '@lit-labs/preact-signals';
 
 @customElement('pkm-backup-sidebar')
-export class BackupSidebar extends LitElement {
-  @consume({context: componentContext, subscribe: true})
+export class BackupSidebar extends SignalWatcher(LitElement) {
+  @consume({context: componentContext})
   @state()
   accessor components!: Components;
   static override readonly styles = css`
@@ -18,7 +19,7 @@ export class BackupSidebar extends LitElement {
   `;
   override render() {
     let status;
-    switch (this.components.backup.state) {
+    switch (this.components.backup.state.value) {
       case 'idle':
         status = 'Idle.';
         break;
@@ -28,9 +29,6 @@ export class BackupSidebar extends LitElement {
       case 'waiting-for-config':
         status = 'Not configured ⚠️';
         break;
-      case 'new':
-        status = 'Starting.';
-        break;
       case 'waiting-for-permission':
         status = 'Needs permission ⚠️';
         break;
@@ -39,10 +37,9 @@ export class BackupSidebar extends LitElement {
   }
   override firstUpdated() {
     this.addEventListener('click', this.onClick);
-    this.components.backup.observe.add(() => this.requestUpdate());
   }
   onClick() {
-    if (this.components.backup.state === 'waiting-for-permission') {
+    if (this.components.backup.state.value === 'waiting-for-permission') {
       this.components.backup.checkForPermission();
     } else {
       this.dispatchEvent(

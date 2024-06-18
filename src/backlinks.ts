@@ -15,7 +15,7 @@
 import {InlineViewModelNode, viewModel} from './markdown/view-model-node.js';
 import {Library, Document} from './library.js';
 import {traverseInlineNodes} from './markdown/view-model.js';
-import {Observe} from './observe.js';
+import {signal} from '@preact/signals-core';
 
 declare module './markdown/view-model-node.js' {
   interface Caches {
@@ -26,7 +26,7 @@ declare module './markdown/view-model-node.js' {
 export class BackLinks {
   private links = new Map<InlineViewModelNode, Set<string>>();
   private backLinks = new Map<string, Set<InlineViewModelNode>>();
-  observe = new Observe<typeof this>(this);
+  version = signal(0);
 
   constructor(private library: Library) {
     this.library.addEventListener(
@@ -101,7 +101,7 @@ export class BackLinks {
       node[viewModel].tree.setCache(node, 'backlinks', cache);
     }
     if (changed) {
-      this.observe.notify();
+      this.version.value++;
     }
   }
 }

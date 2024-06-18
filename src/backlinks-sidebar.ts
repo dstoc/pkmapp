@@ -11,9 +11,10 @@ import {
 import './markdown/block-render.js';
 import './title.js';
 import {Components} from './components.js';
+import {SignalWatcher} from '@lit-labs/preact-signals';
 
 @customElement('pkm-backlinks-sidebar')
-export class BacklinksSidebar extends LitElement {
+export class BacklinksSidebar extends SignalWatcher(LitElement) {
   static override readonly styles = css`
     :host {
       display: block;
@@ -29,25 +30,12 @@ export class BacklinksSidebar extends LitElement {
   @consume({context: componentContext})
   accessor components!: Components;
 
-  private readonly observer = () => {
-    this.requestUpdate();
-  };
-
-  override disconnectedCallback(): void {
-    super.disconnectedCallback();
-    this.components.backLinks.observe.remove(this.observer);
-  }
-
-  override connectedCallback(): void {
-    super.connectedCallback();
-    this.components.backLinks.observe.add(this.observer);
-  }
-
   override render() {
     if (!this.focusNode) return;
     const target = getNamedContainingBlock(this.focusNode);
     if (!target) return;
     const name = this.components.metadata.getPreferredName(target);
+    this.components.backLinks.version.value;
     const backlinks = this.components.backLinks.getBacklinksByName(name);
     return html`References:<br />
       <div id="references">${repeat(backlinks, this.renderBacklink)}</div>`;

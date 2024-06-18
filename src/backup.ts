@@ -3,7 +3,7 @@ import {noAwait} from './async.js';
 import {serializeToString} from './markdown/block-serializer.js';
 import {assert} from './asserts.js';
 import {ConfigStore} from './config-store.js';
-import {Observe} from './observe.js';
+import {signal} from '@preact/signals-core';
 
 export function formatDate(date: Date) {
   const year = date.getFullYear();
@@ -50,33 +50,32 @@ export class Backup {
     );
     noAwait(this.update());
   }
-  // TODO: readonly
-  state:
-    | 'new'
+  readonly state = signal<
     | 'idle'
     | 'waiting-for-config'
     | 'waiting-for-permission'
-    | 'writing' = 'waiting-for-config';
+    | 'checking-permission'
+    | 'writing'
+  >('waiting-for-config');
   private config?: BackupConfig;
   private backlog = new Set<Document>();
-  readonly observe = new Observe(this);
   private async update() {
     if (!this.config) {
       this.config = (await this.store.getConfig('backup')) as BackupConfig;
       if (!this.config) {
-        this.state = 'waiting-for-config';
-        this.observe.notify();
+        this.state.value = 'waiting-for-config';
         return;
       }
-      this.state = 'waiting-for-permission';
+      this.state.value = 'waiting-for-permission';
     }
-    if (this.state === 'waiting-for-permission') {
+    if (this.state.value === 'waiting-for-permission') {
+      this.state.value = 'checking-permission';
       let permission = 'prompt';
       permission = await this.config.directory.requestPermission({
         mode: 'readwrite',
       });
       if (permission !== 'granted') {
-        this.observe.notify();
+        this.state.value = 'waiting-for-permission';
         return;
       }
       await this.library.ready;
@@ -85,14 +84,11 @@ export class Backup {
           this.backlog.add(document);
         }
       }
-      this.state = 'idle';
-      this.observe.notify();
+      this.state.value = 'idle';
     }
-    if (this.state === 'idle' && this.backlog.size) {
+    if (this.state.value === 'idle' && this.backlog.size) {
       assert(this.config);
-      this.state = 'writing';
-      this.observe.notify();
-      // TODO: update() can have multiple callers, there can be a race here.
+      this.state.value = 'writing';
       while (this.backlog.size) {
         // TODO: Check if state was reset & abort, might need to do this
         // after each await.
@@ -135,8 +131,7 @@ export class Backup {
           this.backlog.delete(document);
         }
       }
-      this.state = 'idle';
-      this.observe.notify();
+      this.state.value = 'idle';
     }
   }
   async writeSnapshot(existing?: File) {
@@ -171,12 +166,12 @@ export class Backup {
   }
 
   private onDocumentUpdated(document: Document) {
-    if (!['idle', 'writing'].includes(this.state)) return;
+    if (!['idle', 'writing'].includes(this.state.value)) return;
     this.backlog.add(document);
     noAwait(this.update());
   }
   checkForPermission() {
-    if (this.state !== 'waiting-for-permission') return;
+    if (this.state.value !== 'waiting-for-permission') return;
     noAwait(this.update());
   }
   hasConfig() {
