@@ -39,6 +39,7 @@ import {viewModel} from './view-model-node.js';
 import {batch, signal} from '@preact/signals-core';
 import {TypedCustomEvent, TypedEventTargetConstructor} from '../event-utils.js';
 
+let sequence = 0;
 export class ViewModel {
   constructor(
     readonly self: ViewModelNode,
@@ -48,6 +49,7 @@ export class ViewModel {
   ) {
     this.initialize(parent, childIndex);
   }
+  readonly id = sequence++;
   get connected(): boolean {
     return this.connected_;
   }

@@ -27,6 +27,7 @@ import {hostContext, HostContext} from './host-context.js';
 import {provide, consume} from '@lit/context';
 import {styles} from './style.js';
 import {sigprop, SigpropHost} from '../signal-utils.js';
+import {repeat} from 'lit/directives/repeat.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement implements SigpropHost {
@@ -90,7 +91,11 @@ export class MarkdownBlock extends LitElement implements SigpropHost {
     return html`${isInlineNode(node)
       ? html`<md-inline .node=${node}></md-inline>`
       : ''}
-    ${node.children?.map((node) => html`<md-block .node=${node}></md-block>`)} `;
+    ${repeat(
+      node.children ?? [],
+      (node) => node[viewModel].id,
+      (node) => html`<md-block .node=${node}></md-block>`,
+    )}`;
   }
   protected override createRenderRoot() {
     return this;
