@@ -12,6 +12,7 @@ import {
 import {
   ancestors,
   cloneNode,
+  compareDocumentOrder,
   dfs,
   findFinalEditable,
   performLogicalInsertion,
@@ -87,7 +88,9 @@ export function serializeSelection(hostContext: HostContext) {
   };
   const roots = removeDescendantNodes(
     [...hostContext.selection.values()].map(expand),
-  ).map((node) => cloneNode(node, predicate));
+  )
+    .toSorted(compareDocumentOrder)
+    .map((node) => cloneNode(node, predicate));
   const tree = new MarkdownTree({
     type: 'document',
   });
