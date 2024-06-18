@@ -19,6 +19,12 @@ export class BacklinksSidebar extends SignalWatcher(LitElement) {
     :host {
       display: block;
     }
+    #title {
+      font-weight: bold;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
     #references:empty::after {
       content: 'none.';
     }
@@ -35,9 +41,11 @@ export class BacklinksSidebar extends SignalWatcher(LitElement) {
     const target = getNamedContainingBlock(this.focusNode);
     if (!target) return;
     const name = this.components.metadata.getPreferredName(target);
+    if (!name) return;
+    const description = `References to § ${name}`;
     this.components.backLinks.version.value;
     const backlinks = this.components.backLinks.getBacklinksByName(name);
-    return html`References:<br />
+    return html`<div id="title">${description}</div>
       <div id="references">${repeat(backlinks, this.renderBacklink)}</div>`;
   }
   private renderBacklink(node: ViewModelNode) {
