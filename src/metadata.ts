@@ -161,7 +161,7 @@ export class Metadata {
       ...this.sectionNameMap.values(),
     ];
   }
-  getPreferredName(node: ViewModelNode) {
+  getPreferredName(node: ViewModelNode): string | undefined {
     if (
       node.type !== 'section' &&
       node[viewModel].firstChild?.type === 'section'
