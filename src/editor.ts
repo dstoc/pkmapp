@@ -125,7 +125,7 @@ export class Editor extends LitElement {
           background: var(--root-background-color);
         }
         pkm-title:empty {
-          display: none;
+          padding-bottom: 0em;
         }
       `,
     ];
