@@ -126,7 +126,7 @@ export abstract class PkmAppBase extends LitElement {
           align-self: start;
           position: sticky;
           top: 0;
-          height: 100vh;
+          min-height: 100vh;
         }
         pkm-sidebar[collapsed] {
           align-self: flex-start;
