@@ -27,16 +27,21 @@ export class CommandPaletteDialog extends LitElement {
     dialog[open] {
       color: var(--root-color);
       margin: 50px;
-      background: red;
       background: var(--pkm-dialog-bgcolor);
       border: 3px solid var(--md-accent-color);
       border-radius: 10px;
       width: auto;
-      height: calc(100vh - 100px);
+      height: calc(100dvh - 100px);
       align-items: center;
       padding: 0;
       overflow: hidden;
       container-type: size;
+    }
+    @media screen and (max-width: 600px), screen and (max-height: 600px) {
+      dialog[open] {
+        margin: 16px;
+        height: calc(100dvh - 32px);
+      }
     }
     dialog::backdrop {
       backdrop-filter: blur(3px);

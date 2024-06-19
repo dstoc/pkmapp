@@ -17,6 +17,8 @@ import {property, customElement, query, state} from 'lit/decorators.js';
 import {assert} from './asserts.js';
 import './emoji.js';
 import {noAwait} from './async.js';
+import CloseIcon from './icons/material-symbols-rounded/close_24dp_FILL1_wght400_GRAD0_opsz24.js';
+import {templateContent} from 'lit/directives/template-content.js';
 
 export interface CommandBundle {
   readonly description: string;
@@ -118,6 +120,15 @@ export class CommandPalette extends LitElement {
     input {
       grid-area: input;
     }
+    #close {
+      fill: currentColor;
+      grid-area: input;
+      justify-self: end;
+      display: grid;
+      justify-content: center;
+      align-content: center;
+      aspect-ratio: 1 / 1;
+    }
     #separator {
       grid-area: sep;
     }
@@ -200,6 +211,7 @@ export class CommandPalette extends LitElement {
           @keydown=${this.handleInputKeyDown}
           @input=${() => this.onInput()}
           placeholder=${this.bundle?.description ?? ''}></input>
+      <div id=close @click=${this.close}>${templateContent(CloseIcon)}</div>
       <div id=separator></div>
       <div id=items>
         ${this.activeItems.map(
@@ -263,6 +275,9 @@ export class CommandPalette extends LitElement {
   async setInput(input: string) {
     this.input.value = input;
     await this.onInput();
+  }
+  close() {
+    this.dispatchEvent(new CustomEvent('commit'));
   }
   async commit() {
     const selected = this.activeItems[this.activeIndex];
@@ -332,6 +347,6 @@ declare global {
     'pkm-command-palette': CommandPalette;
   }
   interface HTMLElementEventMap {
-    'pkm-commands': CustomEvent<CommandBundle>;
+    'pkm-commands': CustomEvent<CommandBundle | undefined>;
   }
 }
