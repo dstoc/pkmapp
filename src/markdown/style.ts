@@ -87,7 +87,7 @@ export const styles = [
     md-block[type='list-item']::before {
       width: 15px;
       margin-right: 3px;
-      content: '●';
+      content: '०';
       color: var(--md-accent-color);
       cursor: pointer;
       grid-row: 1 / 999999;
