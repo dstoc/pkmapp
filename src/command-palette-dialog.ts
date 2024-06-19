@@ -55,7 +55,7 @@ export class CommandPaletteDialog extends LitElement {
   }
   trigger(bundle: CommandBundle) {
     noAwait(this.palette.trigger(bundle));
-    this.dialog.showModal();
+    document.startViewTransition(() => this.dialog.showModal());
   }
 }
 
