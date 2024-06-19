@@ -98,12 +98,7 @@ export abstract class PkmAppBase extends LitElement {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'p' && e.ctrlKey) {
         e.preventDefault();
-        const context = this.editor.getCommandContext();
-        this.commandPalette.trigger(
-          new SimpleCommandBundle('Choose Command', [
-            ...this.getCommands(context),
-          ]),
-        );
+        this.onCommands({detail: undefined});
       }
     });
     window.addEventListener('popstate', (e) => {
@@ -189,7 +184,13 @@ export abstract class PkmAppBase extends LitElement {
   private onBlockFocus({detail: node}: CustomEvent<InlineViewModelNode>) {
     this.focusNode = node;
   }
-  private onCommands({detail: commands}: CustomEvent<CommandBundle>) {
+  private onCommands({detail: commands}: {detail: CommandBundle | undefined}) {
+    if (!commands) {
+      const context = this.editor.getCommandContext();
+      commands = new SimpleCommandBundle('Choose Command', [
+        ...this.getCommands(context),
+      ]);
+    }
     this.commandPalette.trigger(commands);
   }
   private onEditorNavigate({

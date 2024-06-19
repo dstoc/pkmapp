@@ -1,5 +1,8 @@
 import {css, html, LitElement} from 'lit';
 import {customElement} from 'lit/decorators.js';
+import SideNavigationIcon from './icons/material-symbols-rounded/side_navigation_24dp_FILL1_wght400_GRAD0_opsz24.js';
+import ManageSearchIcon from './icons/material-symbols-rounded/manage_search_24dp_FILL1_wght400_GRAD0_opsz24.js';
+import {templateContent} from 'lit/directives/template-content.js';
 
 @customElement('pkm-sidebar')
 export class Sidebar extends LitElement {
@@ -16,11 +19,23 @@ export class Sidebar extends LitElement {
         0 3px 6px rgba(0, 0, 0, 0.23);
     }
     #toggles {
-      padding: 5px;
+      margin: 5px;
+      display: grid;
+      grid-template-columns: repeat(2, auto) 1fr;
+      gap: 5px;
+      align-items: center;
+    }
+    #toggles :is(#toggle, #commands) {
+      cursor: pointer;
+      fill: currentColor;
     }
     ::slotted(*) {
       padding: 5px;
       border-bottom: solid gray 1px;
+    }
+    :host([collapsed]) #toggles {
+      display: flex;
+      flex-flow: column;
     }
     :host([collapsed]) ::slotted(*) {
       display: none;
@@ -36,10 +51,28 @@ export class Sidebar extends LitElement {
   toggle() {
     document.startViewTransition(() => void this.toggleAttribute('collapsed'));
   }
+  commands(e: PointerEvent) {
+    e.preventDefault();
+    this.dispatchEvent(
+      new CustomEvent('pkm-commands', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
   override render() {
-    return html` <div id="toggles" @click=${this.toggle}>
-        <span id="toggle">⚠️</span>
-        <span id="version">${import.meta.env.COMMIT}</span>
+    return html` <div id="toggles">
+        <div id="toggle" @click=${this.toggle}>
+          ${templateContent(SideNavigationIcon)}
+        </div>
+        <div
+          title="Commands (Control+p)"
+          id="commands"
+          @pointerdown=${this.commands}
+        >
+          ${templateContent(ManageSearchIcon)}
+        </div>
+        <div id="version">${import.meta.env.COMMIT}</div>
       </div>
       <slot></slot>`;
   }
