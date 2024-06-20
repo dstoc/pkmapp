@@ -36,12 +36,17 @@ export class BacklinksSidebar extends SignalWatcher(LitElement) {
   @consume({context: componentContext})
   accessor components!: Components;
 
+  private empty() {
+    return html`<div id="title">References</div>
+      <div>No target.</div>`;
+  }
+
   override render() {
-    if (!this.focusNode) return;
+    if (!this.focusNode) return this.empty();
     const target = getNamedContainingBlock(this.focusNode);
-    if (!target) return;
+    if (!target) return this.empty();
     const name = this.components.metadata.getPreferredName(target);
-    if (!name) return;
+    if (!name) return this.empty();
     const description = `References to § ${name}`;
     this.components.backLinks.version.value;
     const backlinks = this.components.backLinks.getBacklinksByName(name);
