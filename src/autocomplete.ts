@@ -96,11 +96,20 @@ export class Autocomplete extends LitElement {
     }
     return false;
   }
+  private listener = (e: PointerEvent) => {
+    for (const target of e.composedPath()) {
+      if (target instanceof Element && this.contains(target)) {
+        return;
+      }
+    }
+    this.abort();
+  };
   abort() {
     this.state = 'inactive';
     this.startIndex = 0;
     this.endIndex = 0;
     this.node = undefined;
+    document.removeEventListener('pointerdown', this.listener);
   }
   activate(inline: MarkdownInline, index: number) {
     const {x, y} = inline.getCaretPosition();
@@ -110,10 +119,7 @@ export class Autocomplete extends LitElement {
     this.node = inline.node!;
     this.startIndex = index;
     this.endIndex = index;
-    document.addEventListener('pointerdown', () => this.abort(), {
-      capture: true,
-      once: true,
-    });
+    document.addEventListener('pointerdown', this.listener);
   }
   private getLinkInsertionCommand(inline: MarkdownInline): Command {
     const node = inline.node!;

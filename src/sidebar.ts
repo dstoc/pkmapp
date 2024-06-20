@@ -60,6 +60,11 @@ export class Sidebar extends LitElement {
       font-family: monospace;
     }
   `;
+  constructor() {
+    super();
+    // TODO: need to be more selective about this, currently prevents selection
+    this.addEventListener('pointerdown', (e) => e.preventDefault());
+  }
   toggle() {
     document.startViewTransition(() => void this.toggleAttribute('collapsed'));
   }
@@ -97,11 +102,7 @@ export class Sidebar extends LitElement {
         <div id="toggle" @click=${this.toggle}>
           ${templateContent(SideNavigationIcon)}
         </div>
-        <div
-          title="Commands (Control+p)"
-          id="commands"
-          @pointerdown=${this.commands}
-        >
+        <div title="Commands (Control+p)" id="commands" @click=${this.commands}>
           ${templateContent(ManageSearchIcon)}
         </div>
         <div id="version">${import.meta.env.COMMIT}</div>

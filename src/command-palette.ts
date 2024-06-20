@@ -139,6 +139,7 @@ export class CommandPalette extends LitElement {
     :host-context([collapsed]) #separator {
       visibility: hidden;
     }
+    :host-context([collapsed]) #close,
     :host-context([collapsed]) #preview-separator,
     :host-context([collapsed]) #preview {
       display: none;
@@ -197,6 +198,12 @@ export class CommandPalette extends LitElement {
       }
     }
   `;
+  constructor() {
+    super();
+    this.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+    });
+  }
   override render() {
     const preview =
       this.activeItems?.[this.activeIndex]?.preview ??
