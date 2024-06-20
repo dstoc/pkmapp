@@ -13,7 +13,7 @@ export class Sidebar extends LitElement {
       grid-template-columns: 5px 1fr;
     }
     :host(:not([collapsed])) {
-      min-width: max(var(--pkm-sidebar-width, 400px), 200px);
+      min-width: max(var(--pkm-sidebar-width, min(50dvw, 400px)), 200px);
       background: rgba(255, 255, 255, 0.05);
       box-shadow:
         0 3px 6px rgba(0, 0, 0, 0.16),
