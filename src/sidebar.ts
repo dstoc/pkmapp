@@ -43,6 +43,7 @@ export class Sidebar extends LitElement {
       padding: 5px;
       padding-left: 0px;
       border-bottom: solid gray 1px;
+      overflow: hidden;
     }
     :host([collapsed]) #toggles {
       display: flex;
