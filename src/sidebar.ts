@@ -3,23 +3,33 @@ import {customElement} from 'lit/decorators.js';
 import SideNavigationIcon from './icons/material-symbols-rounded/side_navigation_24dp_FILL1_wght400_GRAD0_opsz24.js';
 import ManageSearchIcon from './icons/material-symbols-rounded/manage_search_24dp_FILL1_wght400_GRAD0_opsz24.js';
 import {templateContent} from 'lit/directives/template-content.js';
+import {assert} from './asserts.js';
 
 @customElement('pkm-sidebar')
 export class Sidebar extends LitElement {
   static override readonly styles = css`
     :host {
-      display: block;
+      display: grid;
+      grid-template-columns: 5px 1fr;
     }
     :host(:not([collapsed])) {
-      width: 400px;
-      transition: width ease-in-out 100ms;
+      min-width: max(var(--pkm-sidebar-width, 400px), 200px);
       background: rgba(255, 255, 255, 0.05);
       box-shadow:
         0 3px 6px rgba(0, 0, 0, 0.16),
         0 3px 6px rgba(0, 0, 0, 0.23);
     }
+    #resize {
+      grid-column: 1;
+      grid-row: 1/999;
+      cursor: col-resize;
+    }
+    :host([collapsed]) #resize {
+      width: 0px;
+    }
     #toggles {
       margin: 5px;
+      margin-left: 0px;
       display: grid;
       grid-template-columns: repeat(2, auto) 1fr;
       gap: 5px;
@@ -31,6 +41,7 @@ export class Sidebar extends LitElement {
     }
     ::slotted(*) {
       padding: 5px;
+      padding-left: 0px;
       border-bottom: solid gray 1px;
     }
     :host([collapsed]) #toggles {
@@ -60,8 +71,28 @@ export class Sidebar extends LitElement {
       }),
     );
   }
+  private startX = 0;
+  private width = 0;
+  private resizeDown(e: PointerEvent) {
+    assert(e.target instanceof HTMLElement);
+    e.target.setPointerCapture(e.pointerId);
+    this.width = this.offsetWidth;
+    this.startX = e.clientX;
+  }
+  private resizeMove(e: PointerEvent) {
+    assert(e.target instanceof HTMLElement);
+    if (!e.target.hasPointerCapture(e.pointerId)) return;
+    this.width += this.startX - e.clientX;
+    this.startX = e.clientX;
+    this.attributeStyleMap.set('--pkm-sidebar-width', `${this.width}px`);
+  }
   override render() {
-    return html` <div id="toggles">
+    return html` <div
+        id="resize"
+        @pointerdown=${this.resizeDown}
+        @pointermove=${this.resizeMove}
+      ></div>
+      <div id="toggles">
         <div id="toggle" @click=${this.toggle}>
           ${templateContent(SideNavigationIcon)}
         </div>
