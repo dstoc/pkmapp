@@ -8,7 +8,7 @@
     "preview": "pnpm build && vite preview",
     "lint": "tsc --noEmit -p tsconfig.json && eslint src/",
     "build": "vite build",
-    "unittest": "vitest --browser.name=chrome --browser.headless --browser.provider=playwright",
+    "unittest": "vitest --browser.name=chrome --browser.headless --browser.provider=webdriverio",
     "test": "playwright test",
     "prepare": "./build-wasm.sh"
   },
