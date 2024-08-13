@@ -158,12 +158,16 @@ export class Editor extends LitElement {
       }),
     );
   }
-  override async connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
-    await this.updateComplete;
-    if (this.defaultName !== undefined) {
-      await this.navigateByName(this.defaultName, true);
-    }
+    noAwait(
+      (async () => {
+        await this.updateComplete;
+        if (this.defaultName !== undefined) {
+          await this.navigateByName(this.defaultName, true);
+        }
+      })(),
+    );
   }
   serialize() {
     return {

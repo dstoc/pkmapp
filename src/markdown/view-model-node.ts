@@ -12,7 +12,9 @@ import type {ViewModel, InlineViewModel} from './view-model.js';
 export const viewModel = Symbol('viewModel');
 
 // eslint-disable-next-line  @typescript-eslint/no-empty-interface
-export interface Caches {}
+export interface Caches {
+  _?: undefined;
+}
 
 interface MaybeViewModelNodeParts {
   [viewModel]?: ViewModel;

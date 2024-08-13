@@ -75,7 +75,7 @@ describe('Editor', () => {
         const shiftKey = key.includes('Shift+');
         const altKey = key.includes('Alt+');
         const ctrlKey = key.includes('Control+');
-        key = key.match(/(?:(?:Control|Alt|Shift)\+)*(.*)/)![1];
+        key = /(?:(?:Control|Alt|Shift)\+)*(.*)/.exec(key)![1];
         for (let i = 0; i < repeat; i++) {
           getFocusedInline().onKeyDown(
             new KeyboardEvent('keydown', {
