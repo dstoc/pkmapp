@@ -224,7 +224,7 @@ export class IdbLibrary
             .objectStore('documents')
             .add(content, key),
         );
-      } catch (e) {
+      } catch (_e) {
         // TODO: verify that e is correct
         n++;
         continue;

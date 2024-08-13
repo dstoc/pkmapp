@@ -377,11 +377,12 @@ export class MarkdownSpan extends LitElement {
       this.handleClick(e);
     });
   }
-  override async performUpdate() {
-    super.performUpdate();
+  override async getUpdateComplete() {
+    const result = super.getUpdateComplete();
     await Promise.all(
       Array.from(this.spans).map((span) => span.updateComplete),
     );
+    return result;
   }
 
   override shouldUpdate(changed: Map<string, unknown>) {
