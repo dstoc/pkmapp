@@ -23,7 +23,7 @@ export class ConfigStore {
       this.database
         .transaction(store, 'readwrite')
         .objectStore(store)
-        .get(key) as IDBRequest<Config>,
+        .get(key) as IDBRequest<Config | undefined>,
     );
 
     assert(!result || result.key === key);
