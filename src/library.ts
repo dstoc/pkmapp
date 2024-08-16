@@ -28,6 +28,7 @@ import {
 } from './event-utils.js';
 
 export interface DocumentMetadata {
+  clock?: number;
   creationTime: number;
   modificationTime: number;
   state: 'active' | 'deleted';
@@ -102,6 +103,13 @@ export class IdbLibrary
   metadata: Metadata;
   cache = new Map<string, Document>();
   ready: Promise<void>;
+  private clock = 0;
+  nextClock() {
+    return ++this.clock;
+  }
+  currentClosk() {
+    return this.clock;
+  }
   static async init(prefix: string) {
     const request = indexedDB.open(prefix + 'library', SCHEMA_VERSION);
     request.onupgradeneeded = (e) => {
@@ -208,6 +216,7 @@ export class IdbLibrary
         state: 'active',
         creationTime: now,
         modificationTime: now,
+        clock: this.clock++,
         key: normalizeKey(name),
         component: {},
       },
@@ -258,6 +267,12 @@ export class IdbLibrary
     }
     const stored = await this.load(name);
     if (!stored) return;
+    if (
+      stored.metadata.clock !== undefined &&
+      stored.metadata.clock > this.clock
+    ) {
+      this.clock = stored.metadata.clock;
+    }
     const result = new IdbDocument(this, stored.root, stored.metadata);
     this.cache.set(normalizeName(name), result);
     return result;
@@ -351,6 +366,7 @@ class IdbDocument implements Document {
   private treeChanged(change: TreeChange) {
     if (change === 'edit') {
       this.updateMetadata((metadata) => {
+        metadata.clock = this.library.nextClock();
         metadata.modificationTime = Date.now();
         return true;
       }, false);
