@@ -72,6 +72,7 @@ import {
 import {Focus} from './markdown/view-model-ops.js';
 import {findOpenCreateBundle} from './commands/find-open-create.js';
 import {CommandContext} from './commands/context.js';
+import {sigprop} from './signal-utils.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -103,7 +104,7 @@ export class Editor extends LitElement {
   @property({type: String, reflect: true})
   accessor status: 'loading' | 'loaded' | 'error' | undefined;
   @state() private accessor document: Document | undefined;
-  @state() private accessor root: ViewModelNode | undefined;
+  @sigprop private accessor root: ViewModelNode | undefined;
   private name?: string;
   @consume({context: libraryContext, subscribe: true})
   @state()
@@ -132,6 +133,22 @@ export class Editor extends LitElement {
   }
   constructor() {
     super();
+  }
+  effect() {
+    this.root?.[viewModel].renderSignal.value;
+    // If the document is mutated (including the document root) the root
+    // we are displaying could become disconnected. If that happens
+    // navigate to the top/current root.
+    if (this.root?.[viewModel].connected === false) {
+      assert(this.document);
+      // The document could have been deleted:
+      if (this.document.metadata.state === 'deleted') {
+        noAwait(this.navigateByName('index', false));
+      } else {
+        this.navigate(this.document, this.document.tree.root, false);
+      }
+    }
+    this.requestUpdate();
   }
   override render() {
     return html` <pkm-title .node=${this.root}></pkm-title>

@@ -94,9 +94,11 @@ export class ViewModel {
   private connected_ = false;
   connect() {
     this.connected_ = true;
+    this.renderSignal.value++;
   }
   disconnect() {
     this.connected_ = false;
+    this.renderSignal.value++;
   }
   remove() {
     assert(this.tree.state === 'editing');
@@ -389,7 +391,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
   private undoStack: OpBatch[] = [];
   private redoStack: OpBatch[] = [];
 
-  setRoot(node: DocumentNode & ViewModelNode) {
+  setRoot(node: DocumentNode & ViewModelNode, fireTreeEditEvent = false) {
     assert(node[viewModel].tree === this);
     assert(!node[viewModel].parent);
     this.edit(() => {
@@ -403,7 +405,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
         this.root = node;
       }
       return {};
-    });
+    }, fireTreeEditEvent);
   }
 
   add<T extends MarkdownNode>(node: T) {
@@ -467,13 +469,18 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
     return batch.endFocus;
   }
 
-  edit(editFn: () => {startFocus?: Focus; endFocus?: Focus}): Op[] {
+  edit(
+    editFn: () => {startFocus?: Focus; endFocus?: Focus},
+    fireTreeEditEvent = true,
+  ): Op[] {
     assert(this.state === 'idle');
     this.editStartVersion = this.root[viewModel].version;
     this.state = 'editing';
     this.removed.clear();
-    const {startFocus, endFocus} = batch(editFn);
-    return this.finishEdit(startFocus, endFocus);
+    return batch(() => {
+      const {startFocus, endFocus} = editFn();
+      return this.finishEdit(startFocus, endFocus, fireTreeEditEvent);
+    });
   }
 
   editCache<K extends keyof Caches>(
@@ -508,10 +515,14 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
     this.editChangedCaches = true;
     if (value !== undefined) {
       node.caches ??= {};
-      node.caches[key] = value;
-    } else if (value === undefined) {
-      delete node.caches?.[key];
-      if (node.caches && !Object.keys(node.caches)) {
+      if (node.caches[key] !== value) {
+        this.editChangedCaches = true;
+        node.caches[key] = value;
+      }
+    } else if (node.caches?.[key] !== undefined) {
+      this.editChangedCaches = true;
+      delete node.caches[key];
+      if (!Object.keys(node.caches)) {
         delete node.caches;
       }
     }
@@ -525,6 +536,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
   private finishEdit(
     startFocus: Focus | undefined,
     endFocus: Focus | undefined,
+    fireTreeEditEvent = true,
   ) {
     assert(this.state === 'editing');
     if (this.root[viewModel].version > this.editStartVersion) {
@@ -589,17 +601,19 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
     }
 
     this.state = 'idle';
-    if (
-      this.root[viewModel].version > this.editStartVersion &&
-      // setRoot uses -1 to force connection
-      this.editStartVersion >= 0
-    ) {
-      this.dispatchEvent(new TypedCustomEvent('tree-change', {detail: 'edit'}));
-    } else if (this.editChangedCaches) {
+    if (fireTreeEditEvent) {
+      if (this.root[viewModel].version > this.editStartVersion) {
+        this.dispatchEvent(
+          new TypedCustomEvent('tree-change', {detail: 'edit'}),
+        );
+      } else if (this.editChangedCaches) {
+        this.editChangedCaches = false;
+        this.dispatchEvent(
+          new TypedCustomEvent('tree-change', {detail: 'cache'}),
+        );
+      }
+    } else {
       this.editChangedCaches = false;
-      this.dispatchEvent(
-        new TypedCustomEvent('tree-change', {detail: 'cache'}),
-      );
     }
     return result;
   }

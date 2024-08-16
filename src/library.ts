@@ -41,7 +41,10 @@ export interface ComponentMetadata {
 }
 
 export interface Document {
-  replace(root: DocumentNode): Promise<void>;
+  replace(
+    root: DocumentNode,
+    updater: (metadata: DocumentMetadata) => boolean,
+  ): void;
   save(): Promise<void>;
   delete(): Promise<void>;
   readonly name: string;
@@ -63,14 +66,13 @@ interface LibraryEventMap {
 export interface Library extends TypedEventTarget<Library, LibraryEventMap> {
   // TODO: Does this need to be async? Make iterable?
   findAll(name: string): Promise<{document: Document; root: ViewModelNode}[]>;
-  newDocument(name: string): Promise<Document>;
+  newDocument(name: string, root?: DocumentNode): Promise<Document>;
   getDocumentByTree(tree: MarkdownTree): Document | undefined;
   // TODO: Does this need to be async? Make iterable?
   getAllNames(): Promise<string[]>;
   getAllDocuments(): IterableIterator<Document>;
   readonly metadata: Metadata;
   restore(): Promise<void>;
-  import(root: DocumentNode, key: string): Promise<Document>;
   readonly ready: Promise<void>;
 }
 
@@ -204,24 +206,25 @@ export class IdbLibrary
     }
     return cast(blocks.at(-1));
   }
-  async newDocument(name: string): Promise<Document> {
+  async newDocument(name: string, root?: DocumentNode): Promise<Document> {
     name = resolveDateAlias(name) ?? name;
     const now = Date.now();
+    root ??= {
+      type: 'document',
+      children: [{type: 'section', marker: '#', content: name}],
+    };
+    name = normalizeName(name);
     const content: StoredDocument = {
-      root: {
-        type: 'document',
-        children: [{type: 'section', marker: '#', content: name}],
-      },
+      root,
       metadata: {
         state: 'active',
         creationTime: now,
         modificationTime: now,
         clock: this.clock++,
-        key: normalizeKey(name),
+        key: name,
         component: {},
       },
     };
-    name = normalizeName(name);
     let n = 0;
     while (true) {
       const key = `${normalizeKey(name)}${n > 0 ? '-' + String(n) : ''}`;
@@ -277,11 +280,6 @@ export class IdbLibrary
     this.cache.set(normalizeName(name), result);
     return result;
   }
-  async import(root: DocumentNode, key: string) {
-    const doc = await this.newDocument(key);
-    await doc.replace(root);
-    return doc;
-  }
 
   postEditUpdate(
     node: ViewModelNode,
@@ -323,8 +321,13 @@ class IdbDocument implements Document {
     const names = [...this.library.metadata.getNames(this.tree.root)];
     return names.length ? names : [this.metadata.key];
   }
-  async replace(root: DocumentNode) {
-    this.tree.setRoot(this.tree.add<DocumentNode>(root));
+  replace(
+    root: DocumentNode,
+    updater: (metadata: DocumentMetadata) => boolean,
+  ) {
+    this.tree.setRoot(this.tree.add<DocumentNode>(root), false);
+    this.updateMetadata(updater, false);
+    noAwait(this.markDirty());
   }
   async save() {
     if (this.metadata.state !== 'active') return;
@@ -372,9 +375,6 @@ class IdbDocument implements Document {
       }, false);
     }
     noAwait(this.markDirty());
-    this.library.dispatchEvent(
-      new TypedCustomEvent('document-change', {detail: this}),
-    );
   }
   private pendingModifications = 0;
   private async markDirty() {
@@ -384,6 +384,9 @@ class IdbDocument implements Document {
       const preSave = this.pendingModifications;
       // Save immediately on the fist iteration, may help keep tests fast.
       await this.save();
+      this.library.dispatchEvent(
+        new TypedCustomEvent('document-change', {detail: this}),
+      );
       if (this.pendingModifications === preSave) {
         this.pendingModifications = 0;
         this.dirty = false;

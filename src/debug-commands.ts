@@ -37,9 +37,9 @@ async function runImport(
       const file = await entry.getFile();
       const decoder = new TextDecoder();
       const text = decoder.decode(await file.arrayBuffer());
-      await library.import(
-        parseBlocks(text).node,
+      await library.newDocument(
         entry.name.replace(/\.md$/, ''),
+        parseBlocks(text).node,
       );
     } else if (entry.kind === 'directory') {
       await runImport(library, entry);
