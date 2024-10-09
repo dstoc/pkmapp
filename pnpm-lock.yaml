@@ -76,8 +76,8 @@ importers:
         specifier: ^29.7.0
         version: 29.7.0
       tree-sitter-cli:
-        specifier: ^0.24.2
-        version: 0.24.2
+        specifier: ^0.23.0
+        version: 0.23.2
       ts-lit-plugin:
         specifier: ^2.0.2
         version: 2.0.2
@@ -2163,8 +2163,8 @@ packages:
     resolution: {integrity: sha512-tk2G5R2KRwBd+ZN0zaEXpmzdKyOYksXwywulIX95MBODjSzMIuQnQ3m8JxgbhnL1LeVo7lqQKsYa1O3Htl7K5g==}
     engines: {node: '>=18'}
 
-  tree-sitter-cli@0.24.2:
-    resolution: {integrity: sha512-W3dyC6dDpcH0nNHD7HHhRxvGW56EH+Gel2k/gJTHbQydBwed3ONbwpUeqpQzNJ3BvTtR1RZ9He5wkP2j9/xdkA==}
+  tree-sitter-cli@0.23.2:
+    resolution: {integrity: sha512-kPPXprOqREX+C/FgUp2Qpt9jd0vSwn+hOgjzVv/7hapdoWpa+VeWId53rf4oNNd29ikheF12BYtGD/W90feMbA==}
     engines: {node: '>=12.0.0'}
     hasBin: true
 
@@ -4679,7 +4679,7 @@ snapshots:
       punycode: 2.3.1
     optional: true
 
-  tree-sitter-cli@0.24.2: {}
+  tree-sitter-cli@0.23.2: {}
 
   tree-sitter@0.21.1:
     dependencies:
