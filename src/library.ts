@@ -68,12 +68,14 @@ export interface Library extends TypedEventTarget<Library, LibraryEventMap> {
   findAll(name: string): Promise<{document: Document; root: ViewModelNode}[]>;
   newDocument(name: string, root?: DocumentNode): Promise<Document>;
   getDocumentByTree(tree: MarkdownTree): Document | undefined;
+  getDocumentByKey(key: string): Document | undefined;
   // TODO: Does this need to be async? Make iterable?
   getAllNames(): Promise<string[]>;
   getAllDocuments(): IterableIterator<Document>;
   readonly metadata: Metadata;
   restore(): Promise<void>;
   readonly ready: Promise<void>;
+  readonly clock: number;
 }
 
 function normalizeName(name: string) {
@@ -105,12 +107,12 @@ export class IdbLibrary
   metadata: Metadata;
   cache = new Map<string, Document>();
   ready: Promise<void>;
-  private clock = 0;
+  #clock = 0;
   nextClock() {
-    return ++this.clock;
+    return ++this.#clock;
   }
-  currentClosk() {
-    return this.clock;
+  get clock() {
+    return this.#clock;
   }
   static async init(prefix: string) {
     const request = indexedDB.open(prefix + 'library', SCHEMA_VERSION);
@@ -147,6 +149,9 @@ export class IdbLibrary
       }
     }
     return undefined;
+  }
+  getDocumentByKey(key: string): Document | undefined {
+    return this.cache.get(key);
   }
   async restore() {
     const {result: keys} = await wrap(
@@ -220,7 +225,7 @@ export class IdbLibrary
         state: 'active',
         creationTime: now,
         modificationTime: now,
-        clock: this.clock++,
+        clock: this.#clock++,
         key: name,
         component: {},
       },
@@ -272,9 +277,9 @@ export class IdbLibrary
     if (!stored) return;
     if (
       stored.metadata.clock !== undefined &&
-      stored.metadata.clock > this.clock
+      stored.metadata.clock > this.#clock
     ) {
-      this.clock = stored.metadata.clock;
+      this.#clock = stored.metadata.clock;
     }
     const result = new IdbDocument(this, stored.root, stored.metadata);
     this.cache.set(normalizeName(name), result);
