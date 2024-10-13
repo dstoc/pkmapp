@@ -223,21 +223,24 @@ export abstract class PkmAppBase extends LitElement {
       if (parent) {
         this.components = parent;
       } else {
-        const library = await IdbLibrary.init(this.idbPrefix);
-        const store = await ConfigStore.init(this.idbPrefix);
-        builder.add('library', () => library);
-        builder.add('configStore', () => store);
-        builder.add('metadata', (components) => components.library!.metadata);
-        builder.add(
-          'backLinks',
-          (components) => new BackLinks(cast(components.library)),
+        await builder.add('library', () => IdbLibrary.init(this.idbPrefix));
+        await builder.add('configStore', () =>
+          ConfigStore.init(this.idbPrefix),
         );
-        builder.add(
+        await builder.add(
+          'metadata',
+          async (components) => components.library!.metadata,
+        );
+        await builder.add(
+          'backLinks',
+          async (components) => new BackLinks(cast(components.library)),
+        );
+        await builder.add(
           'backup',
-          (components) =>
+          async (components) =>
             new Backup(cast(components.library), cast(components.configStore)),
         );
-        this.addComponents(builder);
+        await this.addComponents(builder);
         const components = builder.build(this.verifyComponents);
         await components.library.ready;
         this.components = components;
@@ -249,5 +252,5 @@ export abstract class PkmAppBase extends LitElement {
   }
   protected abstract verifyComponents(result: Partial<Components>): Components;
   protected abstract idbPrefix: string;
-  protected abstract addComponents(builder: ComponentsBuilder): void;
+  protected abstract addComponents(builder: ComponentsBuilder): Promise<void>;
 }

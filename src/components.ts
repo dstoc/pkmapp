@@ -15,12 +15,12 @@ export interface Components {
 
 export class ComponentsBuilder {
   private result: Partial<Components> = {};
-  add<K extends keyof Components>(
+  async add<K extends keyof Components>(
     key: K,
-    init: (components: Partial<Components>) => Components[K],
+    init: (components: Partial<Components>) => Promise<Components[K]>,
   ) {
     assert(!this.result[key]);
-    this.result[key] = init(this.result);
+    this.result[key] = await init(this.result);
   }
   build(verify: (result: Partial<Components>) => Components): Components {
     return verify(this.result);
