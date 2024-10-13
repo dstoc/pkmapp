@@ -23,7 +23,7 @@ export class PkmApp extends PkmAppBase {
       configStore: cast(result.configStore),
     };
   }
-  protected override addComponents(_builder: ComponentsBuilder) {}
+  protected override async addComponents(_builder: ComponentsBuilder) {}
 }
 
 declare global {
