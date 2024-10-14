@@ -42,7 +42,7 @@ export interface ComponentMetadata {
 
 export interface Document {
   replace(
-    root: DocumentNode,
+    root: DocumentNode | undefined,
     updater: (metadata: DocumentMetadata) => boolean,
   ): void;
   save(): Promise<void>;
@@ -69,6 +69,11 @@ export interface Library extends TypedEventTarget<Library, LibraryEventMap> {
   newDocument(name: string, root?: DocumentNode): Promise<Document>;
   getDocumentByTree(tree: MarkdownTree): Document | undefined;
   getDocumentByKey(key: string): Document | undefined;
+  insertOrReplace(
+    key: string,
+    updateDoc: (document?: Document) => DocumentNode | undefined,
+    updateMetadata: (metadata: DocumentMetadata) => boolean,
+  ): Promise<void>;
   // TODO: Does this need to be async? Make iterable?
   getAllNames(): Promise<string[]>;
   getAllDocuments(): IterableIterator<Document>;
@@ -152,7 +157,56 @@ export class IdbLibrary
     return undefined;
   }
   getDocumentByKey(key: string): Document | undefined {
+    // TODO: assert ready
     return this.cache.get(key);
+  }
+  private async insert(
+    key: string,
+    root: DocumentNode,
+    metadata: DocumentMetadata,
+  ) {
+    assert(metadata.key === key);
+    const content: StoredDocument = {
+      root,
+      metadata,
+    };
+
+    try {
+      await wrap(
+        this.database
+          .transaction('documents', 'readwrite')
+          .objectStore('documents')
+          .add(content, key),
+      );
+    } catch (_e) {
+      // TODO: verify that e is correct
+      return undefined;
+    }
+    return cast(await this.loadDocument(key));
+  }
+  async insertOrReplace(
+    key: string,
+    updateDoc: (document?: Document) => DocumentNode | undefined,
+    updateMetadata: (metadata: DocumentMetadata) => boolean,
+  ) {
+    const doc = this.cache.get(key);
+    const newRoot = updateDoc(doc);
+    if (doc) {
+      doc.replace(newRoot, updateMetadata);
+    } else {
+      assert(newRoot);
+      const now = Date.now();
+      const metadata: DocumentMetadata = {
+        state: 'active',
+        creationTime: now,
+        modificationTime: now,
+        key,
+        component: {},
+      };
+      updateMetadata(metadata);
+      // TODO: Is there a race where this can fail? If it fails, we could abort and restart insertOrReplace...
+      assert(await this.insert(key, newRoot, metadata));
+    }
   }
   async restore() {
     const {result: keys} = await wrap(
@@ -220,34 +274,23 @@ export class IdbLibrary
       children: [{type: 'section', marker: '#', content: name}],
     };
     name = normalizeName(name);
-    const content: StoredDocument = {
-      root,
-      metadata: {
-        state: 'active',
-        creationTime: now,
-        modificationTime: now,
-        clock: this.#clock++,
-        key: name,
-        component: {},
-      },
+    const metadata: DocumentMetadata = {
+      state: 'active',
+      creationTime: now,
+      modificationTime: now,
+      clock: this.nextClock(),
+      key: normalizeKey(name), // Note: This will be ovewritten below.
+      component: {},
     };
     let n = 0;
     while (true) {
       const key = `${normalizeKey(name)}${n > 0 ? '-' + String(n) : ''}`;
-      content.metadata.key = key;
-      try {
-        await wrap(
-          this.database
-            .transaction('documents', 'readwrite')
-            .objectStore('documents')
-            .add(content, key),
-        );
-      } catch (_e) {
-        // TODO: verify that e is correct
-        n++;
-        continue;
+      metadata.key = key;
+      const result = await this.insert(key, root, metadata);
+      if (result) {
+        return result;
       }
-      return cast(await this.loadDocument(key));
+      n++;
     }
   }
   async load(key: string): Promise<StoredDocument | undefined> {
@@ -261,6 +304,7 @@ export class IdbLibrary
       );
       content = cast(result.result) as StoredDocument;
     } catch (e) {
+      // TODO: verify the error is as expected
       console.error(e);
       return undefined;
     }
@@ -278,7 +322,7 @@ export class IdbLibrary
     if (!stored) return;
     if (
       stored.metadata.clock !== undefined &&
-      stored.metadata.clock > this.#clock
+      stored.metadata.clock > this.clock
     ) {
       this.#clock = stored.metadata.clock;
     }
@@ -329,10 +373,12 @@ class IdbDocument implements Document {
     return names.length ? names : [this.metadata.key];
   }
   replace(
-    root: DocumentNode,
+    root: DocumentNode | undefined,
     updater: (metadata: DocumentMetadata) => boolean,
   ) {
-    this.tree.setRoot(this.tree.add<DocumentNode>(root), false);
+    if (root) {
+      this.tree.setRoot(this.tree.add<DocumentNode>(root), false);
+    }
     this.updateMetadata(updater, false);
     noAwait(this.markDirty());
   }
