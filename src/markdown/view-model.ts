@@ -53,6 +53,9 @@ export class ViewModel {
   get connected(): boolean {
     return this.connected_;
   }
+  get caches(): Caches | undefined {
+    return this.tree.caches.get(this.self);
+  }
   private initialize(parent?: ViewModelNode, childIndex?: number) {
     this.parent = parent;
     this.previousSibling = undefined;
@@ -373,13 +376,16 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
 >) {
   constructor(
     root: DocumentNode,
+    caches?: Map<MarkdownNode, Caches>,
     private readonly delegate?: MarkdownTreeDelegate,
   ) {
     super();
     this.root = this.addDom<DocumentNode>(root);
+    this.caches = caches ?? new Map<MarkdownNode, Caches>();
     this.setRoot(this.root);
   }
 
+  readonly caches: Map<MarkdownNode, Caches>;
   state: 'editing' | 'post-edit' | 'idle' = 'idle';
   private editStartVersion = 0;
   private editOperations: Op[] = [];
@@ -493,13 +499,16 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
     assert(node[viewModel].version === version);
     assert(node[viewModel].connected);
     assert(node[viewModel].tree === this);
+    let cache = this.caches.get(node);
     if (value !== undefined) {
-      node.caches ??= {};
-      node.caches[key] = value;
-    } else if (value === undefined) {
-      delete node.caches?.[key];
-      if (node.caches && !Object.keys(node.caches)) {
-        delete node.caches;
+      if (!cache) {
+        this.caches.set(node, (cache = {}));
+      }
+      cache[key] = value;
+    } else if (cache) {
+      delete cache[key];
+      if (!Object.keys(cache)) {
+        this.caches.delete(node);
       }
     }
     this.dispatchEvent(new TypedCustomEvent('tree-change', {detail: 'cache'}));
@@ -513,17 +522,20 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
     assert(this.state === 'post-edit');
     assert(node[viewModel].tree === this);
     this.editChangedCaches = true;
+    let cache = this.caches.get(node);
     if (value !== undefined) {
-      node.caches ??= {};
-      if (node.caches[key] !== value) {
-        this.editChangedCaches = true;
-        node.caches[key] = value;
+      if (!cache) {
+        this.caches.set(node, (cache = {}));
       }
-    } else if (node.caches?.[key] !== undefined) {
+      if (cache[key] !== value) {
+        this.editChangedCaches = true;
+        cache[key] = value;
+      }
+    } else if (cache) {
       this.editChangedCaches = true;
-      delete node.caches[key];
-      if (!Object.keys(node.caches)) {
-        delete node.caches;
+      delete cache[key];
+      if (!Object.keys(cache)) {
+        this.caches.delete(node);
       }
     }
   }
@@ -552,7 +564,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
     for (const root of removedRoots.values()) {
       for (const node of dfs(root)) {
         node[viewModel].disconnect();
-        delete node.caches;
+        this.caches.delete(node);
         this.delegate?.postEditUpdate(node, 'disconnected');
       }
     }
@@ -570,7 +582,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
         // e.g. if a node has moved it's content can be unchanged.
         // Could move the clearing responsibility to the impls,
         // otherwise they may need to build other optimizations.
-        delete node.caches;
+        this.caches.delete(node);
         this.delegate?.postEditUpdate(node, 'changed');
       }
     }
@@ -651,6 +663,13 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
     const result = structuredClone(node);
     assert(!result[viewModel]);
     return result;
+  }
+
+  serializeWithCaches(): {
+    root: MarkdownNode;
+    caches: Map<MarkdownNode, Caches>;
+  } {
+    return structuredClone({root: this.root, caches: this.caches});
   }
 }
 

@@ -74,7 +74,7 @@ export class BackLinks {
         this.links.delete(node);
       }
     } else {
-      const cache = node.caches?.backlinks ?? getLinks(node);
+      const cache = node[viewModel].caches?.backlinks ?? getLinks(node);
       let links = this.links.get(node);
       const preLinks = new Set(links?.values() ?? []);
       for (const destination of cache) {

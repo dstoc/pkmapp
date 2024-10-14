@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {DocumentNode} from './markdown/node.js';
+import {DocumentNode, MarkdownNode} from './markdown/node.js';
 import {MarkdownTree, TreeChange} from './markdown/view-model.js';
-import {ViewModelNode, viewModel} from './markdown/view-model-node.js';
+import {Caches, ViewModelNode, viewModel} from './markdown/view-model-node.js';
 import {Metadata} from './metadata.js';
 import {assert, cast} from './asserts.js';
 import {resolveDateAlias} from './date-aliases.js';
@@ -88,6 +88,7 @@ function normalizeKey(name: string) {
 
 interface StoredDocument {
   root: DocumentNode;
+  caches?: Map<MarkdownNode, Caches>;
   metadata: DocumentMetadata;
 }
 
@@ -263,10 +264,10 @@ export class IdbLibrary
       console.error(e);
       return undefined;
     }
-    const {root, metadata} = content;
+    const {root, caches, metadata} = content;
     assert(root && root.type === 'document');
     assert(metadata);
-    return {root, metadata};
+    return {root, caches, metadata};
   }
   private async loadDocument(name: string): Promise<Document | undefined> {
     const cached = this.cache.get(normalizeName(name));
@@ -281,7 +282,7 @@ export class IdbLibrary
     ) {
       this.#clock = stored.metadata.clock;
     }
-    const result = new IdbDocument(this, stored.root, stored.metadata);
+    const result = new IdbDocument(this, stored);
     this.cache.set(normalizeName(name), result);
     return result;
   }
@@ -299,14 +300,15 @@ export class IdbLibrary
 class IdbDocument implements Document {
   constructor(
     private library: IdbLibrary,
-    root: DocumentNode,
-    readonly metadata: Readonly<DocumentMetadata>,
+    state: StoredDocument,
   ) {
-    this.tree = new MarkdownTree(cast(root), library);
+    this.metadata = state.metadata;
+    this.tree = new MarkdownTree(cast(state.root), state.caches, library);
     this.tree.addEventListener('tree-change', (e) => {
       this.treeChanged(e.detail);
     });
   }
+  readonly metadata: Readonly<DocumentMetadata>;
   readonly tree: MarkdownTree;
   dirty = false;
   updateMetadata(
@@ -336,10 +338,11 @@ class IdbDocument implements Document {
   }
   async save() {
     if (this.metadata.state !== 'active') return;
-    const root = this.tree.serialize();
+    const {root, caches} = this.tree.serializeWithCaches();
     assert(root.type === 'document');
     const content: StoredDocument = {
       root,
+      caches,
       metadata: this.metadata,
     };
     await wrap(
