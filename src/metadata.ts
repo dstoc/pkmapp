@@ -241,7 +241,7 @@ export class Metadata {
     if (change === 'disconnected') {
       this.tagMap.update(node, []);
     } else {
-      const cache = node.caches?.metadata ?? getTags(node);
+      const cache = node[viewModel].caches?.metadata ?? getTags(node);
       this.tagMap.update(node, new Set(cache));
       node[viewModel].tree.setCache(node, 'metadata', cache);
     }

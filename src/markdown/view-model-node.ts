@@ -19,14 +19,12 @@ export interface Caches {
 interface MaybeViewModelNodeParts {
   [viewModel]?: ViewModel;
   children?: MarkdownNode[];
-  caches?: Caches;
 }
 export type MaybeViewModelNode = MarkdownNode & MaybeViewModelNodeParts;
 
 interface ViewModelNodeParts {
   [viewModel]: ViewModel;
   children?: (MarkdownNode & ViewModelNode)[];
-  caches?: Caches;
 }
 
 interface InlineViewModelNodeParts extends ViewModelNodeParts {
