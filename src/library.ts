@@ -81,6 +81,7 @@ export interface Library extends TypedEventTarget<Library, LibraryEventMap> {
   restore(): Promise<void>;
   readonly ready: Promise<void>;
   readonly clock: number;
+  readonly flush: Promise<void>;
 }
 
 function normalizeName(name: string) {
@@ -114,6 +115,10 @@ export class IdbLibrary
   cache = new Map<string, Document>();
   ready: Promise<void>;
   #clock = 0;
+  #pendingWrites = 0;
+  #flush: {promise: Promise<void>; resolve?: () => void} = {
+    promise: Promise.resolve(),
+  };
   nextClock() {
     return ++this.#clock;
   }
@@ -133,6 +138,22 @@ export class IdbLibrary
   }
   getAllDocuments() {
     return this.cache.values();
+  }
+  writePending() {
+    this.#pendingWrites++;
+  }
+  writeComplete() {
+    this.#pendingWrites--;
+    if (this.#pendingWrites === 0) {
+      this.#flush.resolve?.();
+      this.#flush.resolve = undefined;
+    }
+  }
+  get flush(): Promise<void> {
+    if (this.#pendingWrites && !this.#flush.resolve) {
+      this.#flush = Promise.withResolvers<void>();
+    }
+    return this.#flush.promise;
   }
   async getAllNames() {
     const result = new Set<string>();
