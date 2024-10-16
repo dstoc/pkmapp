@@ -26,6 +26,7 @@ import {
   TypedEventTarget,
   TypedEventTargetConstructor,
 } from './event-utils.js';
+import {SCHEMA_VERSION, upgrade} from './library-schema.js';
 
 export interface DocumentMetadata {
   clock?: number;
@@ -88,17 +89,11 @@ function normalizeName(name: string) {
   return name.toLowerCase();
 }
 
-function normalizeKey(name: string) {
-  return name.toLowerCase().replaceAll(/[\\/:*?"<>|]/g, '');
-}
-
 interface StoredDocument {
   root: DocumentNode;
   caches?: Map<MarkdownNode, Caches>;
   metadata: DocumentMetadata;
 }
-
-const SCHEMA_VERSION = 1;
 
 export class IdbLibrary
   extends (EventTarget as TypedEventTargetConstructor<Library, LibraryEventMap>)
@@ -128,9 +123,8 @@ export class IdbLibrary
   static async init(prefix: string) {
     const request = indexedDB.open(prefix + 'library', SCHEMA_VERSION);
     request.onupgradeneeded = (e) => {
-      assert(e.oldVersion === 0);
       const database = request.result;
-      database.createObjectStore('documents');
+      upgrade(database, cast(request.transaction), e.oldVersion);
     };
     const {result: database} = await wrap(request);
     const library = new IdbLibrary(database);
@@ -192,17 +186,12 @@ export class IdbLibrary
       metadata,
     };
 
-    try {
-      await wrap(
-        this.database
-          .transaction('documents', 'readwrite')
-          .objectStore('documents')
-          .add(content, key),
-      );
-    } catch (_e) {
-      // TODO: verify that e is correct
-      return undefined;
-    }
+    await wrap(
+      this.database
+        .transaction('documents', 'readwrite')
+        .objectStore('documents')
+        .add(content, key),
+    );
     return cast(await this.loadDocument(key));
   }
   async insertOrReplace(
@@ -300,19 +289,10 @@ export class IdbLibrary
       creationTime: now,
       modificationTime: now,
       clock: this.nextClock(),
-      key: normalizeKey(name), // Note: This will be ovewritten below.
+      key: crypto.randomUUID(),
       component: {},
     };
-    let n = 0;
-    while (true) {
-      const key = `${normalizeKey(name)}${n > 0 ? '-' + String(n) : ''}`;
-      metadata.key = key;
-      const result = await this.insert(key, root, metadata);
-      if (result) {
-        return result;
-      }
-      n++;
-    }
+    return await this.insert(metadata.key, root, metadata);
   }
   async load(key: string): Promise<StoredDocument | undefined> {
     let content: StoredDocument;

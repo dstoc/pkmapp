@@ -2,6 +2,7 @@ import {Document, Library} from './library.js';
 import {Command} from './command-palette.js';
 import {parseBlocks} from './markdown/block-parser.js';
 import {serializeToString} from './markdown/block-serializer.js';
+import {BlockCommandBundle} from './block-command-bundle.js';
 
 async function getAllDocuments(library: Library) {
   const documents = new Set<Document>();
@@ -18,14 +19,20 @@ async function runExport(
   directory: FileSystemDirectoryHandle,
 ) {
   for (const document of await getAllDocuments(library)) {
-    const handle = await directory.getFileHandle(
-      document.metadata.key + '.md',
-      {create: true},
-    );
-    const stream = await handle.createWritable();
-    await stream.write(serializeToString(document.tree.root));
-    await stream.close();
+    const filename = document.metadata.key + '.md';
+    await exportToFile(document, directory, filename);
   }
+}
+
+async function exportToFile(
+  document: Document,
+  directory: FileSystemDirectoryHandle,
+  filename: string,
+) {
+  const handle = await directory.getFileHandle(filename, {create: true});
+  const stream = await handle.createWritable();
+  await stream.write(serializeToString(document.tree.root));
+  await stream.close();
 }
 
 async function runImport(
@@ -59,17 +66,23 @@ export function debugCommands(library: Library): Command[] {
       },
     },
     {
-      description: '[DEBUG] Import from OPFS',
+      description: '[TEST] Import from OPFS',
       execute: async () => {
         const directory = await navigator.storage.getDirectory();
         await runImport(library, directory);
       },
     },
     {
-      description: '[DEBUG] Export to OPFS',
+      description: '[TEST] Export to OPFS',
       execute: async () => {
-        const directory = await navigator.storage.getDirectory();
-        await runExport(library, directory);
+        return new BlockCommandBundle(
+          '[TEST] Export to OPFS',
+          library,
+          async ({document}) => {
+            const directory = await navigator.storage.getDirectory();
+            await exportToFile(document, directory, 'export.md');
+          },
+        );
       },
     },
     {

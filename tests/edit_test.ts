@@ -33,12 +33,14 @@ test.describe('editing', () => {
     return {main, fs: main.fileSystem};
   });
 
-  test.beforeEach(async () => {
-    await importFile('test.md', '');
+  test.beforeEach(async ({page}) => {
+    await importFile('test.md', '# test\n');
     await state.main.runCommand('open', 'test');
     await state.main.status('loaded');
     const inline = state.main.host.locator('[contenteditable]').first();
     await inline.click();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
   });
 
   test.afterEach(async () => {
@@ -51,28 +53,30 @@ test.describe('editing', () => {
     await state.main.runCommand('Import from OPFS');
     await state.fs.clear();
   }
-  async function exportMarkdown(file: string = 'test.md') {
-    await state.main.runCommand('Export to OPFS');
-    const content = await state.fs.getFile(file);
+  async function exportMarkdown(name = 'test') {
+    await state.main.runCommand('Export to OPFS', name);
+    const content = await state.fs.getFile('export.md');
     await state.fs.clear();
     return {
       [exportSymbol]: true,
-      file,
       content,
     };
   }
   test.describe('transclusions', () => {
     test('can be inserted and edited', async ({page}) => {
       await page.keyboard.type('test');
-      await importFile('transclusion.md', 'aaa');
+      await importFile('transclusion.md', '# transclusion\naaa');
       await state.main.runCommand('insert transclusion', 'transclusion');
       await state.main.host
         .locator('md-transclusion')
         .waitFor({state: 'visible'});
       // TODO: shouldn't be required
       await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Home');
+      await page.keyboard.press('ArrowDown');
       await page.keyboard.type('content');
-      expect(await exportMarkdown('test.md')).toMatchPretty(`
+      expect(await exportMarkdown('test')).toMatchPretty(`
+        # test
         test
 
         \`\`\`tc
@@ -80,14 +84,15 @@ test.describe('editing', () => {
         \`\`\`
 
       `);
-      expect(await exportMarkdown('transclusion.md')).toMatchPretty(`
+      expect(await exportMarkdown('transclusion')).toMatchPretty(`
+        # transclusion
         contentaaa
 
       `);
     });
     test('can be inserted and deleted', async ({page}) => {
       await page.keyboard.type('test');
-      await importFile('transclusion.md', '');
+      await importFile('transclusion.md', '# transclusion\n');
       await state.main.runCommand('insert transclusion', 'transclusion');
       await state.main.host
         .locator('md-transclusion')
@@ -95,7 +100,8 @@ test.describe('editing', () => {
       // TODO: shouldn't be required
       await page.keyboard.press('ArrowDown');
       await state.main.runCommand('delete transclusion');
-      expect(await exportMarkdown('test.md')).toMatchPretty(`
+      expect(await exportMarkdown('test')).toMatchPretty(`
+        # test
         test
 
       `);
@@ -108,6 +114,7 @@ test.describe('editing', () => {
       await keyboard.type(`# 2\n`);
       await keyboard.type(`b`);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         # 1
         a
 
@@ -128,6 +135,7 @@ test.describe('editing', () => {
       }
       await keyboard.press('Tab');
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         a
         * # 1
           a
@@ -153,6 +161,7 @@ test.describe('editing', () => {
       await keyboard.press('ArrowUp');
       await keyboard.type(`# `);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         # top
         * 1
         * # 2
@@ -165,6 +174,7 @@ test.describe('editing', () => {
     test('can generate a list', async ({page: {keyboard}}) => {
       await keyboard.type(`* a\nb`);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * a
         * b
 
@@ -175,6 +185,7 @@ test.describe('editing', () => {
     test('can generate unchecked', async ({page: {keyboard}}) => {
       await keyboard.type(`* [ ] milk\neggs`);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * [ ] milk
         * [ ] eggs
 
@@ -183,6 +194,7 @@ test.describe('editing', () => {
     test('can generate checked', async ({page: {keyboard}}) => {
       await keyboard.type(`* [x] milk\neggs`);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * [x] milk
         * [ ] eggs
 
@@ -191,6 +203,7 @@ test.describe('editing', () => {
     test('ignores double check', async ({page: {keyboard}}) => {
       await keyboard.type(`* [x] [ ] milk\neggs`);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * [x] [ ] milk
         * [ ] eggs
 
@@ -202,6 +215,7 @@ test.describe('editing', () => {
   }) => {
     await keyboard.type(`*a\nb`);
     expect(await exportMarkdown()).toMatchPretty(`
+      # test
       *a
 
       b
@@ -214,6 +228,7 @@ test.describe('editing', () => {
       await keyboard.press('ArrowLeft');
       await keyboard.type(`\nc`);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * a
         * cb
 
@@ -226,6 +241,7 @@ test.describe('editing', () => {
       await keyboard.press('ArrowLeft');
       await keyboard.type(`\na`);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * a
         * b
 
@@ -237,6 +253,7 @@ test.describe('editing', () => {
       await keyboard.type(`a`);
       await keyboard.press('Tab');
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * a
 
       `);
@@ -247,6 +264,7 @@ test.describe('editing', () => {
       await keyboard.type(`* a\nb`);
       await keyboard.press('Shift+Tab');
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * a
 
         b
@@ -258,6 +276,7 @@ test.describe('editing', () => {
     test('automatically inserts closing `]`', async ({page: {keyboard}}) => {
       await keyboard.type(`[test`);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         [test]
 
       `);
@@ -265,6 +284,7 @@ test.describe('editing', () => {
     test("doesn't insert duplicate `]`", async ({page: {keyboard}}) => {
       await keyboard.type(`[]`);
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         []
 
       `);
@@ -273,6 +293,7 @@ test.describe('editing', () => {
       await keyboard.type(`[te`);
       await keyboard.press('Tab');
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         [test]
 
       `);
@@ -281,6 +302,7 @@ test.describe('editing', () => {
       await keyboard.type(`[doesnt exist`);
       await keyboard.press('Tab');
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         [doesnt exist]
 
       `);
@@ -292,6 +314,7 @@ test.describe('editing', () => {
       await keyboard.press('Shift+ArrowUp');
       await keyboard.press('Backspace');
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         a
 
       `);
@@ -303,6 +326,7 @@ test.describe('editing', () => {
       await keyboard.press('Control+a');
       await keyboard.press('Backspace');
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * a
         * c
 
@@ -320,6 +344,7 @@ test.describe('editing', () => {
       await keyboard.press('Control+a');
       await keyboard.press('Backspace');
       expect(await exportMarkdown()).toMatchPretty(`
+        # test
         * 1
 
       `);

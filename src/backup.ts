@@ -40,6 +40,10 @@ function needsBackup(document: Document) {
   );
 }
 
+function normalizeFilename(name: string) {
+  return name.toLowerCase().replaceAll(/[\\/:*?"<>|]/g, '');
+}
+
 export class Backup {
   constructor(
     private readonly library: Library,
@@ -94,13 +98,18 @@ export class Backup {
         // after each await.
         await new Promise((resolve) => requestIdleCallback(resolve));
         const [document] = this.backlog;
+        const name = document.name;
+        const filename =
+          name === document.metadata.key
+            ? name
+            : `${name}.${document.metadata.key}`;
         const file = await this.config.directory.getFileHandle(
-          `${document.metadata.key}.md`,
+          `${normalizeFilename(filename)}.md`,
           {
             create: true,
           },
         );
-        if (this.config.snapshots ?? 'none' !== 'none') {
+        if ((this.config.snapshots ?? 'none') !== 'none') {
           const existing = await file.getFile().catch((e) => {
             if (e instanceof DOMException && e.name === 'NotFoundError') {
               return undefined;
@@ -167,6 +176,7 @@ export class Backup {
 
   private onDocumentUpdated(document: Document) {
     if (!['idle', 'writing'].includes(this.state.value)) return;
+    if (!needsBackup(document)) return;
     this.backlog.add(document);
     noAwait(this.update());
   }
