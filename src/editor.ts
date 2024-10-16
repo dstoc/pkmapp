@@ -136,6 +136,9 @@ export class Editor extends LitElement {
   }
   effect() {
     this.root?.[viewModel].renderSignal.value;
+    this.requestUpdate();
+  }
+  override render() {
     // If the document is mutated (including the document root) the root
     // we are displaying could become disconnected. If that happens
     // navigate to the top/current root.
@@ -148,9 +151,6 @@ export class Editor extends LitElement {
         this.navigate(this.document, this.document.tree.root, false);
       }
     }
-    this.requestUpdate();
-  }
-  override render() {
     return html` <pkm-title .node=${this.root}></pkm-title>
       <md-block-render
         .block=${this.root}
@@ -737,7 +737,6 @@ export class Editor extends LitElement {
                     const tree = this.document!.tree;
                     const document = this.library.getDocumentByTree(tree);
                     await document?.delete();
-                    await this.navigateByName('index', true);
                   },
                 });
               },

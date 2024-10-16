@@ -156,6 +156,7 @@ export class IdbLibrary
     }
     for (const document of this.cache.values()) {
       // TODO: check that the document doesn't have an explicit name?
+      if (document.metadata.state !== 'active') continue;
       if (normalizeName(document.name) === document.metadata.key) {
         result.add(document.metadata.key);
       }
@@ -384,7 +385,6 @@ class IdbDocument implements Document {
     noAwait(this.markDirty());
   }
   async save() {
-    if (this.metadata.state !== 'active') return;
     const {root, caches} = this.tree.serializeWithCaches();
     assert(root.type === 'document');
     const content: StoredDocument = {
@@ -400,23 +400,12 @@ class IdbDocument implements Document {
     );
   }
   async delete() {
-    this.updateMetadata((metadata) => {
+    this.replace({type: 'document'}, (metadata) => {
       metadata.state = 'deleted';
+      metadata.clock = this.library.nextClock();
+      metadata.modificationTime = Date.now();
       return true;
-    }, false);
-    this.tree.setRoot(
-      this.tree.add<DocumentNode>({
-        type: 'document',
-      }),
-    );
-    this.library.cache.delete(this.metadata.key);
-    // TODO: tombstone
-    await wrap(
-      this.library.database
-        .transaction('documents', 'readwrite')
-        .objectStore('documents')
-        .delete(this.metadata.key),
-    );
+    });
   }
   private metadataChanged() {
     noAwait(this.markDirty());
