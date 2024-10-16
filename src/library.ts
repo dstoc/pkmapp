@@ -70,10 +70,10 @@ export interface Library extends TypedEventTarget<Library, LibraryEventMap> {
   newDocument(name: string, root?: DocumentNode): Promise<Document>;
   getDocumentByTree(tree: MarkdownTree): Document | undefined;
   getDocumentByKey(key: string): Document | undefined;
-  insertOrReplace(
+  insertOrReplace<T>(
     key: string,
-    updateDoc: (document?: Document) => DocumentNode | undefined,
-    updateMetadata: (metadata: DocumentMetadata) => boolean,
+    updateDoc: (document?: Document) => {root?: DocumentNode; state: T},
+    updateMetadata: (metadata: DocumentMetadata, state: T) => boolean,
   ): Promise<void>;
   // TODO: Does this need to be async? Make iterable?
   getAllNames(): Promise<string[]>;
@@ -194,15 +194,15 @@ export class IdbLibrary
     );
     return cast(await this.loadDocument(key));
   }
-  async insertOrReplace(
+  async insertOrReplace<T>(
     key: string,
-    updateDoc: (document?: Document) => DocumentNode | undefined,
-    updateMetadata: (metadata: DocumentMetadata) => boolean,
+    updateDoc: (document?: Document) => {root?: DocumentNode; state: T},
+    updateMetadata: (metadata: DocumentMetadata, state: T) => boolean,
   ) {
     const doc = this.cache.get(key);
-    const newRoot = updateDoc(doc);
+    const {root: newRoot, state} = updateDoc(doc);
     if (doc) {
-      doc.replace(newRoot, updateMetadata);
+      doc.replace(newRoot, (metadata) => updateMetadata(metadata, state));
     } else {
       assert(newRoot);
       const now = Date.now();
@@ -213,7 +213,7 @@ export class IdbLibrary
         key,
         component: {},
       };
-      updateMetadata(metadata);
+      updateMetadata(metadata, state);
       // TODO: Is there a race where this can fail? If it fails, we could abort and restart insertOrReplace...
       assert(await this.insert(key, newRoot, metadata));
     }
