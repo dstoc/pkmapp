@@ -27,8 +27,8 @@ export async function testRoundtrip(
   await main.runCommand('Import from OPFS');
   await main.runCommand('open', 'test');
   expect(await main.status('loaded', 'error')).toEqual('loaded');
-  await main.runCommand('Export to OPFS');
-  const result = await fs.getFile('test.md');
+  await main.runCommand('Export to OPFS', 'test');
+  const result = await fs.getFile('export.md');
   const resultv = removeWhitespace ? result.replace(/\s+/g, '') : result;
   const contentv = removeWhitespace ? content.replace(/\s+/g, '') : result;
   // Alternatively, remove leading/trailing whitespace, collapse
