@@ -349,7 +349,8 @@ class IdbDocument implements Document {
     state: StoredDocument,
   ) {
     this.metadata = state.metadata;
-    this.tree = new MarkdownTree(cast(state.root), state.caches, library);
+    const root = this.metadata.state === 'deleted' ? undefined : state.root;
+    this.tree = new MarkdownTree(root, state.caches, library);
     this.tree.addEventListener('tree-change', (e) => {
       this.treeChanged(e.detail);
     });
@@ -378,10 +379,13 @@ class IdbDocument implements Document {
     root: DocumentNode | undefined,
     updater: (metadata: DocumentMetadata) => boolean,
   ) {
-    if (root) {
+    this.updateMetadata(updater, false);
+    if (this.metadata.state === 'deleted') {
+      this.tree.disconnect();
+    } else if (root) {
+      this.tree.connect();
       this.tree.setRoot(this.tree.add<DocumentNode>(root), false);
     }
-    this.updateMetadata(updater, false);
     noAwait(this.markDirty());
   }
   async save() {
@@ -389,7 +393,8 @@ class IdbDocument implements Document {
     assert(root.type === 'document');
     const content: StoredDocument = {
       root,
-      caches,
+      caches:
+        caches?.size && this.metadata.state !== 'deleted' ? caches : undefined,
       metadata: this.metadata,
     };
     await wrap(
