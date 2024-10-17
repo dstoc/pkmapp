@@ -139,17 +139,15 @@ export class Editor extends LitElement {
     this.requestUpdate();
   }
   override render() {
-    // If the document is mutated (including the document root) the root
-    // we are displaying could become disconnected. If that happens
-    // navigate to the top/current root.
-    if (this.root?.[viewModel].connected === false) {
+    if (this.document?.metadata.state === 'deleted') {
+      // The document might have been deleted.
+      noAwait(this.navigateByName('index', true));
+    } else if (this.root?.[viewModel].connected === false) {
+      // If the document is mutated (including the document root) the root
+      // we are displaying could become disconnected. If that happens
+      // navigate to the top/current root.
       assert(this.document);
-      // The document could have been deleted:
-      if (this.document.metadata.state === 'deleted') {
-        noAwait(this.navigateByName('index', false));
-      } else {
-        this.navigate(this.document, this.document.tree.root, false);
-      }
+      this.navigate(this.document, this.document.tree.root, false);
     }
     return html` <pkm-title .node=${this.root}></pkm-title>
       <md-block-render
