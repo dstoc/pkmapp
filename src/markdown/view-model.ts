@@ -39,6 +39,10 @@ import {viewModel} from './view-model-node.js';
 import {batch, signal} from '@preact/signals-core';
 import {TypedCustomEvent, TypedEventTargetConstructor} from '../event-utils.js';
 
+function emptyDocument(): DocumentNode {
+  return {type: 'document', children: [{type: 'paragraph', content: ''}]};
+}
+
 let sequence = 0;
 export class ViewModel {
   constructor(
@@ -375,12 +379,20 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
   MarkdownTreeEventMap
 >) {
   constructor(
-    root: DocumentNode,
+    root: DocumentNode | undefined,
     caches?: Map<MarkdownNode, Caches>,
     private readonly delegate?: MarkdownTreeDelegate,
   ) {
     super();
-    this.root = this.addDom<DocumentNode>(root);
+    if (!root) {
+      this.#disconnected = true;
+      if (caches) console.warn('disconnected but caches present');
+      caches = undefined;
+      root = emptyDocument();
+    } else {
+      this.#disconnected = false;
+    }
+    this.root = this.addDom(root);
     this.caches = caches ?? new Map<MarkdownNode, Caches>();
     this.setRoot(this.root);
   }
@@ -394,8 +406,26 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
   root: ViewModelNode & DocumentNode;
   removed = new Set<ViewModelNode>();
 
+  // Effectively a tombstone state.
+  #disconnected: boolean;
+  get disconnected() {
+    return this.#disconnected;
+  }
+
   private undoStack: OpBatch[] = [];
   private redoStack: OpBatch[] = [];
+
+  disconnect() {
+    if (this.#disconnected) return;
+    this.caches.clear();
+    this.#disconnected = true;
+    this.setRoot(this.addDom(emptyDocument()));
+  }
+
+  connect() {
+    if (!this.#disconnected) return;
+    this.#disconnected = false;
+  }
 
   setRoot(node: DocumentNode & ViewModelNode, fireTreeEditEvent = false) {
     assert(node[viewModel].tree === this);
@@ -423,6 +453,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
 
   undo(root: ViewModelNode) {
     assert(this.state === 'idle');
+    assert(!this.#disconnected);
     let batch: OpBatch | undefined = undefined;
     for (let i = this.undoStack.length - 1; i >= 0; i--) {
       const classification = classify(root, this.undoStack[i]);
@@ -450,6 +481,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
 
   redo(root: ViewModelNode) {
     assert(this.state === 'idle');
+    assert(!this.#disconnected);
     let batch: OpBatch | undefined = undefined;
     for (let i = this.redoStack.length - 1; i >= 0; i--) {
       const classification = classify(root, this.redoStack[i]);
@@ -499,6 +531,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
     assert(node[viewModel].version === version);
     assert(node[viewModel].connected);
     assert(node[viewModel].tree === this);
+    assert(!this.#disconnected);
     let cache = this.caches.get(node);
     if (value !== undefined) {
       if (!cache) {
@@ -521,6 +554,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
   ) {
     assert(this.state === 'post-edit');
     assert(node[viewModel].tree === this);
+    assert(!this.#disconnected);
     this.editChangedCaches = true;
     let cache = this.caches.get(node);
     if (value !== undefined) {
@@ -542,6 +576,7 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
 
   record(op: Op) {
     assert(this.state === 'editing');
+    assert(!this.#disconnected);
     this.editOperations.push(op);
   }
 
@@ -575,7 +610,9 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
     )) {
       if (!node[viewModel].connected) {
         node[viewModel].connect();
-        this.delegate?.postEditUpdate(node, 'connected');
+        if (!this.#disconnected) {
+          this.delegate?.postEditUpdate(node, 'connected');
+        }
       } else {
         assert(node[viewModel].version > this.editStartVersion);
         // TODO: Sometimes it could be safe to keep the cache.
@@ -583,7 +620,9 @@ export class MarkdownTree extends (EventTarget as TypedEventTargetConstructor<
         // Could move the clearing responsibility to the impls,
         // otherwise they may need to build other optimizations.
         this.caches.delete(node);
-        this.delegate?.postEditUpdate(node, 'changed');
+        if (!this.#disconnected) {
+          this.delegate?.postEditUpdate(node, 'changed');
+        }
       }
     }
 

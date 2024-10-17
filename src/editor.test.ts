@@ -12,6 +12,9 @@ describe('Editor', () => {
     const editor = new Editor();
     document.body.textContent = '';
     document.body.appendChild(editor);
+    const metadata = {
+      state: 'active',
+    };
     const tree = new MarkdownTree({
       type: 'document',
       children: [
@@ -22,7 +25,7 @@ describe('Editor', () => {
       ],
     });
     const name = 'index';
-    const doc = {name, tree} as Document;
+    const doc = {name, tree, metadata} as Document;
     const library: Library = {
       getDocumentByTree(_tree: MarkdownTree) {
         return doc;
