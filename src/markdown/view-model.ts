@@ -227,7 +227,12 @@ export class ViewModel {
       case 'list-item': {
         const oldChecked = this.self.checked;
         if (oldChecked === checked) return;
-        (this.self as {checked?: boolean}).checked = checked;
+        if (checked == undefined) {
+          delete (this.self as {checked?: boolean}).checked;
+        } else {
+          (this.self as {checked?: boolean}).checked = checked;
+        }
+
         this.signalMutation({
           type: 'check',
           node: this.self,

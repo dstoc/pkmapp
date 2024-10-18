@@ -137,6 +137,14 @@ export function normalizeTree(tree: MarkdownTree) {
     }
     // Collapse directly nested lists.
     if (node.type === 'list-item') {
+      // Ensure checked is not set, rather than set to undefined
+      // since it could serialize as null.
+      if (
+        node.checked === null ||
+        (node.checked === undefined && 'checked' in node)
+      ) {
+        node[viewModel].updateChecked(undefined);
+      }
       if (
         node[viewModel].firstChild?.type === 'list' &&
         node.children?.length === 1
