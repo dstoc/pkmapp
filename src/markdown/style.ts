@@ -61,7 +61,7 @@ export const styles = [
       text-decoration: line-through;
     }
     md-span[type='code_span'] {
-      white-space: pre;
+      white-space: pre-wrap;
       font-family: monospace;
     }
   `,
@@ -81,7 +81,7 @@ export const styles = [
       margin-block: 0;
 
       display: grid;
-      grid-template-columns: auto 1fr;
+      grid-template-columns: auto minmax(0, 1fr);
       align-items: baseline;
     }
     md-block[type='list-item']::before {
@@ -172,6 +172,8 @@ export const styles = [
     }
     md-block {
       background-color: var(--md-selection-override-bgcolor);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
     }
   `,
   // Overridable styles.
