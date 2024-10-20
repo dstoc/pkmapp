@@ -47,7 +47,7 @@ export const styles = [
         --md-block-quote-bgcolor: #3e3e3e;
         --md-code-block-bgcolor: #3e3e3e;
         --md-code-span-bgcolor: #4e4e4e;
-        --md-accent-color: #56e;
+        --md-accent-color: #78f;
         --md-block-selection-bgcolor: #888;
         --md-active-block-color: #303030;
         --pkm-dialog-bgcolor: #191919;
