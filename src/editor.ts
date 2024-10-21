@@ -702,14 +702,21 @@ export class Editor extends LitElement {
           return findOpenCreateBundle(this);
         },
       },
-      {
-        description: 'Copy all',
-        execute: async () => {
-          const markdown = serializeToString(this.document!.tree.root);
-          await copyMarkdownToClipboard(markdown);
-        },
-        preview: () => html`<pre>${serializeToString(this.root!)}</pre>`,
-      },
+      ...(this.document
+        ? [
+            {
+              description: 'Copy all',
+              execute: async () => {
+                const markdown = serializeToString(this.document!.tree.root);
+                await copyMarkdownToClipboard(markdown);
+              },
+              preview: () =>
+                html`<pre style="white-space: pre-wrap">
+${serializeToString(this.root!)}</pre
+                >`,
+            },
+          ]
+        : []),
       ...(selectionHostContext?.hasSelection
         ? [
             {
