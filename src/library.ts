@@ -52,6 +52,7 @@ export interface Document {
   readonly allNames: string[];
   readonly tree: MarkdownTree;
   readonly metadata: Readonly<DocumentMetadata>;
+  readonly storedMetadata: Readonly<DocumentMetadata>;
   readonly dirty: boolean;
   updateMetadata(updater: (metadata: DocumentMetadata) => boolean): void;
 }
@@ -61,7 +62,10 @@ interface LibraryEventMap {
     node: ViewModelNode;
     change: 'connected' | 'disconnected' | 'changed';
   }>;
-  'document-change': CustomEvent<Document>;
+  'document-change': CustomEvent<{
+    document: Document;
+    oldMetadata: DocumentMetadata;
+  }>;
 }
 
 export interface Library extends TypedEventTarget<Library, LibraryEventMap> {
@@ -348,21 +352,31 @@ class IdbDocument implements Document {
     private library: IdbLibrary,
     state: StoredDocument,
   ) {
-    this.metadata = state.metadata;
+    this.#metadata = state.metadata;
+    this.#storedMetadata = state.metadata;
     const root = this.metadata.state === 'deleted' ? undefined : state.root;
     this.tree = new MarkdownTree(root, state.caches, library);
     this.tree.addEventListener('tree-change', (e) => {
       this.treeChanged(e.detail);
     });
   }
-  readonly metadata: Readonly<DocumentMetadata>;
+  #storedMetadata: Readonly<DocumentMetadata>;
+  #metadata: Readonly<DocumentMetadata>;
+  get storedMetadata() {
+    return this.#storedMetadata;
+  }
+  get metadata() {
+    return this.#metadata;
+  }
   readonly tree: MarkdownTree;
   dirty = false;
   updateMetadata(
     updater: (metadata: DocumentMetadata) => boolean,
     markDirty = true,
   ) {
-    if (!updater(this.metadata)) return;
+    const newMetadata = structuredClone(this.metadata);
+    if (!updater(newMetadata)) return;
+    this.#metadata = newMetadata;
     if (markDirty) this.metadataChanged();
   }
   get name() {
@@ -391,18 +405,19 @@ class IdbDocument implements Document {
   async save() {
     const {root, caches} = this.tree.serializeWithCaches();
     assert(root.type === 'document');
+    const metadata = this.#metadata;
     const content: StoredDocument = {
       root,
-      caches:
-        caches?.size && this.metadata.state !== 'deleted' ? caches : undefined,
-      metadata: this.metadata,
+      caches: caches?.size && metadata.state !== 'deleted' ? caches : undefined,
+      metadata,
     };
     await wrap(
       this.library.database
         .transaction('documents', 'readwrite')
         .objectStore('documents')
-        .put(content, this.metadata.key),
+        .put(content, metadata.key),
     );
+    this.#storedMetadata = metadata;
   }
   async delete() {
     this.replace({type: 'document'}, (metadata) => {
@@ -432,9 +447,12 @@ class IdbDocument implements Document {
     while (true) {
       const preSave = this.pendingModifications;
       // Save immediately on the fist iteration, may help keep tests fast.
+      const oldMetadata = this.#storedMetadata;
       await this.save();
       this.library.dispatchEvent(
-        new TypedCustomEvent('document-change', {detail: this}),
+        new TypedCustomEvent('document-change', {
+          detail: {document: this, oldMetadata},
+        }),
       );
       if (this.pendingModifications === preSave) {
         this.pendingModifications = 0;
