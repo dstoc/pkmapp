@@ -36,7 +36,7 @@ function needsBackup(document: Document) {
     | undefined;
   return (
     !metadata ||
-    metadata.backupModificationTime < document.metadata.modificationTime
+    metadata.backupModificationTime < document.storedMetadata.modificationTime
   );
 }
 
@@ -49,7 +49,7 @@ export class Backup {
     private readonly library: Library,
     private readonly store: ConfigStore,
   ) {
-    library.addEventListener('document-change', ({detail: document}) =>
+    library.addEventListener('document-change', ({detail: {document}}) =>
       this.onDocumentUpdated(document),
     );
     noAwait(this.update());
@@ -121,7 +121,7 @@ export class Backup {
         }
         const stream = await file.createWritable();
         const content = serializeToString(document.tree.root);
-        const modificationTime = document.metadata.modificationTime;
+        const modificationTime = document.storedMetadata.modificationTime;
         await stream.write(content);
         await stream.close();
         document.updateMetadata((metadata) => {
@@ -135,7 +135,7 @@ export class Backup {
           metadata.component['backup'] = backup;
           return true;
         });
-        if (document.metadata.modificationTime <= modificationTime) {
+        if (document.storedMetadata.modificationTime <= modificationTime) {
           // Otherwise it was modified while we were writing.
           this.backlog.delete(document);
         }
