@@ -53,7 +53,6 @@ export interface Document {
   readonly tree: MarkdownTree;
   readonly metadata: Readonly<DocumentMetadata>;
   readonly storedMetadata: Readonly<DocumentMetadata>;
-  readonly dirty: boolean;
   updateMetadata(updater: (metadata: DocumentMetadata) => boolean): void;
 }
 
@@ -345,6 +344,27 @@ export class IdbLibrary
       new TypedCustomEvent('post-edit-update', {detail: {node, change}}),
     );
   }
+
+  #writeQueue: (() => Promise<void>)[] = [];
+  #writing = false;
+  async enqueueWrite(write: () => Promise<void>) {
+    this.#writeQueue.push(write);
+    if (this.#writing) return;
+    this.#writing = true;
+    while (true) {
+      const write = cast(this.#writeQueue.pop());
+      await write();
+      if (!this.#writeQueue.length) {
+        this.#writing = false;
+        return;
+      }
+      let preIdle = NaN;
+      do {
+        preIdle = this.#writeQueue.length;
+        await new Promise((resolve) => requestIdleCallback(resolve));
+      } while (preIdle != this.#writeQueue.length);
+    }
+  }
 }
 
 class IdbDocument implements Document {
@@ -369,15 +389,14 @@ class IdbDocument implements Document {
     return this.#metadata;
   }
   readonly tree: MarkdownTree;
-  dirty = false;
   updateMetadata(
     updater: (metadata: DocumentMetadata) => boolean,
-    markDirty = true,
+    scheduleSave = true,
   ) {
     const newMetadata = structuredClone(this.metadata);
     if (!updater(newMetadata)) return;
     this.#metadata = newMetadata;
-    if (markDirty) this.metadataChanged();
+    if (scheduleSave) this.metadataChanged();
   }
   get name() {
     return (
@@ -400,7 +419,7 @@ class IdbDocument implements Document {
       this.tree.connect();
       this.tree.setRoot(this.tree.add<DocumentNode>(root), false);
     }
-    noAwait(this.markDirty());
+    noAwait(this.scheduleSave());
   }
   async save() {
     const {root, caches} = this.tree.serializeWithCaches();
@@ -428,7 +447,7 @@ class IdbDocument implements Document {
     });
   }
   private metadataChanged() {
-    noAwait(this.markDirty());
+    noAwait(this.scheduleSave());
   }
   private treeChanged(change: TreeChange) {
     if (change === 'edit') {
@@ -438,34 +457,44 @@ class IdbDocument implements Document {
         return true;
       }, false);
     }
-    noAwait(this.markDirty());
+    noAwait(this.scheduleSave());
   }
-  private pendingModifications = 0;
-  private async markDirty() {
-    this.dirty = true;
-    if (this.pendingModifications++) return;
-    while (true) {
-      const preSave = this.pendingModifications;
-      // Save immediately on the fist iteration, may help keep tests fast.
-      const oldMetadata = this.#storedMetadata;
-      await this.save();
-      this.library.dispatchEvent(
-        new TypedCustomEvent('document-change', {
-          detail: {document: this, oldMetadata},
-        }),
-      );
-      if (this.pendingModifications === preSave) {
-        this.pendingModifications = 0;
-        this.dirty = false;
+
+  #pendinSaveOldMetadata: DocumentMetadata | undefined;
+  #pendingSaveClock: number | undefined;
+  private async scheduleSave() {
+    const writeClock = this.#metadata.clock ?? 0;
+    if (this.#pendingSaveClock === undefined) {
+      this.#pendinSaveOldMetadata = this.#storedMetadata;
+    } else {
+      assert(this.#pendinSaveOldMetadata);
+      if (writeClock === this.#pendingSaveClock) {
+        // If the clock has not changed, we can join the scheduled write.
         return;
       }
-      // Wait for an idle period with no modifications.
-      let preIdle = NaN;
-      do {
-        preIdle = this.pendingModifications;
-        // TODO: maybe a timeout is better?
-        await new Promise((resolve) => requestIdleCallback(resolve));
-      } while (preIdle != this.pendingModifications);
     }
+    this.#pendingSaveClock = writeClock;
+    noAwait(
+      this.library.enqueueWrite(async () => {
+        if (writeClock !== this.#pendingSaveClock) {
+          assert(
+            this.#pendingSaveClock !== undefined &&
+              this.#pendingSaveClock > writeClock,
+          );
+          // A write for a newer clock will supersede this.
+          return;
+        }
+        this.#pendingSaveClock = undefined;
+        await this.save();
+        if (this.#pendingSaveClock !== undefined) return;
+        const oldMetadata = cast(this.#pendinSaveOldMetadata);
+        this.#pendinSaveOldMetadata = undefined;
+        this.library.dispatchEvent(
+          new TypedCustomEvent('document-change', {
+            detail: {document: this, oldMetadata},
+          }),
+        );
+      }),
+    );
   }
 }
