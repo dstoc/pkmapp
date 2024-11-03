@@ -47,6 +47,7 @@ import {Components, ComponentsBuilder} from './components.js';
 import {Backup} from './backup.js';
 import {ConfigStore} from './config-store.js';
 import {BackLinks} from './backlinks.js';
+import {platformModifier} from './keyboard.js';
 
 export function injectStyles() {
   document.adoptedStyleSheets = [...styles];
@@ -96,7 +97,7 @@ export abstract class PkmAppBase extends LitElement {
   constructor() {
     super();
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'p' && e.ctrlKey) {
+      if (e.key === 'p' && platformModifier(e)) {
         e.preventDefault();
         this.onCommands({detail: undefined});
       }

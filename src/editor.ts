@@ -73,6 +73,7 @@ import {Focus} from './markdown/view-model-ops.js';
 import {findOpenCreateBundle} from './commands/find-open-create.js';
 import {CommandContext} from './commands/context.js';
 import {sigprop} from './signal-utils.js';
+import {platformModifier} from './keyboard.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -394,7 +395,7 @@ export class Editor extends LitElement {
       const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
       const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key)
         ? 'line'
-        : keyboardEvent.ctrlKey
+        : platformModifier(keyboardEvent)
           ? 'word'
           : 'character';
       const result = hostContext.hasSelection
@@ -464,7 +465,7 @@ export class Editor extends LitElement {
       } else {
         this.runEditAction(inline, editInlineIndent, mode);
       }
-    } else if (keyboardEvent.key === 'z' && keyboardEvent.ctrlKey) {
+    } else if (keyboardEvent.key === 'z' && platformModifier(keyboardEvent)) {
       if (!hostContext.root) return;
       event.preventDefault();
       const focus = hostContext.root[viewModel].tree.undo(hostContext.root);
@@ -477,7 +478,7 @@ export class Editor extends LitElement {
         hostContext.focusOffset = focus.offset;
         focus.node[viewModel].renderSignal.value++;
       }
-    } else if (keyboardEvent.key === 'y' && keyboardEvent.ctrlKey) {
+    } else if (keyboardEvent.key === 'y' && platformModifier(keyboardEvent)) {
       if (!hostContext.root) return;
       event.preventDefault();
       const focus = hostContext.root[viewModel].tree.redo(hostContext.root);
@@ -490,7 +491,7 @@ export class Editor extends LitElement {
         hostContext.focusOffset = focus.offset;
         focus.node[viewModel].renderSignal.value++;
       }
-    } else if (keyboardEvent.key === 'a' && keyboardEvent.ctrlKey) {
+    } else if (keyboardEvent.key === 'a' && platformModifier(keyboardEvent)) {
       this.autocomplete.abort();
       const {hostContext: selectedHostContext} =
         getBlockSelectionTarget(inline) ?? {};
@@ -509,12 +510,12 @@ export class Editor extends LitElement {
           hostContext.setSelection(node, node);
         }
       }
-    } else if (keyboardEvent.key === 'c' && keyboardEvent.ctrlKey) {
+    } else if (keyboardEvent.key === 'c' && platformModifier(keyboardEvent)) {
       const {hostContext} = getBlockSelectionTarget(inline) ?? {};
       if (!hostContext) return;
       keyboardEvent.preventDefault();
       noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
-    } else if (keyboardEvent.key === 'x' && keyboardEvent.ctrlKey) {
+    } else if (keyboardEvent.key === 'x' && platformModifier(keyboardEvent)) {
       const selectionTarget = getBlockSelectionTarget(inline);
       if (!selectionTarget?.hostContext) return;
       keyboardEvent.preventDefault();
