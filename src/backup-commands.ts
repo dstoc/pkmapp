@@ -7,7 +7,7 @@ export function backupCommands(backup: Backup): Command[] {
   return backup.hasConfig()
     ? [
         {
-          description: 'Turn off backup',
+          description: 'Turn off backup...',
           execute: async () => {
             return yesNoBundle({
               description: 'Are you sure you want to turn off backup?',
@@ -18,7 +18,7 @@ export function backupCommands(backup: Backup): Command[] {
       ]
     : [
         {
-          description: 'Turn on backup',
+          description: 'Turn on backup...',
           execute: async () => {
             function chooseFolderAndFinish(grouping: Snapshots) {
               return async () =>
