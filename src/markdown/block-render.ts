@@ -72,7 +72,7 @@ export class MarkdownBlock extends LitElement implements SigpropHost {
         node[viewModel].parent?.type !== 'section' &&
         !node[viewModel].previousSibling
       ) {
-        this.marker = undefined;
+        this.marker = '★';
       } else {
         const idx = Math.min(node.marker.length - 1, 9);
         const n = '₁₂₃₄₅₆₇₈₉ₙ'[idx];
