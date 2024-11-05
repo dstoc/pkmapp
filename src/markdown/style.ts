@@ -76,28 +76,8 @@ export const styles = [
       margin-block: 0;
     }
     md-block[type='list-item'] {
-      display: list-item;
       white-space: initial;
       margin-block: 0;
-
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      align-items: baseline;
-    }
-    md-block[type='list-item']::before {
-      width: 15px;
-      margin-right: 3px;
-      content: '०';
-      color: var(--md-accent-color);
-      cursor: pointer;
-      grid-row: 1 / 999999;
-      align-self: stretch;
-    }
-    md-block[type='list-item'][checked='true']::before {
-      content: '☑';
-    }
-    md-block[type='list-item'][checked='false']::before {
-      content: '☐';
     }
     md-block[type='code-block'] md-inline {
       font-family: monospace;
@@ -108,28 +88,16 @@ export const styles = [
     }
     md-block[type='section'] {
       margin-block-end: 0.75lh;
+      --md-section-gutter-color: initial;
+      --md-section-nested-gutter: initial;
     }
-    md-block[type='section'][marker] > md-block[type='section'] {
-      margin-left: calc(-1 * var(--section-gutter));
+    md-block[type='section'] > md-block[type='section'] {
+      --md-section-nested-gutter: -18px;
     }
-    md-block[type='section'][marker] {
-      --section-gutter: 20px;
-      display: grid;
-      grid-template-columns: var(--section-gutter) 1fr;
-      align-items: baseline;
-    }
-    md-block[type='section'][marker]:focus-within:not(
+    md-block[type='section']:focus-within:not(
         :has(:is(md-block[type='section'], md-transclusion):focus-within)
-      )::before {
-      background: var(--md-active-block-color);
-    }
-    md-block[type='section'][marker]::before {
-      margin-right: 3px;
-      content: attr(marker);
-      text-align: right;
-      color: var(--md-accent-color);
-      grid-row: 1 / 999999;
-      align-self: stretch;
+      ) {
+      --md-section-gutter-color: var(--md-active-block-color);
     }
     /* Reduce gap between block and list */
     md-block + md-block[type='list'] {

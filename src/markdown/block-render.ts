@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {html, LitElement} from 'lit';
+import {html, LitElement, render} from 'lit';
 import {customElement, property} from 'lit/decorators.js';
 
 import {MarkdownInline} from './inline-render.js';
@@ -28,6 +28,7 @@ import {provide, consume} from '@lit/context';
 import {styles} from './style.js';
 import {sigprop, SigpropHost} from '../signal-utils.js';
 import {repeat} from 'lit/directives/repeat.js';
+import './block-ui.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement implements SigpropHost {
@@ -44,7 +45,6 @@ export class MarkdownBlock extends LitElement implements SigpropHost {
   @sigprop accessor node: ViewModelNode | undefined;
   constructor() {
     super();
-    this.addEventListener('click', (e) => this.handleClick(e));
   }
   effectDispose?: () => void;
   effect() {
@@ -59,27 +59,8 @@ export class MarkdownBlock extends LitElement implements SigpropHost {
     const node = this.node;
     if (!node) return;
     this.type = node.type;
-    if (node.type === 'list-item') {
-      this.checked =
-        node.checked === undefined
-          ? undefined
-          : node.checked
-            ? 'true'
-            : 'false';
-    }
-    if (node.type === 'section') {
-      if (
-        node[viewModel].parent?.type !== 'section' &&
-        !node[viewModel].previousSibling
-      ) {
-        this.marker = '★';
-      } else {
-        const idx = Math.min(node.marker.length - 1, 9);
-        const n = '₁₂₃₄₅₆₇₈₉ₙ'[idx];
-        this.marker = `§${n}`;
-      }
-    }
     // TODO: maybe this is were extensions get injected?
+    // TODO: consider whether we should use shadow ui here
     if (node.type === 'code-block' && node.info === 'tc') {
       // TODO: wrap with a md-extension type that can handle selection instead.
       const selected = this.hostContext?.selection.has(node) ?? false;
@@ -97,32 +78,36 @@ export class MarkdownBlock extends LitElement implements SigpropHost {
       (node) => html`<md-block .node=${node}></md-block>`,
     )}`;
   }
-  protected override createRenderRoot() {
-    return this;
-  }
-  private handleClick(e: Event) {
+  #renderShadow() {
     const node = this.node;
     if (!node) return;
-    if (node.type === 'list-item') {
-      if (e.target !== this) return;
-      e.preventDefault();
-      node[viewModel].tree.edit(() => {
-        let newValue;
-        switch (node.checked) {
-          case true:
-            newValue = undefined;
-            break;
-          case false:
-            newValue = true;
-            break;
-          case undefined:
-            newValue = false;
-            break;
-        }
-        node[viewModel].updateChecked(newValue);
-        return {};
-      });
+    if (node.type === 'section') {
+      return html`
+        <md-section-ui .node=${this.node}>
+          <slot></slot>
+        </md-section-ui>
+      `;
     }
+    if (node.type === 'list-item') {
+      return html`
+        <md-list-item-ui .node=${this.node}>
+          <slot></slot>
+        </md-list-item-ui>
+      `;
+    }
+    return;
+  }
+  protected override updated() {
+    const content = this.#renderShadow();
+    if (content && !this.shadowRoot) {
+      this.attachShadow({mode: 'open'});
+    }
+    if (this.shadowRoot) {
+      render(content ?? html`<slot></slot>`, this.shadowRoot);
+    }
+  }
+  protected override createRenderRoot() {
+    return this;
   }
 }
 
