@@ -35,7 +35,7 @@ export const styles = [
       --md-code-span-bgcolor: #e2e2e2;
       --md-block-selection-bgcolor: #ccc;
       --md-accent-color: #67f;
-      --md-active-block-color: #fafafa;
+      --md-active-block-color: #eaeaea;
       --pkm-dialog-bgcolor: #f2f2f2;
       --root-color: black;
       --root-background-color: white;
