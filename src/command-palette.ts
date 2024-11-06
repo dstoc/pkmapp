@@ -128,6 +128,7 @@ export class CommandPalette extends LitElement {
       justify-content: center;
       align-content: center;
       aspect-ratio: 1 / 1;
+      cursor: pointer;
     }
     #separator {
       grid-area: sep;
