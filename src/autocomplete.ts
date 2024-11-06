@@ -31,6 +31,9 @@ import {Library} from './library.js';
 import {BlockCommandBundle} from './block-command-bundle.js';
 import {noAwait} from './async.js';
 import {EditContext, Editor} from './editor.js';
+import {findAncestor} from './markdown/view-model-util.js';
+import {findIndentTarget, indent} from './indent-util.js';
+import {assert} from './asserts.js';
 
 @customElement('pkm-autocomplete')
 export class Autocomplete extends LitElement {
@@ -194,6 +197,62 @@ export class Autocomplete extends LitElement {
               inline,
               this.getLinkInsertionCommand(inline),
             ),
+            {
+              description: 'Task',
+              execute: async () => {
+                this.editor.runEditAction(inline, (context: EditContext) => {
+                  let target = findIndentTarget(node, context.root);
+                  if (target[viewModel].parent?.type !== 'list-item') {
+                    indent(node, context.root);
+                    target = findIndentTarget(node, context.root);
+                  }
+                  const listItem = target[viewModel].parent;
+                  assert(listItem);
+                  assert(listItem.type === 'list-item');
+                  context.startEditing();
+                  if (listItem.checked === undefined) {
+                    listItem[viewModel].updateChecked(false);
+                  } else {
+                    listItem[viewModel].updateChecked(undefined);
+                  }
+
+                  node[viewModel].edit({
+                    // TODO: numbers are too contextual
+                    startIndex: this.startIndex - 1,
+                    newEndIndex: this.startIndex + 2,
+                    oldEndIndex: this.endIndex,
+                    newText: '',
+                  });
+                  this.endIndex = this.startIndex;
+                  context.focus(node, this.startIndex - 1);
+                });
+              },
+            },
+            {
+              description: 'Done',
+              execute: async () => {
+                this.editor.runEditAction(inline, (context: EditContext) => {
+                  const {ancestor: target} = findAncestor(
+                    node,
+                    context.root,
+                    'list-item',
+                  );
+                  if (target) {
+                    assert(target.type === 'list-item');
+                    target[viewModel].updateChecked(true);
+                  }
+                  node[viewModel].edit({
+                    // TODO: numbers are too contextual
+                    startIndex: this.startIndex - 1,
+                    newEndIndex: this.startIndex + 2,
+                    oldEndIndex: this.endIndex,
+                    newText: '',
+                  });
+                  this.endIndex = this.startIndex;
+                  context.focus(node, this.startIndex - 1);
+                });
+              },
+            },
           ]),
         );
         this.activate(inline, cursorIndex);
