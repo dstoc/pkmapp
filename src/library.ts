@@ -352,7 +352,7 @@ export class IdbLibrary
     if (this.#writing) return;
     this.#writing = true;
     while (true) {
-      const write = cast(this.#writeQueue.pop());
+      const write = cast(this.#writeQueue.shift());
       await write();
       if (!this.#writeQueue.length) {
         this.#writing = false;
@@ -477,10 +477,8 @@ class IdbDocument implements Document {
     noAwait(
       this.library.enqueueWrite(async () => {
         if (writeClock !== this.#pendingSaveClock) {
-          assert(
-            this.#pendingSaveClock !== undefined &&
-              this.#pendingSaveClock > writeClock,
-          );
+          assert(this.#pendingSaveClock !== undefined);
+          assert(this.#pendingSaveClock > writeClock);
           // A write for a newer clock will supersede this.
           return;
         }
