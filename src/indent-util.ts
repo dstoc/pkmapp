@@ -67,7 +67,7 @@ export function unindent(node: ViewModelNode, root: ViewModelNode) {
   }
 }
 
-export function indent(node: ViewModelNode, root: ViewModelNode) {
+export function findIndentTarget(node: ViewModelNode, root: ViewModelNode) {
   let target = node;
   for (const ancestor of ancestors(node, root)) {
     if (ancestor.type === 'list-item') {
@@ -81,6 +81,11 @@ export function indent(node: ViewModelNode, root: ViewModelNode) {
     }
     target = ancestor;
   }
+  return target;
+}
+
+export function indent(node: ViewModelNode, root: ViewModelNode) {
+  const target = findIndentTarget(node, root);
   let listItem: ViewModelNode;
   if (target[viewModel].parent!.type === 'list-item') {
     listItem = target[viewModel].parent!;
