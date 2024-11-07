@@ -32,13 +32,8 @@ import './block-ui.js';
 
 @customElement('md-block')
 export class MarkdownBlock extends LitElement implements SigpropHost {
-  @property({type: String, reflect: true}) accessor checked:
-    | 'true'
-    | 'false'
-    | undefined;
   @property({type: Boolean, reflect: true}) accessor root: boolean | undefined;
   @property({type: String, reflect: true}) accessor type = '';
-  @property({type: String, reflect: true}) accessor marker: string | undefined;
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
   accessor hostContext: HostContext | undefined;

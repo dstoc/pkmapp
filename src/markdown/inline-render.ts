@@ -66,11 +66,11 @@ export class MarkdownInline extends LitElement implements SigpropHost {
     this.addEventListener('beforeinput', this.onBeforeInput, {capture: true});
     this.addEventListener('keydown', this.onKeyDown, {capture: true});
     this.addEventListener('pointerdown', this.onPointerDown);
+    this.setAttribute('contenteditable', '');
   }
   @consume({context: hostContext, subscribe: true})
   @property({attribute: false})
   accessor hostContext: HostContext | undefined;
-  @property({type: Boolean, reflect: true}) accessor contenteditable = true;
   @property({type: Boolean, reflect: true}) accessor selected:
     | boolean
     | undefined;
