@@ -12,7 +12,28 @@ interface Result {
   document: Document;
   root: ViewModelNode;
   name: string;
-  description: string;
+}
+
+function intersectByKey<T, K extends keyof T>(lists: T[][], key: K): T[] {
+  if (lists.length === 0) return [];
+  if (lists.length === 1) return lists[0];
+
+  const keyCount = new Map<T[K], T>();
+
+  for (const item of lists[0]) {
+    keyCount.set(item[key], item);
+  }
+
+  for (let i = 1; i < lists.length; i++) {
+    const currentKeys = new Set(lists[i].map((item) => item[key]));
+    for (const [k] of keyCount.entries()) {
+      if (!currentKeys.has(k)) {
+        keyCount.delete(k);
+      }
+    }
+  }
+
+  return Array.from(keyCount.values());
 }
 
 export class BlockCommandBundle implements CommandBundle {
@@ -29,19 +50,28 @@ export class BlockCommandBundle implements CommandBundle {
     const parts = input.split('/');
     const constraints: Result[][] = [];
     for (let i = 0; i < parts.length; i++) {
-      const filter = getFilter(parts[i]);
-      constraints[i] = (
+      const filters = parts[i].split(/(?=#)/).map(getFilter);
+      constraints[i] = intersectByKey(
         await Promise.all(
-          names.filter(filter).map(async (name) => {
-            const blocks = await this.library.findAll(name);
-            return blocks.map((item) => ({
-              ...item,
-              name: this.library.metadata.getNames(item.root)[0] ?? name,
-              description: this.library.metadata.getNames(item.root)[0] ?? name,
-            }));
-          }),
-        )
-      ).flat();
+          filters.map(async (filter) =>
+            (
+              await Promise.all(
+                names.filter(filter).map(async (name) => {
+                  const blocks = await this.library.findAll(name);
+                  return blocks.map((item) => {
+                    return {
+                      ...item,
+                      name:
+                        this.library.metadata.getNames(item.root)[0] ?? name,
+                    };
+                  });
+                }),
+              )
+            ).flat(),
+          ),
+        ),
+        'root',
+      );
       if (i > 0) {
         constraints[i] = constraints[i].filter((item) => {
           let next: ViewModelNode | undefined;
@@ -51,7 +81,6 @@ export class BlockCommandBundle implements CommandBundle {
               const prev = constraints[i - 1].find(({root}) => root === next);
               if (prev) {
                 item.name = prev.name + '/' + item.name;
-                item.description = prev.description + '/' + item.description;
                 return true;
               }
             }
@@ -70,7 +99,7 @@ export class BlockCommandBundle implements CommandBundle {
       .at(-1)!
       .filter(once)
       .map((item) => ({
-        description: item.description,
+        description: item.name,
         execute: async () => this.action(item),
         icon: blockIcon(item),
         preview: () => blockPreview(item),
