@@ -18,7 +18,9 @@ import {
   isInlineViewModelNode,
   type InlineViewModelNode,
   type MaybeViewModelNode,
-  type ViewModelNode, viewModel} from './view-model-node.js';
+  type ViewModelNode,
+  viewModel,
+} from './view-model-node.js';
 import {MarkdownNode} from './node.js';
 
 export function swapNodes(node1: ViewModelNode, node2: ViewModelNode) {
@@ -160,11 +162,12 @@ export function findNextEditable(
 // TODO: why doesn't this return Editable?
 export function findFinalEditable(
   node: ViewModelNode,
+  root: ViewModelNode,
   include = false,
 ): InlineViewModelNode | null {
   let result: InlineViewModelNode | null = null;
   if (include && isInlineViewModelNode(node)) result = node;
-  for (const next of dfs(node)) {
+  for (const next of dfs(node, root)) {
     if (isInlineViewModelNode(next)) result = next;
   }
   return result;
@@ -175,7 +178,10 @@ export function findNextDfs<T extends ViewModelNode>(
   root: ViewModelNode,
   predicate: (node: ViewModelNode) => node is T,
 ) {
-  for (const next of dfs(node, root[viewModel].parent)) {
+  for (const next of dfs(
+    node,
+    root[viewModel].nextSibling ?? root[viewModel].parent,
+  )) {
     if (next !== node && predicate(next)) return next;
   }
   return null;

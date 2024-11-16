@@ -90,6 +90,44 @@ test.describe('editing', () => {
 
       `);
     });
+    test('follow caret movements in and out', async ({page}) => {
+      await page.keyboard.type('before');
+      await page.keyboard.press('Enter');
+      await page.keyboard.type('after');
+      await page.keyboard.press('Home');
+      await page.keyboard.press('ArrowUp');
+      await importFile('transclusion.md', '# transclusion\naaa');
+      await state.main.runCommand('insert transclusion', 'transclusion');
+      await state.main.host
+        .locator('md-transclusion')
+        .waitFor({state: 'visible'});
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.type('1');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.type('2');
+      await page.keyboard.press('ArrowUp');
+      await page.keyboard.type('3');
+      await page.keyboard.press('ArrowUp');
+      await page.keyboard.press('ArrowUp');
+      await page.keyboard.type('4');
+      expect(await exportMarkdown('test')).toMatchPretty(`
+        # test
+        bef4ore
+
+        \`\`\`tc
+        transclusion
+        \`\`\`
+
+        a2fter
+
+      `);
+      expect(await exportMarkdown('transclusion')).toMatchPretty(`
+        # transclusion
+        1a3aa
+
+      `);
+    });
     test('can be inserted and deleted', async ({page}) => {
       await page.keyboard.type('test');
       await importFile('transclusion.md', '# transclusion\n');

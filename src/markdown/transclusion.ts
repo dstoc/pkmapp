@@ -85,10 +85,11 @@ export class MarkdownTransclusion extends LitElement implements SigpropHost {
     if (!this.hostContext) return;
     if (!this.root) return;
     if (this.hostContext.focusNode !== this.node) return;
+    const offset = this.hostContext.focusOffset ?? -1;
     const node =
-      (this.hostContext.focusOffset ?? -1) >= 0
-        ? findNextEditable(this.root, this.root, true)
-        : findFinalEditable(this.root, true);
+      offset < 0 || Object.is(offset, -0)
+        ? findFinalEditable(this.root, this.root, true)
+        : findNextEditable(this.root, this.root, true);
     this.markdownRenderer.hostContext.focusNode = node ?? undefined;
     this.markdownRenderer.hostContext.focusOffset =
       this.hostContext.focusOffset;
