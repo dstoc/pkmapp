@@ -14,7 +14,6 @@ import {
   cloneNode,
   compareDocumentOrder,
   dfs,
-  findFinalEditable,
   performLogicalInsertion,
   removeDescendantNodes,
 } from './markdown/view-model-util.js';
@@ -30,7 +29,7 @@ export function insertMarkdown(markdown: string, node: ViewModelNode) {
   const newInlineNodes = newNodes
     .flatMap((node) => [...dfs(node, node)])
     .filter(isInlineViewModelNode);
-  const newFocus = findFinalEditable(newNodes[0]);
+  const newFocus = newInlineNodes.at(-1);
   performLogicalInsertion(node, newNodes);
   return {newFocus, newInlineNodes};
 }
