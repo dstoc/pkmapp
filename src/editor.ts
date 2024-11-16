@@ -73,7 +73,7 @@ import {Focus} from './markdown/view-model-ops.js';
 import {findOpenCreateBundle} from './commands/find-open-create.js';
 import {CommandContext} from './commands/context.js';
 import {sigprop} from './signal-utils.js';
-import {platformModifier} from './keyboard.js';
+import {normalizeKeys} from './keyboard.js';
 
 export interface EditorNavigation {
   kind: 'navigate' | 'replace';
@@ -378,24 +378,23 @@ export class Editor extends LitElement {
     const {
       detail: {inline, node, keyboardEvent},
     } = event;
+    const keyDown = normalizeKeys(keyboardEvent);
     const hostContext = cast(inline.hostContext);
 
     assert(inline.node);
     if (this.autocomplete.onInlineKeyDown(event)) {
       return;
     } else if (
-      ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(
-        keyboardEvent.key,
-      )
+      ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'].includes(keyDown.key)
     ) {
       keyboardEvent.preventDefault();
-      const direction = ['ArrowUp', 'ArrowLeft'].includes(keyboardEvent.key)
+      const direction = ['ArrowUp', 'ArrowLeft'].includes(keyDown.key)
         ? 'backward'
         : 'forward';
-      const alter = keyboardEvent.shiftKey ? 'extend' : 'move';
-      const granularity = ['ArrowUp', 'ArrowDown'].includes(keyboardEvent.key)
+      const alter = keyDown.shiftKey ? 'extend' : 'move';
+      const granularity = ['ArrowUp', 'ArrowDown'].includes(keyDown.key)
         ? 'line'
-        : platformModifier(keyboardEvent)
+        : keyDown.ctrlKey
           ? 'word'
           : 'character';
       const result = hostContext.hasSelection
@@ -456,16 +455,16 @@ export class Editor extends LitElement {
           }
         }
       }
-    } else if (keyboardEvent.key === 'Tab') {
+    } else if (keyDown.key === 'Tab') {
       keyboardEvent.preventDefault();
-      const mode = keyboardEvent.shiftKey ? 'unindent' : 'indent';
+      const mode = keyDown.shiftKey ? 'unindent' : 'indent';
       const blockTarget = getBlockSelectionTarget(inline);
       if (blockTarget) {
         this.runEditAction(blockTarget, editBlockSelectionIndent, mode);
       } else {
         this.runEditAction(inline, editInlineIndent, mode);
       }
-    } else if (keyboardEvent.key === 'z' && platformModifier(keyboardEvent)) {
+    } else if (keyDown.key === 'z' && keyDown.ctrlKey) {
       if (!hostContext.root) return;
       event.preventDefault();
       const focus = hostContext.root[viewModel].tree.undo(hostContext.root);
@@ -478,7 +477,7 @@ export class Editor extends LitElement {
         hostContext.focusOffset = focus.offset;
         focus.node[viewModel].renderSignal.value++;
       }
-    } else if (keyboardEvent.key === 'y' && platformModifier(keyboardEvent)) {
+    } else if (keyDown.key === 'y' && keyDown.ctrlKey) {
       if (!hostContext.root) return;
       event.preventDefault();
       const focus = hostContext.root[viewModel].tree.redo(hostContext.root);
@@ -491,7 +490,7 @@ export class Editor extends LitElement {
         hostContext.focusOffset = focus.offset;
         focus.node[viewModel].renderSignal.value++;
       }
-    } else if (keyboardEvent.key === 'a' && platformModifier(keyboardEvent)) {
+    } else if (keyDown.key === 'a' && keyDown.ctrlKey) {
       this.autocomplete.abort();
       const {hostContext: selectedHostContext} =
         getBlockSelectionTarget(inline) ?? {};
@@ -510,12 +509,12 @@ export class Editor extends LitElement {
           hostContext.setSelection(node, node);
         }
       }
-    } else if (keyboardEvent.key === 'c' && platformModifier(keyboardEvent)) {
+    } else if (keyDown.key === 'c' && keyDown.ctrlKey) {
       const {hostContext} = getBlockSelectionTarget(inline) ?? {};
       if (!hostContext) return;
       keyboardEvent.preventDefault();
       noAwait(copyMarkdownToClipboard(serializeSelection(hostContext)));
-    } else if (keyboardEvent.key === 'x' && platformModifier(keyboardEvent)) {
+    } else if (keyDown.key === 'x' && keyDown.ctrlKey) {
       const selectionTarget = getBlockSelectionTarget(inline);
       if (!selectionTarget?.hostContext) return;
       keyboardEvent.preventDefault();
@@ -525,9 +524,9 @@ export class Editor extends LitElement {
         ),
       );
       this.runEditAction(selectionTarget, removeSelectedNodes);
-    } else if (keyboardEvent.key === 'Escape') {
+    } else if (keyDown.key === 'Escape') {
       hostContext.clearSelection();
-    } else if (keyboardEvent.key === 'Backspace') {
+    } else if (keyDown.key === 'Backspace') {
       const selectionTarget = getBlockSelectionTarget(inline);
       if (!selectionTarget?.hostContext) return;
       keyboardEvent.preventDefault();
