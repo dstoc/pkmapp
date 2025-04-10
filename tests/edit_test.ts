@@ -388,4 +388,27 @@ test.describe('editing', () => {
       `);
     });
   });
+  test.describe('deletion', () => {
+    test('can delete-word-backwards', async ({page: {keyboard}}) => {
+      await keyboard.type(`one two three`);
+      await keyboard.press('Control+Backspace');
+      expect(await exportMarkdown()).toMatchPretty(`
+        # test
+        one two 
+
+      `);
+    });
+    test('can delete-word-backwards at block start', async ({
+      page: {keyboard},
+    }) => {
+      await keyboard.type(`* one\ntwo`);
+      await keyboard.press('Control+Backspace');
+      await keyboard.press('Control+Backspace');
+      expect(await exportMarkdown()).toMatchPretty(`
+        # test
+        * one
+
+      `);
+    });
+  });
 });
