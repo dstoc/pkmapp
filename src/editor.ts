@@ -601,7 +601,8 @@ export class Editor extends LitElement {
       inputEvent.inputType === 'insertReplacementText' ||
       inputEvent.inputType === 'insertFromPaste' ||
       inputEvent.inputType === 'deleteByCut' ||
-      inputEvent.inputType === 'deleteContentBackward'
+      inputEvent.inputType === 'deleteContentBackward' ||
+      inputEvent.inputType === 'deleteWordBackward'
     ) {
       startIndex = inputStart.index;
       oldEndIndex = inputEnd.index;
@@ -615,6 +616,11 @@ export class Editor extends LitElement {
           this.triggerPaste(inline, inline.node, {startIndex, oldEndIndex}),
         );
         return;
+      } else if (inputEvent.inputType === 'deleteWordBackward') {
+        inline.moveCaret('move', 'backward', 'word');
+        const selection = cast(inline.getSelection());
+        startIndex = selection.start.index;
+        newText = '';
       } else if (inputEvent.inputType === 'deleteByCut') {
         newText = '';
       } else if (inputEvent.inputType === 'deleteContentBackward') {
@@ -650,7 +656,10 @@ export class Editor extends LitElement {
     detail: {inline, inputEvent, inputStart, inputEnd},
   }: CustomEvent<InlineInput>): boolean {
     if (!inline.node) return false;
-    if (inputEvent.inputType === 'deleteContentBackward') {
+    if (
+      inputEvent.inputType === 'deleteContentBackward' ||
+      inputEvent.inputType === 'deleteWordBackward'
+    ) {
       if (inputStart.index !== 0 || inputEnd.index !== 0) return false;
       return this.runEditAction(inline, deleteContentBackwards);
     } else if (inputEvent.inputType === 'insertParagraph') {
