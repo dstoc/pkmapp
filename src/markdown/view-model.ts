@@ -177,9 +177,7 @@ export class ViewModel {
     } else {
       parent[viewModel].lastChild = this.self;
     }
-    if (!parent.children) {
-      parent.children = [];
-    }
+    parent.children ??= [];
     let index: number;
     if (previousSibling) {
       index = parent.children.indexOf(previousSibling) + 1;

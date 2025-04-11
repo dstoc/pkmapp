@@ -313,12 +313,10 @@ export class Editor extends LitElement {
           }
         }
         if (hostContext.hasSelection) {
-          if (!startFocus) {
-            startFocus = {
-              node: hostContext.selectionFocus!,
-              offset: 0,
-            };
-          }
+          startFocus ??= {
+            node: hostContext.selectionFocus!,
+            offset: 0,
+          };
           startFocus.selection = [...hostContext.selection];
         }
       },
@@ -978,9 +976,7 @@ async function sendTo(
   element: Element & {hostContext?: HostContext; node?: ViewModelNode},
   mode: 'remove' | 'transclude' | 'link',
 ) {
-  if (!root) {
-    root = (await editor.library.newDocument(name)).tree.root;
-  }
+  root ??= (await editor.library.newDocument(name)).tree.root;
   assert(root);
   assert(element.hostContext);
   const markdown = serializeSelection(element.hostContext);
