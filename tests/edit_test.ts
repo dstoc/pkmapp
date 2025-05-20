@@ -410,5 +410,47 @@ test.describe('editing', () => {
 
       `);
     });
+    test('delete-word-backwards and undo restores cursor', async ({page}) => {
+      const initialContent = 'hello world test';
+      const contentAfterDelete = 'hello world ';
+      await page.keyboard.type(initialContent);
+
+      // 3. Simulate a "delete word backwards" event (Ctrl+Backspace).
+      await page.keyboard.press('Control+Backspace');
+
+      // 4. Verify that the word "test" has been deleted.
+      expect(await exportMarkdown()).toMatchPretty(`
+        # test
+        ${contentAfterDelete}
+
+      `);
+
+      // 5. Simulate an "undo" event (Ctrl+Z).
+      await page.keyboard.press('Control+Z');
+
+      // 6. Verify that the content is restored.
+      expect(await exportMarkdown()).toMatchPretty(`
+        # test
+        ${initialContent}
+
+      `);
+
+      // 7. Verify cursor position after undo.
+      const editable = state.main.host.locator('[contenteditable]').first();
+      const selection = await editable.evaluate((el) => {
+        const inputElement = el as HTMLInputElement;
+        // If the element is not focused, selectionStart/End might be null or misleading.
+        // Ensure it has focus if necessary, though keyboard actions usually handle this.
+        return {
+          start: inputElement.selectionStart,
+          end: inputElement.selectionEnd,
+          activeElement: document.activeElement === el,
+        };
+      });
+
+      expect(selection.activeElement).toBe(true); // Ensure the element is focused
+      expect(selection.start).toBe(initialContent.length);
+      expect(selection.end).toBe(initialContent.length);
+    });
   });
 });

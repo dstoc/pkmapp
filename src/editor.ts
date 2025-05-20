@@ -617,10 +617,25 @@ export class Editor extends LitElement {
         );
         return;
       } else if (inputEvent.inputType === 'deleteWordBackward') {
-        inline.moveCaret('move', 'backward', 'word');
-        const selection = cast(inline.getSelection());
-        startIndex = selection.start.index;
+        // Get and store the original selection/cursor position.
+        // This is crucial for determining oldEndIndex and for runEditAction to correctly capture the pre-edit state for undo.
+        const originalFocusSelection = cast(inline.getSelection());
+
+        // Use withSavedSelection to determine the startIndex of the word to be deleted.
+        // The helper will move the caret, get the selection, and then restore the original selection.
+        startIndex = withSavedSelection(inline, () => {
+          inline.moveCaret('move', 'backward', 'word');
+          const selectionAfterMove = cast(inline.getSelection());
+          return selectionAfterMove.start.index;
+        });
+
+        // Prepare the edit object for editInlineNode.
         newText = '';
+        // oldEndIndex is the position of the cursor *before* the word deletion was initiated.
+        // This is where the deletion effectively ends.
+        oldEndIndex = originalFocusSelection.start.index;
+        // newEndIndex is the same as startIndex because newText is empty.
+        newEndIndex = startIndex;
       } else if (inputEvent.inputType === 'deleteByCut') {
         newText = '';
       } else if (inputEvent.inputType === 'deleteContentBackward') {
@@ -1027,6 +1042,28 @@ async function sendTo(
     replacement?.[viewModel].insertBefore(cast(focus[viewModel].parent), focus);
     removeSelectedNodes(context);
   });
+}
+
+/**
+ * Executes an action while preserving the selection on a MarkdownInline element.
+ *
+ * @param inline The MarkdownInline element whose selection needs to be preserved.
+ * @param action The function to execute.
+ * @returns The result of the action function.
+ */
+function withSavedSelection<T>(inline: MarkdownInline, action: () => T): T {
+  const originalSelection = inline.getSelection();
+  const result = action();
+  if (originalSelection) {
+    inline.setSelectionRange(
+      originalSelection.start.index,
+      originalSelection.end.index,
+    );
+  }
+  // If originalSelection was null, no specific restoration action is taken here.
+  // setSelectionRange might throw or behave unexpectedly if called with null/undefined,
+  // so it's safer to only call it when we have a valid originalSelection.
+  return result;
 }
 
 declare global {
