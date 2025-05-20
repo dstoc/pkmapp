@@ -1054,15 +1054,18 @@ async function sendTo(
 function withSavedSelection<T>(inline: MarkdownInline, action: () => T): T {
   const originalSelection = inline.getSelection();
   const result = action();
-  if (originalSelection) {
-    inline.setSelectionRange(
+  if (originalSelection && inline.hostContext && inline.node) {
+    // Restore the selection (caret position) using focusNode.
+    // originalSelection.start.index is used as the offset, which is correct for
+    // restoring a collapsed cursor to its original position.
+    focusNode(
+      cast(inline.hostContext),
+      inline.node,
       originalSelection.start.index,
-      originalSelection.end.index,
     );
   }
-  // If originalSelection was null, no specific restoration action is taken here.
-  // setSelectionRange might throw or behave unexpectedly if called with null/undefined,
-  // so it's safer to only call it when we have a valid originalSelection.
+  // If originalSelection, hostContext, or inline.node is null,
+  // or if setSelectionRange was not applicable, no specific restoration action is taken.
   return result;
 }
 
