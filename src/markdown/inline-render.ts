@@ -103,7 +103,7 @@ export class MarkdownInline extends LitElement implements SigpropHost {
     if (!this.node) return;
     noAwait(this.maybeSetFocus());
   }
-  private setFocus(focusOffset: number) {
+  public setFocus(focusOffset: number) {
     const walker = document.createTreeWalker(
       this,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,

@@ -283,6 +283,8 @@ export class Editor extends LitElement {
   >(
     element: Element & {hostContext?: HostContext; node?: ViewModelNode},
     action: T,
+    // explicitStartFocus is an optional parameter to override the default startFocus.
+    explicitStartFocus?: Focus,
     ...args: ExcludeFirst<Parameters<T>>
   ): ReturnType<T> {
     const hostContext = cast(element.hostContext);
@@ -351,9 +353,10 @@ export class Editor extends LitElement {
       if (endFocus && hostContext.hasSelection) {
         endFocus.selection = [...hostContext.selection];
       }
-      return {startFocus, endFocus};
+      // If explicitStartFocus is provided, use it; otherwise, use the startFocus determined by context.startEditing().
+      return {startFocus: explicitStartFocus ?? startFocus, endFocus};
     });
-    if (ops.length > 0 && !endFocus) {
+    if (ops.length > 0 && !endFocus && !(explicitStartFocus ?? startFocus)) {
       // TODO: also check that the focus is still connected
       console.warn(`Edit action: "${action.name}" did not set final focus`);
     } else if (endFocus) {
@@ -617,25 +620,42 @@ export class Editor extends LitElement {
         );
         return;
       } else if (inputEvent.inputType === 'deleteWordBackward') {
-        // Get and store the original selection/cursor position.
-        // This is crucial for determining oldEndIndex and for runEditAction to correctly capture the pre-edit state for undo.
-        const originalFocusSelection = cast(inline.getSelection());
+        // Step 1: Capture Original Focus
+        const originalUiSelection = inline.getSelection();
+        let startFocusForEdit: Focus | undefined = undefined;
+        if (originalUiSelection && inline.node) {
+          startFocusForEdit = {
+            node: inline.node, // inline.node is InlineViewModelNode
+            offset: originalUiSelection.start.index,
+          };
+        }
 
-        // Use withSavedSelection to determine the startIndex of the word to be deleted.
-        // The helper will move the caret, get the selection, and then restore the original selection.
-        startIndex = withSavedSelection(inline, () => {
-          inline.moveCaret('move', 'backward', 'word');
-          const selectionAfterMove = cast(inline.getSelection());
-          return selectionAfterMove.start.index;
-        });
+        // Step 2: Determine Deletion Range
+        // Note: moveCaret manipulates the live browser selection.
+        inline.moveCaret('move', 'backward', 'word');
+        const wordBoundarySelection = cast(inline.getSelection()); // Selection after moving caret
 
-        // Prepare the edit object for editInlineNode.
+        startIndex = wordBoundarySelection.start.index;
+        // oldEndIndex is based on the original cursor position before moveCaret.
+        oldEndIndex = originalUiSelection
+          ? originalUiSelection.start.index
+          : inputEnd.index; // Fallback if originalUiSelection was null
+
+        // After determining deletion range, it's good practice to ensure the
+        // live selection is where the edit visually occurs, if it matters for other non-undo logic.
+        // However, for undo, startFocusForEdit is the source of truth.
+        // For this operation, the visual caret is usually at wordBoundarySelection.start.index
+        // after the moveCaret. If explicitStartFocus is correctly used, this restoration isn't
+        // strictly for the undo stack but might be for visual consistency if the edit action
+        // itself doesn't set a final focus.
+        if (originalUiSelection) {
+           inline.setFocus(originalUiSelection.start.index);
+        }
+
+
+        // Step 3: Prepare Edit Object
         newText = '';
-        // oldEndIndex is the position of the cursor *before* the word deletion was initiated.
-        // This is where the deletion effectively ends.
-        oldEndIndex = originalFocusSelection.start.index;
-        // newEndIndex is the same as startIndex because newText is empty.
-        newEndIndex = startIndex;
+        newEndIndex = startIndex; // No new text, so newEndIndex is same as startIndex.
       } else if (inputEvent.inputType === 'deleteByCut') {
         newText = '';
       } else if (inputEvent.inputType === 'deleteContentBackward') {
@@ -660,12 +680,26 @@ export class Editor extends LitElement {
       newEndIndex,
     };
 
-    this.runEditAction(inline, (context: EditContext) => {
-      editInlineNode(context, edit);
-      noAwait(
-        this.autocomplete.onInlineEdit(context, inline, newText, newEndIndex),
-      );
-    });
+    // Step 4: Call runEditAction with explicitStartFocus
+    // The 'edit' object is the last of the '...args' for editInlineNode
+    this.runEditAction(
+      inline,
+      (context: EditContext) => {
+        // The actual edit logic
+        editInlineNode(context, edit);
+        // Autocomplete or other post-edit actions
+        noAwait(
+          this.autocomplete.onInlineEdit(
+            context,
+            inline,
+            newText,
+            newEndIndex,
+          ),
+        );
+      },
+      startFocusForEdit, // This is the explicitStartFocus argument
+      edit, // This is the first of the '...args' for the action (editInlineNode)
+    );
   }
   handleInlineInputAsBlockEdit({
     detail: {inline, inputEvent, inputStart, inputEnd},
@@ -1054,18 +1088,14 @@ async function sendTo(
 function withSavedSelection<T>(inline: MarkdownInline, action: () => T): T {
   const originalSelection = inline.getSelection();
   const result = action();
-  if (originalSelection && inline.hostContext && inline.node) {
-    // Restore the selection (caret position) using focusNode.
+  if (originalSelection) {
+    // Restore the selection (caret position) using the public setFocus method
+    // of the MarkdownInline component.
     // originalSelection.start.index is used as the offset, which is correct for
     // restoring a collapsed cursor to its original position.
-    focusNode(
-      cast(inline.hostContext),
-      inline.node,
-      originalSelection.start.index,
-    );
+    inline.setFocus(originalSelection.start.index);
   }
-  // If originalSelection, hostContext, or inline.node is null,
-  // or if setSelectionRange was not applicable, no specific restoration action is taken.
+  // If originalSelection was null, no specific restoration action is taken.
   return result;
 }
 
